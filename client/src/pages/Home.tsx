@@ -143,9 +143,9 @@ export default function Home() {
 
   const getDateSubtext = () => {
     if (dateOption === "specific" && selectedDate && checkoutDate) {
-      return `${format(selectedDate, "MMM d")} - ${format(checkoutDate, "MMM d")}`;
+      return `${format(selectedDate, "MMM d")} - ${format(checkoutDate, "MMM d")} (${nights}N)`;
     }
-    return "Gap Nights Only";
+    return `${nights} Night${nights > 1 ? "s" : ""}`;
   };
 
   const handleDateOptionSelect = (option: DateOption, monthValue?: number) => {
@@ -381,10 +381,49 @@ export default function Home() {
                       </div>
                     </div>
 
+                    {/* Nights Selector */}
+                    <div className="flex items-center justify-between py-3 border-y border-border/50">
+                      <div>
+                        <div className="font-semibold text-foreground">Nights</div>
+                        <div className="text-xs text-muted-foreground">Gap night stays (1-3)</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => {
+                            const newNights = Math.max(1, nights - 1);
+                            setNights(newNights);
+                            if (selectedDate) {
+                              setCheckoutDate(addDays(selectedDate, newNights));
+                            }
+                          }}
+                          disabled={nights <= 1}
+                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          data-testid="button-nights-minus"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-6 text-center font-semibold">{nights}</span>
+                        <button
+                          onClick={() => {
+                            const newNights = Math.min(3, nights + 1);
+                            setNights(newNights);
+                            if (selectedDate) {
+                              setCheckoutDate(addDays(selectedDate, newNights));
+                            }
+                          }}
+                          disabled={nights >= 3}
+                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          data-testid="button-nights-plus"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Specific Dates */}
                     <div>
                       <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                        Specific Dates (max 3 nights)
+                        Specific Dates
                       </div>
                       <CalendarComponent
                         mode="single"
@@ -421,7 +460,7 @@ export default function Home() {
                 <Users className="w-4 h-4 text-primary" />
                 <span className="text-sm font-semibold text-foreground">{guests} Guest{guests > 1 ? "s" : ""}</span>
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">{nights} Night{nights > 1 ? "s" : ""}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Travelers</div>
 
               {/* Guest Picker Dropdown */}
               {showGuestPicker && (
@@ -451,45 +490,6 @@ export default function Home() {
                           disabled={guests >= 8}
                           className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
                           data-testid="button-guests-plus"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Nights */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-foreground">Nights</div>
-                        <div className="text-xs text-muted-foreground">Gap night stays (1-3)</div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => {
-                            const newNights = Math.max(1, nights - 1);
-                            setNights(newNights);
-                            if (selectedDate) {
-                              setCheckoutDate(addDays(selectedDate, newNights));
-                            }
-                          }}
-                          disabled={nights <= 1}
-                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                          data-testid="button-nights-minus"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <span className="w-6 text-center font-semibold">{nights}</span>
-                        <button
-                          onClick={() => {
-                            const newNights = Math.min(3, nights + 1);
-                            setNights(newNights);
-                            if (selectedDate) {
-                              setCheckoutDate(addDays(selectedDate, newNights));
-                            }
-                          }}
-                          disabled={nights >= 3}
-                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                          data-testid="button-nights-plus"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
