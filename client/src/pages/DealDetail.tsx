@@ -7,6 +7,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+const markerIcon = new L.Icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
 export default function DealDetail() {
   const [, params] = useRoute("/deal/:id");
@@ -194,13 +207,39 @@ export default function DealDetail() {
           {/* Location */}
           <div>
             <h2 className="text-xl font-bold text-foreground mb-4">Location</h2>
-            <div className="bg-white rounded-xl p-5 border border-border/50 h-[200px] flex items-center justify-center">
-              <div className="text-center text-muted-foreground">
-                <MapPin className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">{deal.location}</p>
-                <p className="text-xs mt-1">Map coming soon</p>
+            {deal.latitude && deal.longitude ? (
+              <div className="bg-white rounded-xl overflow-hidden border border-border/50 h-[250px]">
+                <MapContainer
+                  center={[parseFloat(deal.latitude), parseFloat(deal.longitude)]}
+                  zoom={14}
+                  scrollWheelZoom={false}
+                  style={{ height: "100%", width: "100%" }}
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <Marker
+                    position={[parseFloat(deal.latitude), parseFloat(deal.longitude)]}
+                    icon={markerIcon}
+                  >
+                    <Popup>
+                      <div className="text-center">
+                        <p className="font-semibold">{deal.hotelName}</p>
+                        <p className="text-sm text-muted-foreground">{deal.location}</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                </MapContainer>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-xl p-5 border border-border/50 h-[200px] flex items-center justify-center">
+                <div className="text-center text-muted-foreground">
+                  <MapPin className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">{deal.location}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
