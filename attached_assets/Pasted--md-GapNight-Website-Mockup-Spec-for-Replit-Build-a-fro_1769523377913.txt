@@ -1,0 +1,371 @@
+````md
+# GapNight — Website Mockup Spec (for Replit)
+
+> Build a **front-end mockup** website for a concept called **GapNight** (name can be swapped easily).
+> The product sells **hotel “gap nights / orphan nights”** (usually 1-night stays, sometimes 2) at clearance prices.
+> The UI should feel like the flight-deals app screenshot: **big search bar at top**, **category chips**, **filter chips**, and a **scrolling list of deal cards**.
+
+---
+
+## 1) Concept Summary (what GapNight is)
+
+**GapNight** is a hotel deals marketplace that focuses **only** on nights hotels struggle to sell:
+- **Gap nights / orphan nights** (awkward 1-night holes between bookings)
+- **Last-minute empty nights** (within a short window, e.g., the next 7 days)
+
+Hotels list:
+- the room type, the available dates, and the price they’re willing to take
+- the “normal” public price (to show how good the deal is)
+- rules (refund policy, check-in window, min/max nights, etc.)
+
+Users browse like this:
+- They **don’t need to choose an exact date**.
+- They enter a location (can be **city / region / country**).
+- The site returns the **best deals** in a rolling window (e.g., **next 7 days**) as 1-night stays.
+
+**Core promise to users:**
+> “Hotels’ unsold gap nights at clearance prices.”
+
+**Core promise to hotels:**
+> “We only sell your distressed nights. You keep control of price, nights, and inventory.”
+
+---
+
+## 2) MVP Rules (for the mockup)
+
+We’re simulating an MVP launch with simple constraints:
+- Default search window: **Next 7 days**
+- Default duration: **1 night** (with optional toggle for 2 nights later)
+- Deals displayed should show:
+  - **Hotel name**
+  - **Star rating**
+  - **Dates** (e.g., “Tue 12 Mar → Wed 13 Mar”)
+  - **Price** (big)
+  - **Normal price** (crossed out)
+  - **% discount** badge (calculated)
+  - **Photo** thumbnail on the left
+
+This is only a mockup:
+- No real booking engine
+- No payments
+- No hotel onboarding portal (just a “List your hotel” CTA with a placeholder form)
+
+---
+
+## 3) Design Goals (match the screenshot vibe)
+
+### Visual Style
+- Clean, modern, mobile-first
+- Light background
+- Rounded cards
+- “Chip” style tabs and filters
+- Bold price typography
+- Optional “Deal score” style badge (like the screenshot’s “AI deal score”)
+
+### Layout (in order, top to bottom)
+1. **Top Search Bar**
+   - Left: search icon
+   - Main text: `Melbourne (VIC) ↔ Anywhere` style (for hotels it can be `Melbourne → Anywhere`)
+   - Subtext: `Anytime • 1 guest • 1 night (Gap Nights)`
+   - Right: dropdown arrow icon
+
+2. **Category Chips Row**
+   - Examples:
+     - All Deals
+     - Last Minute
+     - Trending
+     - Beach
+     - City
+     - Luxury (optional)
+   - Selecting a category filters/sorts the list (mock behavior)
+
+3. **Filter Chips Row**
+   - Examples:
+     - All filters
+     - Price
+     - Rating
+     - Distance
+     - Dates (or “Next 7 days”)
+     - Duration (1 night)
+     - Free cancellation (optional; likely rare in gap-night inventory)
+
+4. **Section Header**
+   - Left: `Explore today’s deals`
+   - Right: Sort dropdown: `Best (highest deal score)` / `Cheapest` / `Biggest discount` / `Highest rating`
+
+5. **Deals List**
+   - Scroll list of deal cards
+   - Each card:
+     - left thumbnail image
+     - hotel name, location
+     - date line
+     - rating + stars
+     - deal badge (discount % or “Deal score”)
+     - crossed out normal price and bold price
+     - chevron arrow on right to open detail view
+     - optional bell icon to “watch” (mock)
+
+---
+
+## 4) Pages to Build
+
+### A) Home / Deals (Primary)
+Route: `/`
+- Contains the full UI described above
+- Includes a static list of mock deals (JSON)
+- Search input updates the heading and filters the list (simple string match is fine)
+
+### B) Deal Detail (Secondary)
+Route: `/deal/:id`
+- Shows:
+  - big hero image
+  - hotel name + stars
+  - deal price + normal price + discount %
+  - dates, room type
+  - “Why this is cheap” text:
+    - “This is a gap night the hotel is trying to fill.”
+  - simple “Request booking” button (does nothing or opens modal)
+  - amenities list (mock)
+  - cancellation policy badge (mock)
+
+### C) List Your Hotel (Simple Form)
+Route: `/list-your-hotel`
+- A simple form mock:
+  - Hotel name
+  - City
+  - Contact email
+  - “How many gap nights per week?” (dropdown)
+  - Submit button → shows success message (no backend)
+
+### D) Join Waitlist (Simple Form)
+Route: `/waitlist`
+- Email + preferred city
+- Submit → success toast
+
+---
+
+## 5) Deal Card Content Requirements
+
+Each deal card should include:
+
+- **Hotel Name**
+- **Location** (country/state optional)
+- **Dates** (check-in → check-out)
+- **Star Rating** (e.g., 4.5 + 4–5 star icons)
+- **Deal Badge**
+  - Either:
+    - `XX% off` OR
+    - `Deal score: 90` (like the screenshot vibe)
+- **Normal Price** (crossed out)
+- **Discounted Price** (bold, large)
+- **Photo thumbnail** on left
+- Right chevron icon
+- Optional bell icon (watchlist)
+
+---
+
+## 6) Mock Data (use this JSON shape)
+
+Create mock data locally inside the project (no DB).
+
+### Deal object shape
+```json
+{
+  "id": "gn_001",
+  "hotelName": "Crown City Suites",
+  "location": "Melbourne, Australia",
+  "stars": 5,
+  "rating": 4.6,
+  "reviewCount": 1284,
+  "checkInDate": "2026-02-14",
+  "checkOutDate": "2026-02-15",
+  "nights": 1,
+  "roomType": "King Room",
+  "imageUrl": "/images/hotel-1.jpg",
+  "normalPrice": 420,
+  "dealPrice": 189,
+  "currency": "A$",
+  "dealScore": 92,
+  "categoryTags": ["All Deals", "Last Minute", "City"],
+  "cancellation": "Non-refundable",
+  "whyCheap": "Gap night: 1-night orphan slot between longer bookings."
+}
+````
+
+### Calculations (front-end)
+
+* `discountPercent = round((normalPrice - dealPrice) / normalPrice * 100)`
+* Optionally show:
+
+  * `Save A$X`
+
+---
+
+## 7) Suggested Copy (use these exact phrases)
+
+### Top headline area
+
+* Title: `Explore today’s deals`
+* Subtitle under search bar:
+
+  * `Anytime • 1 guest • 1 night (Gap Nights)`
+
+### What is GapNight? (optional footer or small info section)
+
+* `GapNight shows discounted 1-night stays that hotels usually struggle to fill — “gap nights” between bookings and last-minute empty rooms.`
+
+### Card badge examples
+
+* `90% deal score`
+* `42% off`
+* `Gap night deal`
+
+### Deal detail explanation
+
+* `Why is this so cheap?`
+* `This hotel has a 1-night gap between bookings. Instead of leaving it empty, they list it on GapNight at a clearance rate.`
+
+---
+
+## 8) Interactions (mock behavior)
+
+### Search
+
+* User types a location:
+
+  * Filter list where `location` includes the query OR
+  * If query is blank, show all deals
+
+### Category chips
+
+* Clicking a category filters deals by `categoryTags`
+
+### Sort
+
+* Dropdown options:
+
+  * Best (highest dealScore)
+  * Cheapest (lowest dealPrice)
+  * Biggest discount (highest discountPercent)
+  * Highest rating
+
+### Watchlist
+
+* Clicking bell toggles “watched”
+* Store in local state only
+
+### Deal click
+
+* Clicking card navigates to `/deal/:id`
+
+---
+
+## 9) Tech & Implementation Notes (Replit-friendly)
+
+**Recommended stack:** Next.js + Tailwind (or React + Vite + Tailwind)
+
+* Mobile-first layout
+* Reusable components:
+
+  * `TopSearchBar`
+  * `CategoryChips`
+  * `FilterChips`
+  * `SortDropdown`
+  * `DealCard`
+  * `DealList`
+
+**No backend required** for the mockup.
+
+**Images:**
+
+* Use placeholder images (local assets or public placeholder URLs)
+* Ensure cards look good even if images are generic
+
+---
+
+## 10) UI Component Breakdown (what to build)
+
+### TopSearchBar
+
+* Input styled like the screenshot (large rounded rectangle)
+* Main line: `Melbourne (VIC) ↔ Anywhere`
+* Sub line: `Anytime • 1 guest • 1 night`
+
+### CategoryChips
+
+* Horizontal scroll on mobile
+* Selected chip highlighted
+
+### FilterChips
+
+* Horizontal scroll
+* “All filters” chip includes icon
+
+### DealCard
+
+* Card container with:
+
+  * left image (square, rounded)
+  * middle content
+  * right side price + chevron
+* Crossed out normal price smaller, grey
+* Deal price bold and large
+
+### DealDetail
+
+* Hero image
+* Sticky “Request booking” button (optional)
+
+---
+
+## 11) What NOT to build (avoid scope creep)
+
+* Payments / Stripe
+* Real hotel inventory connections
+* Scraping
+* Login systems
+* Admin dashboards
+
+This mockup is purely for:
+
+* proving the idea visually
+* collecting waitlist emails
+* showing hotels what the product would look like
+
+---
+
+## 12) Optional Add-ons (nice if quick)
+
+* “Next 7 days” selector (7 / 14 / 30)
+* Toggle for `1 night` vs `2 nights`
+* “Budget slider” filter
+* “Only show 4+ star hotels” filter
+* A tiny “How it works” modal
+
+---
+
+## Deliverable Checklist
+
+* [ ] `/` page matches the screenshot vibe (search bar, chips, deal list)
+* [ ] Deal cards show: image, name, rating, dates, normal price, deal price, discount badge
+* [ ] Sorting + filtering works on mock data
+* [ ] `/deal/:id` detail page
+* [ ] `/list-your-hotel` simple form
+* [ ] `/waitlist` simple form
+
+---
+
+## Name/Brand Placeholder
+
+Use **GapNight** as the placeholder brand in the UI.
+Domain candidates discussed include:
+
+* gapnight.com
+* sparenight.com
+* nitedeal.com
+
+Make the brand name easy to swap by keeping it in one config variable.
+
+```
+::contentReference[oaicite:0]{index=0}
+```
