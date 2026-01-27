@@ -57,5 +57,17 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/verify-partner", (req, res) => {
+    const { password } = req.body;
+    const partnerPassword = process.env.PARTNER_ACCESS_PASSWORD;
+    
+    if (!partnerPassword) {
+      return res.status(500).json({ valid: false, message: "Partner access not configured" });
+    }
+    
+    const valid = password === partnerPassword;
+    res.json({ valid });
+  });
+
   return httpServer;
 }
