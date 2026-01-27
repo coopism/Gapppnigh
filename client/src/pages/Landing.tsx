@@ -98,152 +98,97 @@ export default function Landing() {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50/50 py-16 md:py-28">
+      {/* Hero Section - Dictionary Definition Focus */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50/50 py-16 md:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(14,165,165,0.08),transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(14,165,165,0.05),transparent_40%)]" />
         
         <div className="container mx-auto px-4 relative">
-          <div className="max-w-4xl mx-auto text-center mb-10">
-            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-semibold mb-8 shadow-sm">
-              <Sparkles className="w-4 h-4" />
-              <span>Australia's #1 Gap Night Marketplace</span>
-            </div>
-            <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-[1.1] tracking-tight">
-              Luxury Hotels at
-              <span className="text-primary block mt-2">Clearance Prices</span>
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-              Discover "gap nights" — single-night openings between bookings that hotels sell at up to 70% off. Same room, same service, incredible savings.
-            </p>
-          </div>
-
-          {/* Search Bar */}
-          <div 
-            className="max-w-xl mx-auto bg-white rounded-full shadow-xl border border-border/30 p-1.5"
-            ref={searchRef}
-          >
-            <div className="flex items-center gap-2">
-              <div className="flex-1 relative">
-                <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
-                <input
-                  type="text"
-                  placeholder="Where do you want to stay?"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onKeyDown={handleKeyDown}
-                  className="w-full pl-14 pr-4 py-4 text-base bg-transparent border-0 focus:outline-none focus:ring-0 placeholder:text-muted-foreground rounded-full"
-                  data-testid="input-hero-search"
-                />
-                
-                {showSuggestions && (
-                  <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-2xl border border-border/50 overflow-hidden z-50 max-h-[320px] overflow-y-auto">
-                    <div className="p-3">
-                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-3 py-2">
-                        Popular Destinations
-                      </div>
-                      {filteredSuggestions.slice(0, 6).map((loc) => (
-                        <button
-                          key={loc.city}
-                          onClick={() => handleSelectSuggestion(loc)}
-                          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors text-left hover-elevate"
-                          data-testid={`suggestion-${loc.city.toLowerCase()}`}
-                        >
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <MapPin className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-foreground">{loc.city}</div>
-                            <div className="text-sm text-muted-foreground">{loc.state}, {loc.country}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <Button 
-                size="lg" 
-                onClick={handleSearch}
-                className="px-6 rounded-full h-12"
-                data-testid="button-hero-search"
-              >
-                <Search className="w-5 h-5 mr-2" />
-                Search
-              </Button>
-            </div>
-          </div>
-
-          {/* Stats Row */}
-          <div className="flex flex-wrap justify-center gap-12 md:gap-16 mt-14">
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-foreground">15+</div>
-              <div className="text-sm text-muted-foreground mt-1">Active Deals</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-foreground">50%</div>
-              <div className="text-sm text-muted-foreground mt-1">Avg. Savings</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-foreground flex items-center justify-center gap-1">
-                4.5 <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
-              </div>
-              <div className="text-sm text-muted-foreground mt-1">Avg. Rating</div>
-            </div>
-          </div>
-
-          {/* Secondary CTAs */}
-          <div className="flex flex-wrap justify-center gap-4 mt-10">
-            <Button 
-              variant="outline" 
-              onClick={scrollToDeals}
-              className="rounded-full"
-              data-testid="button-scroll-deals"
-            >
-              Browse Deals
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              onClick={() => setLocation("/list-your-hotel")}
-              className="rounded-full text-muted-foreground"
-              data-testid="button-hero-list-hotel"
-            >
-              <Building2 className="w-4 h-4 mr-2" />
-              List Your Hotel
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Dictionary Definition Section */}
-      <section className="py-16 md:py-20 bg-white border-y border-border/30">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-slate-50/80 rounded-3xl p-8 md:p-12 border border-border/50">
-              <div className="mb-6">
-                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2" style={{ fontFamily: "Georgia, serif" }}>
+          <div className="max-w-3xl mx-auto">
+            {/* Dictionary Card */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-border/50 shadow-xl">
+              {/* Header with title and pronunciation */}
+              <div className="mb-8 text-center md:text-left">
+                <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-3" style={{ fontFamily: "Georgia, serif" }}>
                   Gap Night
-                </h2>
-                <div className="flex items-center gap-3 text-muted-foreground">
-                  <span className="text-lg italic">[gap-nahyt]</span>
-                  <span className="text-sm bg-slate-200 px-2 py-0.5 rounded">noun</span>
+                </h1>
+                <div className="flex items-center justify-center md:justify-start gap-3 text-muted-foreground">
+                  <span className="text-xl italic">[gap-nahyt]</span>
+                  <span className="text-sm bg-slate-200 px-3 py-1 rounded-full font-medium">noun</span>
                 </div>
               </div>
               
-              <div className="space-y-4">
-                <p className="text-lg text-foreground leading-relaxed">
-                  A single unsold night between hotel bookings — discounted so it doesn't go unused.
+              {/* Definition */}
+              <div className="space-y-6">
+                <p className="text-xl md:text-2xl text-foreground leading-relaxed">
+                  An unsold night between hotel bookings — discounted so it doesn't go unused.
                 </p>
-                <p className="text-muted-foreground">
+                <p className="text-lg text-muted-foreground">
                   Hotels list these nights directly on GapNight, so you get real discounts on real rooms.
                 </p>
                 
-                <div className="flex flex-wrap gap-3 pt-4">
+                {/* Search Bar */}
+                <div 
+                  className="bg-slate-50 rounded-full border border-border/50 p-1.5 mt-8"
+                  ref={searchRef}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 relative">
+                      <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+                      <input
+                        type="text"
+                        placeholder="Where do you want to stay?"
+                        value={search}
+                        onChange={(e) => {
+                          setSearch(e.target.value);
+                          setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        onKeyDown={handleKeyDown}
+                        className="w-full pl-14 pr-4 py-4 text-base bg-transparent border-0 focus:outline-none focus:ring-0 placeholder:text-muted-foreground rounded-full"
+                        data-testid="input-hero-search"
+                      />
+                      
+                      {showSuggestions && (
+                        <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-2xl border border-border/50 overflow-hidden z-50 max-h-[320px] overflow-y-auto">
+                          <div className="p-3">
+                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-3 py-2">
+                              Popular Destinations
+                            </div>
+                            {filteredSuggestions.slice(0, 6).map((loc) => (
+                              <button
+                                key={loc.city}
+                                onClick={() => handleSelectSuggestion(loc)}
+                                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors text-left hover-elevate"
+                                data-testid={`suggestion-${loc.city.toLowerCase()}`}
+                              >
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <MapPin className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-foreground">{loc.city}</div>
+                                  <div className="text-sm text-muted-foreground">{loc.state}, {loc.country}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <Button 
+                      size="lg" 
+                      onClick={handleSearch}
+                      className="px-6 rounded-full h-12"
+                      data-testid="button-hero-search"
+                    >
+                      <Search className="w-5 h-5 mr-2" />
+                      Search
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Badges */}
+                <div className="flex flex-wrap justify-center md:justify-start gap-3 pt-4">
                   <Badge variant="secondary" className="text-sm py-1.5 px-3">
                     <Clock className="w-3.5 h-3.5 mr-1.5" />
                     Usually 1 night
@@ -257,6 +202,24 @@ export default function Landing() {
                     20–70% off
                   </Badge>
                 </div>
+              </div>
+            </div>
+            
+            {/* Stats Row */}
+            <div className="flex flex-wrap justify-center gap-12 md:gap-16 mt-12">
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-foreground">15+</div>
+                <div className="text-sm text-muted-foreground mt-1">Active Deals</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-foreground">50%</div>
+                <div className="text-sm text-muted-foreground mt-1">Avg. Savings</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-foreground flex items-center justify-center gap-1">
+                  4.5 <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">Avg. Rating</div>
               </div>
             </div>
           </div>
