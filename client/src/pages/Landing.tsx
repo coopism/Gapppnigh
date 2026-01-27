@@ -106,35 +106,35 @@ export default function Landing() {
         <div className="container mx-auto px-4 relative">
           <div className="max-w-3xl mx-auto">
             {/* Dictionary Card */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-border/50 shadow-xl">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 md:p-12 border border-border/50 shadow-xl">
               {/* Header with title and pronunciation */}
-              <div className="mb-8 text-center md:text-left">
-                <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-3" style={{ fontFamily: "Georgia, serif" }}>
+              <div className="mb-6 md:mb-8 text-center md:text-left">
+                <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-2 md:mb-3" style={{ fontFamily: "Georgia, serif" }}>
                   Gap Night
                 </h1>
-                <div className="flex items-center justify-center md:justify-start gap-3 text-muted-foreground">
-                  <span className="text-xl italic">[gap-nahyt]</span>
-                  <span className="text-sm bg-slate-200 px-3 py-1 rounded-full font-medium">noun</span>
+                <div className="flex items-center justify-center md:justify-start gap-2 md:gap-3 text-muted-foreground">
+                  <span className="text-lg md:text-xl italic">[gap-nahyt]</span>
+                  <span className="text-xs md:text-sm bg-slate-200 px-2 md:px-3 py-0.5 md:py-1 rounded-full font-medium">noun</span>
                 </div>
               </div>
               
               {/* Definition */}
-              <div className="space-y-6">
-                <p className="text-xl md:text-2xl text-foreground leading-relaxed">
+              <div className="space-y-4 md:space-y-6">
+                <p className="text-lg md:text-2xl text-foreground leading-relaxed text-center md:text-left">
                   An unsold night between hotel bookings — discounted so it doesn't go unused.
                 </p>
-                <p className="text-lg text-muted-foreground">
+                <p className="hidden md:block text-lg text-muted-foreground">
                   Hotels list these nights directly on GapNight, so you get real discounts on real rooms.
                 </p>
                 
-                {/* Search Bar */}
+                {/* Search Bar - Mobile optimized */}
                 <div 
-                  className="bg-slate-50 rounded-full border border-border/50 p-1.5 mt-8"
+                  className="bg-slate-50 rounded-2xl md:rounded-full border border-border/50 p-2 md:p-1.5 mt-6 md:mt-8"
                   ref={searchRef}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                     <div className="flex-1 relative">
-                      <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
                       <input
                         type="text"
                         placeholder="Where do you want to stay?"
@@ -145,7 +145,7 @@ export default function Landing() {
                         }}
                         onFocus={() => setShowSuggestions(true)}
                         onKeyDown={handleKeyDown}
-                        className="w-full pl-14 pr-4 py-4 text-base bg-transparent border-0 focus:outline-none focus:ring-0 placeholder:text-muted-foreground rounded-full"
+                        className="w-full pl-12 pr-4 py-3.5 md:py-4 text-base bg-transparent border-0 focus:outline-none focus:ring-0 placeholder:text-muted-foreground rounded-xl md:rounded-full"
                         data-testid="input-hero-search"
                       />
                       
@@ -178,7 +178,7 @@ export default function Landing() {
                     <Button 
                       size="lg" 
                       onClick={handleSearch}
-                      className="px-6 rounded-full h-12"
+                      className="px-6 rounded-xl md:rounded-full h-12 w-full md:w-auto"
                       data-testid="button-hero-search"
                     >
                       <Search className="w-5 h-5 mr-2" />

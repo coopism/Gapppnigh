@@ -40,27 +40,33 @@ const LOCATION_SUGGESTIONS = [
 type DateMode = "within" | "month" | "specific";
 type WithinOption = "anytime" | "7days" | "14days" | "21days";
 
-// Generate months from now until December 2026
-const generateMonths = () => {
-  const months = [];
+// Generate months grouped by year from now until December 2026
+const generateMonthsByYear = () => {
+  const yearGroups: { year: number; months: { label: string; value: number; monthIndex: number }[] }[] = [];
   const now = new Date();
   const endDate = new Date(2026, 11, 31); // December 2026
   let current = new Date(now.getFullYear(), now.getMonth(), 1);
   let index = 0;
   
   while (current <= endDate) {
-    months.push({
-      label: index === 0 ? "This Month" : format(current, "MMMM yyyy"),
+    const year = current.getFullYear();
+    let yearGroup = yearGroups.find(g => g.year === year);
+    if (!yearGroup) {
+      yearGroup = { year, months: [] };
+      yearGroups.push(yearGroup);
+    }
+    yearGroup.months.push({
+      label: format(current, "MMMM"),
       value: index,
-      date: new Date(current),
+      monthIndex: current.getMonth(),
     });
     current = addMonths(current, 1);
     index++;
   }
-  return months;
+  return yearGroups;
 };
 
-const MONTHS = generateMonths();
+const MONTHS_BY_YEAR = generateMonthsByYear();
 
 export default function Home() {
   const searchParams = useSearch();
@@ -395,21 +401,29 @@ export default function Home() {
                       </div>
                     )}
 
-                    {/* Month Selection */}
+                    {/* Month Selection - Grid by Year */}
                     {dateMode === "month" && (
-                      <div className="max-h-[280px] overflow-y-auto space-y-1">
-                        {MONTHS.map((month) => (
-                          <button
-                            key={month.value}
-                            onClick={() => handleMonthSelect(month.value)}
-                            className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
-                              selectedMonth === month.value ? "bg-primary text-white" : "bg-slate-50 text-foreground"
-                            }`}
-                            data-testid={`date-month-${month.value}`}
-                          >
-                            {month.label}
-                            {selectedMonth === month.value && <Check className="w-4 h-4" />}
-                          </button>
+                      <div className="max-h-[320px] overflow-y-auto space-y-4">
+                        {MONTHS_BY_YEAR.map((yearGroup) => (
+                          <div key={yearGroup.year}>
+                            <div className="text-sm font-bold text-foreground mb-2">{yearGroup.year}</div>
+                            <div className="grid grid-cols-3 gap-2">
+                              {yearGroup.months.map((month) => (
+                                <button
+                                  key={month.value}
+                                  onClick={() => handleMonthSelect(month.value)}
+                                  className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-center ${
+                                    selectedMonth === month.value 
+                                      ? "bg-primary text-white" 
+                                      : "bg-slate-100 text-foreground hover:bg-slate-200"
+                                  }`}
+                                  data-testid={`date-month-${month.value}`}
+                                >
+                                  {month.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     )}
