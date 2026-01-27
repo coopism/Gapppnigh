@@ -3,7 +3,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertWaitlistSchema, type InsertWaitlist } from "@shared/schema";
 import { useAddToWaitlist } from "@/hooks/use-waitlist";
 import { Navigation } from "@/components/Navigation";
-import { Mail, MapPin, Sparkles } from "lucide-react";
+import { Footer } from "@/components/Footer";
+import { Mail, MapPin, Sparkles, CheckCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,6 +19,7 @@ import {
 
 export default function Waitlist() {
   const mutation = useAddToWaitlist();
+  const { toast } = useToast();
 
   const form = useForm<InsertWaitlist>({
     resolver: zodResolver(insertWaitlistSchema),
@@ -30,6 +33,17 @@ export default function Waitlist() {
     mutation.mutate(data, {
       onSuccess: () => {
         form.reset();
+        toast({
+          title: "You're on the list!",
+          description: "We'll notify you when GapNight launches in your area.",
+        });
+      },
+      onError: () => {
+        toast({
+          title: "Something went wrong",
+          description: "Please try again later.",
+          variant: "destructive",
+        });
       },
     });
   }
@@ -59,7 +73,7 @@ export default function Waitlist() {
             </p>
           </div>
 
-          <div className="bg-card border border-border/50 shadow-xl rounded-3xl p-6 sm:p-8 backdrop-blur-sm bg-white/80">
+          <div className="bg-card border border-border/50 shadow-xl rounded-3xl p-6 sm:p-8 backdrop-blur-sm">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 text-left">
                 <FormField
@@ -116,6 +130,7 @@ export default function Waitlist() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

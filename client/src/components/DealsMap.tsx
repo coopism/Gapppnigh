@@ -48,7 +48,7 @@ export function DealsMap({ deals, selectedDealId, onDealSelect }: DealsMapProps)
   
   if (validDeals.length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-xl">
+      <div className="w-full h-full flex items-center justify-center bg-muted rounded-xl">
         <p className="text-muted-foreground">No deals with location data available</p>
       </div>
     );

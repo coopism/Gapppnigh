@@ -99,14 +99,14 @@ export default function Landing() {
       <Navigation />
       
       {/* Hero Section - Dictionary Definition Focus */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50/50 py-16 md:py-24">
+      <section className="relative overflow-hidden bg-gradient-to-b from-muted via-background to-muted/50 dark:from-muted/30 dark:via-background dark:to-muted/20 py-16 md:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(14,165,165,0.08),transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(14,165,165,0.05),transparent_40%)]" />
         
         <div className="container mx-auto px-4 relative">
           <div className="max-w-3xl mx-auto">
             {/* Dictionary Card */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 md:p-12 border border-border/50 shadow-xl">
+            <div className="bg-card/80 backdrop-blur-sm rounded-3xl p-6 md:p-12 border border-border/50 shadow-xl">
               {/* Header with title and pronunciation */}
               <div className="mb-6 md:mb-8 text-center md:text-left">
                 <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-2 md:mb-3" style={{ fontFamily: "Georgia, serif" }}>
@@ -114,7 +114,7 @@ export default function Landing() {
                 </h1>
                 <div className="flex items-center justify-center md:justify-start gap-2 md:gap-3 text-muted-foreground">
                   <span className="text-lg md:text-xl italic">[gap-nahyt]</span>
-                  <span className="text-xs md:text-sm bg-slate-200 px-2 md:px-3 py-0.5 md:py-1 rounded-full font-medium">noun</span>
+                  <span className="text-xs md:text-sm bg-muted px-2 md:px-3 py-0.5 md:py-1 rounded-full font-medium">noun</span>
                 </div>
               </div>
               
@@ -129,7 +129,7 @@ export default function Landing() {
                 
                 {/* Search Bar - Mobile optimized */}
                 <div 
-                  className="bg-slate-50 rounded-2xl md:rounded-full border border-border/50 p-2 md:p-1.5 mt-6 md:mt-8"
+                  className="bg-muted rounded-2xl md:rounded-full border border-border/50 p-2 md:p-1.5 mt-6 md:mt-8"
                   ref={searchRef}
                 >
                   <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
@@ -150,7 +150,7 @@ export default function Landing() {
                       />
                       
                       {showSuggestions && (
-                        <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-2xl border border-border/50 overflow-hidden z-50 max-h-[320px] overflow-y-auto">
+                        <div className="absolute top-full left-0 right-0 mt-3 bg-popover rounded-2xl shadow-2xl border border-border/50 overflow-hidden z-50 max-h-[320px] overflow-y-auto">
                           <div className="p-3">
                             <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-3 py-2">
                               Popular Destinations
@@ -227,7 +227,7 @@ export default function Landing() {
       </section>
 
       {/* Deals Preview Section */}
-      <section ref={dealsRef} className="py-16 md:py-20 bg-slate-50/50">
+      <section ref={dealsRef} className="py-16 md:py-20 bg-muted/50">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
             <div>
@@ -249,7 +249,7 @@ export default function Landing() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {dealsLoading && Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-border/50 p-4">
+              <div key={i} className="bg-card rounded-2xl border border-border/50 p-4">
                 <div className="flex gap-4">
                   <Skeleton className="w-28 h-28 rounded-xl" />
                   <div className="flex-1 space-y-2">
@@ -273,7 +273,7 @@ export default function Landing() {
                 <div 
                   key={deal.id}
                   onClick={() => setLocation(`/deal/${deal.id}`)}
-                  className="bg-white rounded-2xl border border-border/50 overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
+                  className="bg-card rounded-2xl border border-border/50 overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
                   data-testid={`preview-deal-${deal.id}`}
                 >
                   <div className="flex gap-4 p-4">
@@ -317,7 +317,7 @@ export default function Landing() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-16 md:py-20 bg-white">
+      <section className="py-16 md:py-20 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold text-foreground">
@@ -342,7 +342,7 @@ export default function Landing() {
       </section>
 
       {/* For Hotels Section */}
-      <section className="py-16 md:py-20 bg-slate-900 text-white">
+      <section className="py-16 md:py-20 bg-foreground text-background">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-12 items-center">
             <div>
@@ -350,7 +350,7 @@ export default function Landing() {
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
                 Fill your gap nights without discounting your whole calendar
               </h2>
-              <ul className="space-y-3 text-slate-300 mb-8">
+              <ul className="space-y-3 text-background/70 mb-8">
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <span>Only list nights you want to fill</span>
@@ -375,22 +375,22 @@ export default function Landing() {
               </Button>
             </div>
             <div className="hidden md:block">
-              <div className="bg-slate-800 rounded-2xl p-8 border border-slate-700">
+              <div className="bg-background/10 rounded-2xl p-8 border border-background/20">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
                     <Building2 className="w-6 h-6 text-primary" />
                   </div>
                   <div>
                     <div className="font-bold">Hotel Partners</div>
-                    <div className="text-sm text-slate-400">Join 50+ Australian hotels</div>
+                    <div className="text-sm text-background/60">Join 50+ Australian hotels</div>
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <div className="bg-slate-700/50 rounded-lg p-3 flex justify-between items-center">
+                  <div className="bg-background/5 rounded-lg p-3 flex justify-between items-center">
                     <span className="text-sm">Avg. gap night fill rate</span>
                     <span className="font-bold text-primary">78%</span>
                   </div>
-                  <div className="bg-slate-700/50 rounded-lg p-3 flex justify-between items-center">
+                  <div className="bg-background/5 rounded-lg p-3 flex justify-between items-center">
                     <span className="text-sm">Revenue recovered</span>
                     <span className="font-bold text-primary">A$2.4M+</span>
                   </div>
@@ -424,11 +424,11 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 bg-slate-950 text-white/60">
+      <footer className="py-12 bg-foreground text-background/60">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2">
-              <div className="text-2xl font-bold text-white mb-3">
+              <div className="text-2xl font-bold text-background mb-3">
                 Gap<span className="text-primary">Night</span>
               </div>
               <p className="text-sm max-w-sm">
@@ -436,7 +436,7 @@ export default function Landing() {
               </p>
             </div>
             <div>
-              <div className="font-semibold text-white mb-3">Quick Links</div>
+              <div className="font-semibold text-background mb-3">Quick Links</div>
               <ul className="space-y-2 text-sm">
                 <li><a href="/deals" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-deals">Browse Deals</a></li>
                 <li><a href="/list-your-hotel" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-hotels">For Hotels</a></li>
@@ -444,18 +444,18 @@ export default function Landing() {
               </ul>
             </div>
             <div>
-              <div className="font-semibold text-white mb-3">Legal</div>
+              <div className="font-semibold text-background mb-3">Legal</div>
               <ul className="space-y-2 text-sm">
                 <li><a href="#" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-terms">Terms of Service</a></li>
                 <li><a href="#" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-privacy">Privacy Policy</a></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="border-t border-background/20 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-sm">
               © 2026 GapNight. All rights reserved.
             </div>
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-background/40">
               Discounts vary by property and availability.
             </div>
           </div>

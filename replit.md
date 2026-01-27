@@ -85,3 +85,10 @@ Database tables:
 - **Map View**: Interactive Leaflet map showing hotel locations with markers and popups (toggle between grid/map views)
 - **Enhanced DealCard**: Amenity icons (WiFi, Pool, Gym, etc.), nearby highlights, per-night pricing display
 - **Schema Updates**: Added latitude/longitude coordinates, amenities array, nearbyHighlight fields to deals
+- **Dark Mode Support**: Full dark mode with theme toggle in navigation (desktop and mobile)
+- **Footer Component**: Consistent footer across all pages with branding, links, and contact info
+- **Toast Notifications**: Success/error toasts for form submissions (waitlist and hotel inquiry)
+- **Deal Detail Improvements**: Amenities display, nearby highlight info, interactive map per hotel
+- **Scroll-to-Top Button**: Floating button appears when scrolling down
+- **Smooth Scrolling**: CSS scroll-behavior: smooth for better UX
+- **Dark Mode CSS Variables**: Complete dark palette with proper contrast ratios

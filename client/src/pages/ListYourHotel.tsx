@@ -3,7 +3,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertHotelInquirySchema, type InsertHotelInquiry } from "@shared/schema";
 import { useSubmitHotelInquiry } from "@/hooks/use-hotel-inquiries";
 import { Navigation } from "@/components/Navigation";
+import { Footer } from "@/components/Footer";
 import { Building2, CheckCircle, Mail, MapPin } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export default function ListYourHotel() {
   const mutation = useSubmitHotelInquiry();
+  const { toast } = useToast();
 
   const form = useForm<InsertHotelInquiry>({
     resolver: zodResolver(insertHotelInquirySchema),
@@ -40,6 +43,17 @@ export default function ListYourHotel() {
     mutation.mutate(data, {
       onSuccess: () => {
         form.reset();
+        toast({
+          title: "Inquiry submitted!",
+          description: "Our partnerships team will reach out within 24 hours.",
+        });
+      },
+      onError: () => {
+        toast({
+          title: "Something went wrong",
+          description: "Please try again later.",
+          variant: "destructive",
+        });
       },
     });
   }
@@ -95,7 +109,7 @@ export default function ListYourHotel() {
             {/* Decorative background blob */}
             <div className="absolute -inset-4 bg-gradient-to-r from-primary/30 to-purple-500/30 rounded-[2rem] blur-2xl opacity-50 z-0"></div>
             
-            <Card className="relative z-10 border-border/50 shadow-xl backdrop-blur-sm bg-white/80">
+            <Card className="relative z-10 border-border/50 shadow-xl backdrop-blur-sm bg-card">
               <CardHeader>
                 <CardTitle className="font-display text-2xl">Partner with GapNight</CardTitle>
                 <CardDescription>
@@ -195,6 +209,7 @@ export default function ListYourHotel() {
 
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

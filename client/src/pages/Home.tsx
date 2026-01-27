@@ -4,6 +4,7 @@ import { useDeals, type SortOption } from "@/hooks/use-deals";
 import { DealCard } from "@/components/DealCard";
 import { DealsMap } from "@/components/DealsMap";
 import { Navigation } from "@/components/Navigation";
+import { Footer } from "@/components/Footer";
 import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -229,13 +230,13 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="min-h-screen bg-background pb-20">
       <Navigation />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
         {/* Search Bar - 3 sections */}
         <div className="flex justify-center mb-8">
-          <div className="bg-white rounded-full shadow-lg border border-border/50 p-2 flex items-center gap-1 max-w-3xl w-full relative">
+          <div className="bg-card rounded-full shadow-lg border border-border/50 p-2 flex items-center gap-1 max-w-3xl w-full relative">
             {/* WHERE - with autocomplete */}
             <div className="flex-1 px-4 py-2 border-r border-border/50 relative" ref={searchRef}>
               <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
@@ -271,7 +272,7 @@ export default function Home() {
 
               {/* Autocomplete Dropdown */}
               {showSuggestions && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 min-w-[300px]">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-popover rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 min-w-[300px]">
                   {recentSearches.length > 0 && !search && (
                     <div className="p-3 border-b border-border/50">
                       <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -285,7 +286,7 @@ export default function Home() {
                             setSearch(recent);
                             setShowSuggestions(false);
                           }}
-                          className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-lg text-sm font-medium flex items-center gap-2"
+                          className="w-full text-left px-3 py-2 hover-elevate rounded-lg text-sm font-medium flex items-center gap-2"
                           data-testid={`recent-search-${i}`}
                         >
                           <Clock className="w-4 h-4 text-muted-foreground" />
@@ -329,7 +330,7 @@ export default function Home() {
 
             {/* WHEN - with date picker */}
             <div 
-              className="flex-1 px-4 py-2 border-r border-border/50 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors relative" 
+              className="flex-1 px-4 py-2 border-r border-border/50 cursor-pointer hover-elevate rounded-lg transition-colors relative" 
               ref={dateRef}
               onClick={() => setShowDatePicker(!showDatePicker)}
               data-testid="date-picker-trigger"
@@ -346,16 +347,16 @@ export default function Home() {
               {/* Date Picker Dropdown */}
               {showDatePicker && (
                 <div 
-                  className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[340px]"
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-popover rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[340px]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="p-4">
                     {/* Mode Tabs */}
-                    <div className="flex gap-1 p-1 bg-slate-100 rounded-lg mb-4">
+                    <div className="flex gap-1 p-1 bg-muted rounded-lg mb-4">
                       <button
                         onClick={() => setDateMode("within")}
                         className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                          dateMode === "within" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground"
+                          dateMode === "within" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
                         }`}
                         data-testid="date-mode-within"
                       >
@@ -364,7 +365,7 @@ export default function Home() {
                       <button
                         onClick={() => setDateMode("month")}
                         className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                          dateMode === "month" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground"
+                          dateMode === "month" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
                         }`}
                         data-testid="date-mode-month"
                       >
@@ -373,7 +374,7 @@ export default function Home() {
                       <button
                         onClick={() => setDateMode("specific")}
                         className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                          dateMode === "specific" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground"
+                          dateMode === "specific" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
                         }`}
                         data-testid="date-mode-specific"
                       >
@@ -394,7 +395,7 @@ export default function Home() {
                             key={option.value}
                             onClick={() => handleWithinSelect(option.value)}
                             className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
-                              withinOption === option.value ? "bg-primary text-white" : "bg-slate-50 text-foreground"
+                              withinOption === option.value ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                             }`}
                             data-testid={`date-option-${option.value}`}
                           >
@@ -418,8 +419,8 @@ export default function Home() {
                                   onClick={() => handleMonthSelect(month.value)}
                                   className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-center ${
                                     selectedMonth === month.value 
-                                      ? "bg-primary text-white" 
-                                      : "bg-slate-100 text-foreground hover:bg-slate-200"
+                                      ? "bg-primary text-primary-foreground" 
+                                      : "bg-muted text-foreground hover-elevate"
                                   }`}
                                   data-testid={`date-month-${month.value}`}
                                 >
@@ -498,7 +499,7 @@ export default function Home() {
 
             {/* WHO - with guest picker */}
             <div 
-              className="flex-1 px-4 py-2 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors relative" 
+              className="flex-1 px-4 py-2 cursor-pointer hover-elevate rounded-lg transition-colors relative" 
               ref={guestRef}
               onClick={() => setShowGuestPicker(!showGuestPicker)}
               data-testid="guest-picker-trigger"
@@ -515,7 +516,7 @@ export default function Home() {
               {/* Guest Picker Dropdown */}
               {showGuestPicker && (
                 <div 
-                  className="absolute top-full right-0 mt-2 bg-white rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[280px]"
+                  className="absolute top-full right-0 mt-2 bg-popover rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[280px]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="p-4 space-y-4">
@@ -529,7 +530,7 @@ export default function Home() {
                         <button
                           onClick={() => setGuests(Math.max(1, guests - 1))}
                           disabled={guests <= 1}
-                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover-elevate disabled:opacity-50 disabled:cursor-not-allowed"
                           data-testid="button-guests-minus"
                         >
                           <Minus className="w-4 h-4" />
@@ -538,7 +539,7 @@ export default function Home() {
                         <button
                           onClick={() => setGuests(Math.min(8, guests + 1))}
                           disabled={guests >= 8}
-                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover-elevate disabled:opacity-50 disabled:cursor-not-allowed"
                           data-testid="button-guests-plus"
                         >
                           <Plus className="w-4 h-4" />
@@ -561,7 +562,7 @@ export default function Home() {
             {/* Search Button */}
             <Button 
               size="icon" 
-              className="h-12 w-12 rounded-full bg-primary hover:bg-primary/90 shadow-lg shrink-0"
+              className="h-12 w-12 rounded-full shadow-lg shrink-0"
               data-testid="button-search"
               onClick={() => {
                 setShowSuggestions(false);
@@ -586,7 +587,7 @@ export default function Home() {
                 ${
                   activeCategory === cat
                     ? "bg-foreground text-background shadow-md"
-                    : "bg-white border border-border text-foreground hover:border-foreground/30"
+                    : "bg-card border border-border text-foreground hover-elevate"
                 }
               `}
             >
@@ -601,11 +602,11 @@ export default function Home() {
 
           <div className="flex items-center gap-2 md:gap-3">
             {/* View Toggle */}
-            <div className="flex items-center bg-slate-100 rounded-lg p-1">
+            <div className="flex items-center bg-muted rounded-lg p-1">
               <button
                 onClick={() => setViewMode("grid")}
                 className={`p-2 rounded-md transition-colors ${
-                  viewMode === "grid" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  viewMode === "grid" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
                 }`}
                 data-testid="button-view-grid"
               >
@@ -614,7 +615,7 @@ export default function Home() {
               <button
                 onClick={() => setViewMode("map")}
                 className={`p-2 rounded-md transition-colors ${
-                  viewMode === "map" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  viewMode === "map" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
                 }`}
                 data-testid="button-view-map"
               >
@@ -625,7 +626,7 @@ export default function Home() {
             <span className="text-sm text-muted-foreground hidden md:inline">Sort by:</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="rounded-lg border-border gap-2 font-semibold !bg-white" data-testid="button-sort">
+                <Button variant="outline" className="rounded-lg border-border gap-2 font-semibold" data-testid="button-sort">
                   {currentSortLabel}
                   <ChevronDown className="w-4 h-4" />
                 </Button>
@@ -649,7 +650,7 @@ export default function Home() {
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl overflow-hidden border border-border/50">
+              <div key={i} className="bg-card rounded-2xl overflow-hidden border border-border/50">
                 <Skeleton className="aspect-[4/3] w-full" />
                 <div className="p-4 space-y-2">
                   <Skeleton className="h-5 w-3/4" />
@@ -661,7 +662,7 @@ export default function Home() {
             ))}
           </div>
         ) : error ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-border">
+          <div className="text-center py-20 bg-card rounded-3xl border border-dashed border-border">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 mb-4">
               <Filter className="h-6 w-6 text-destructive" />
             </div>
@@ -672,7 +673,7 @@ export default function Home() {
             <Button onClick={() => window.location.reload()} data-testid="button-retry">Retry</Button>
           </div>
         ) : deals?.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-border">
+          <div className="text-center py-20 bg-card rounded-3xl border border-dashed border-border">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
               <Search className="h-6 w-6 text-muted-foreground" />
             </div>
@@ -706,6 +707,7 @@ export default function Home() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

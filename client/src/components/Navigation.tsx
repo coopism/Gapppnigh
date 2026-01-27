@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Hotel, Menu, Home, Sparkles, UserPlus } from "lucide-react";
+import { Hotel, Menu, Home, Sparkles, UserPlus, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -8,9 +8,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { ThemeToggle } from "./ThemeToggle";
+import { useTheme } from "./ThemeProvider";
 
 export function Navigation() {
   const [location] = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   const isActive = (path: string) => location === path;
 
@@ -26,13 +29,14 @@ export function Navigation() {
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-4">
             <Link href="/deals" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/deals") ? "text-primary" : "text-muted-foreground"}`}>
               Browse Deals
             </Link>
             <Link href="/list-your-hotel" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/list-your-hotel") ? "text-primary" : "text-muted-foreground"}`}>
               For Hotels
             </Link>
+            <ThemeToggle />
             <Link href="/waitlist">
                <Button variant={isActive("/waitlist") ? "secondary" : "default"} size="sm" className="rounded-full px-5 font-bold shadow-md hover:shadow-lg transition-all">
                 Join Waitlist
@@ -41,7 +45,7 @@ export function Navigation() {
           </div>
 
           {/* Mobile Nav */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center gap-2">
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
@@ -67,10 +71,25 @@ export function Navigation() {
                     </Button>
                   </Link>
                   <Link href="/waitlist">
-                    <Button className="w-full justify-start text-lg font-bold h-12 mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
+                    <Button className="w-full justify-start text-lg font-bold h-12 mt-4">
                       <UserPlus className="w-5 h-5 mr-3" /> Join Waitlist
                     </Button>
                   </Link>
+                  <div className="border-t border-border/50 mt-4 pt-4">
+                    <Button
+                      variant="ghost"
+                      onClick={toggleTheme}
+                      className="w-full justify-start text-lg font-medium h-12"
+                      data-testid="button-theme-toggle-mobile"
+                    >
+                      {theme === "light" ? (
+                        <Moon className="w-5 h-5 mr-3" />
+                      ) : (
+                        <Sun className="w-5 h-5 mr-3" />
+                      )}
+                      {theme === "light" ? "Dark Mode" : "Light Mode"}
+                    </Button>
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>

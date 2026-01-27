@@ -1,8 +1,9 @@
 import { useRoute, Link } from "wouter";
 import { useDeal } from "@/hooks/use-deals";
 import { Navigation } from "@/components/Navigation";
+import { Footer } from "@/components/Footer";
 import { 
-  ArrowLeft, Star, MapPin, CheckCircle2, Share2, Heart 
+  ArrowLeft, Star, MapPin, CheckCircle2, Share2, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation as NavIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,15 @@ const markerIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
+const AMENITY_ICONS: Record<string, typeof Wifi> = {
+  "WiFi": Wifi,
+  "Gym": Dumbbell,
+  "Parking": Car,
+  "Restaurant": UtensilsCrossed,
+  "Pool": Waves,
+  "Spa": Sparkles,
+};
+
 export default function DealDetail() {
   const [, params] = useRoute("/deal/:id");
   const id = params?.id || "";
@@ -28,7 +38,7 @@ export default function DealDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-background">
         <Navigation />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
           <Skeleton className="h-6 w-32 mb-6" />
@@ -63,7 +73,7 @@ export default function DealDetail() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
@@ -89,7 +99,7 @@ export default function DealDetail() {
               <Button 
                 variant="secondary" 
                 size="icon" 
-                className="rounded-full bg-white/90 backdrop-blur shadow-lg"
+                className="rounded-full bg-card/90 backdrop-blur shadow-lg"
                 data-testid="button-share"
               >
                 <Share2 className="w-4 h-4" />
@@ -97,7 +107,7 @@ export default function DealDetail() {
               <Button 
                 variant="secondary" 
                 size="icon" 
-                className="rounded-full bg-white/90 backdrop-blur shadow-lg text-red-500 hover:text-red-600"
+                className="rounded-full bg-card/90 backdrop-blur shadow-lg text-destructive"
                 data-testid="button-favorite"
               >
                 <Heart className="w-4 h-4" />
@@ -139,7 +149,7 @@ export default function DealDetail() {
             </div>
 
             {/* Why is this cheap? */}
-            <div className="bg-white rounded-xl p-5 border border-border/50 mb-6">
+            <div className="bg-card rounded-xl p-5 border border-border/50 mb-6">
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                 <div>
@@ -152,7 +162,7 @@ export default function DealDetail() {
             </div>
 
             {/* Price Card */}
-            <div className="bg-white rounded-xl p-5 border border-border/50">
+            <div className="bg-card rounded-xl p-5 border border-border/50">
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <div className="text-sm text-muted-foreground line-through mb-1">
@@ -191,16 +201,41 @@ export default function DealDetail() {
         {/* Bottom Section - About & Location */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* About this room */}
-          <div>
-            <h2 className="text-xl font-bold text-foreground mb-4">About this room</h2>
-            <div className="bg-white rounded-xl p-5 border border-border/50">
-              <h3 className="font-bold text-foreground mb-2">{deal.roomType}</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Experience luxury in this spacious room featuring modern amenities and 
-                stunning views. Perfect for a short gap-night stay, this room offers 
-                everything you need for a comfortable and memorable experience. 
-                Enjoy premium bedding, high-speed WiFi, and access to hotel facilities.
-              </p>
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-foreground mb-4">About this room</h2>
+              <div className="bg-card rounded-xl p-5 border border-border/50">
+                <h3 className="font-bold text-foreground mb-2">{deal.roomType}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+                  Experience luxury in this spacious room featuring modern amenities and 
+                  stunning views. Perfect for a short gap-night stay, this room offers 
+                  everything you need for a comfortable and memorable experience.
+                </p>
+                
+                {deal.nearbyHighlight && (
+                  <div className="flex items-center gap-2 text-primary text-sm mb-4 p-3 bg-primary/10 rounded-lg">
+                    <NavIcon className="w-4 h-4 shrink-0" />
+                    <span className="font-medium">{deal.nearbyHighlight}</span>
+                  </div>
+                )}
+
+                {deal.amenities && deal.amenities.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground mb-3">Amenities</h4>
+                    <div className="flex flex-wrap gap-3">
+                      {deal.amenities.map((amenity) => {
+                        const Icon = AMENITY_ICONS[amenity];
+                        return (
+                          <div key={amenity} className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary px-3 py-2 rounded-lg">
+                            {Icon && <Icon className="w-4 h-4" />}
+                            <span>{amenity}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -208,7 +243,7 @@ export default function DealDetail() {
           <div>
             <h2 className="text-xl font-bold text-foreground mb-4">Location</h2>
             {deal.latitude && deal.longitude ? (
-              <div className="bg-white rounded-xl overflow-hidden border border-border/50 h-[250px]">
+              <div className="bg-card rounded-xl overflow-hidden border border-border/50 h-[250px]">
                 <MapContainer
                   center={[parseFloat(deal.latitude), parseFloat(deal.longitude)]}
                   zoom={14}
@@ -233,7 +268,7 @@ export default function DealDetail() {
                 </MapContainer>
               </div>
             ) : (
-              <div className="bg-white rounded-xl p-5 border border-border/50 h-[200px] flex items-center justify-center">
+              <div className="bg-card rounded-xl p-5 border border-border/50 h-[200px] flex items-center justify-center">
                 <div className="text-center text-muted-foreground">
                   <MapPin className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">{deal.location}</p>
@@ -243,6 +278,7 @@ export default function DealDetail() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

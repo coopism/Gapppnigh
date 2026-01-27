@@ -38,7 +38,7 @@ export function DealCard({ deal }: DealCardProps) {
           
           {/* Top badges */}
           <div className="absolute top-3 left-3 flex items-center gap-2">
-            <Badge className="bg-white text-foreground font-semibold shadow-sm flex items-center gap-1.5 px-2.5 py-1">
+            <Badge className="bg-card text-foreground font-semibold shadow-sm flex items-center gap-1.5 px-2.5 py-1">
               <Heart className="w-3.5 h-3.5 fill-primary text-primary" />
               <span>Rare Find</span>
             </Badge>
@@ -57,7 +57,7 @@ export function DealCard({ deal }: DealCardProps) {
         </div>
 
         {/* Content Section */}
-        <div className="p-4">
+        <div className="p-4 bg-card">
           {/* Hotel name + rating */}
           <div className="flex items-start justify-between gap-2 mb-2">
             <h3 className="font-bold text-foreground text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors">
@@ -97,7 +97,7 @@ export function DealCard({ deal }: DealCardProps) {
                 const Icon = AMENITY_ICONS[amenity];
                 if (!Icon) return null;
                 return (
-                  <div key={amenity} className="text-muted-foreground" title={amenity}>
+                  <div key={amenity} className="text-muted-foreground hover:text-primary transition-colors" title={amenity}>
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                 );
