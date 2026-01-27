@@ -27,8 +27,8 @@ export function Navigation() {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/") ? "text-primary" : "text-muted-foreground"}`}>
-              Find Deals
+            <Link href="/deals" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/deals") ? "text-primary" : "text-muted-foreground"}`}>
+              Browse Deals
             </Link>
             <Link href="/list-your-hotel" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/list-your-hotel") ? "text-primary" : "text-muted-foreground"}`}>
               For Hotels
@@ -56,9 +56,9 @@ export function Navigation() {
                   </SheetTitle>
                 </SheetHeader>
                 <div className="mt-8 flex flex-col gap-4">
-                  <Link href="/">
+                  <Link href="/deals">
                     <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
-                      <Home className="w-5 h-5 mr-3" /> Find Deals
+                      <Home className="w-5 h-5 mr-3" /> Browse Deals
                     </Button>
                   </Link>
                   <Link href="/list-your-hotel">

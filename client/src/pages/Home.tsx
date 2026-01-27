@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearch } from "wouter";
 import { useDeals, type SortOption } from "@/hooks/use-deals";
 import { DealCard } from "@/components/DealCard";
 import { Navigation } from "@/components/Navigation";
@@ -46,12 +47,19 @@ const MONTHS = [
 ];
 
 export default function Home() {
-  const [search, setSearch] = useState("");
+  const searchParams = useSearch();
+  const urlSearch = new URLSearchParams(searchParams).get("search") || "";
+  
+  const [search, setSearch] = useState(urlSearch);
   const [activeCategory, setActiveCategory] = useState("All Deals");
   const [sortBy, setSortBy] = useState<SortOption>("best");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    setSearch(urlSearch);
+  }, [urlSearch]);
 
   // Date selection state
   const [showDatePicker, setShowDatePicker] = useState(false);

@@ -38,8 +38,8 @@ export default function DealDetail() {
     return (
       <div className="min-h-screen flex items-center justify-center flex-col gap-4">
         <h1 className="text-2xl font-bold">Deal not found</h1>
-        <Link href="/">
-          <Button>Back to Home</Button>
+        <Link href="/deals">
+          <Button>Back to Deals</Button>
         </Link>
       </div>
     );
@@ -55,7 +55,7 @@ export default function DealDetail() {
       
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {/* Back Link */}
-        <Link href="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors" data-testid="link-back">
+        <Link href="/deals" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors" data-testid="link-back">
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm font-medium">Back to deals</span>
         </Link>
