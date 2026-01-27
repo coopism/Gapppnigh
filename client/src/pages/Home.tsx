@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useDeals, type SortOption } from "@/hooks/use-deals";
 import { DealCard } from "@/components/DealCard";
 import { Navigation } from "@/components/Navigation";
-import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock } from "lucide-react";
+import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,6 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format, addMonths, addDays, startOfMonth, endOfMonth } from "date-fns";
 
 const CATEGORIES = ["All Deals", "Last Minute", "Trending", "Beach", "City", "Luxury", "Boutique"];
 
@@ -34,6 +36,15 @@ const LOCATION_SUGGESTIONS = [
   { city: "Blue Mountains", state: "NSW", country: "Australia" },
 ];
 
+type DateOption = "anytime" | "7days" | "14days" | "21days" | "month" | "specific";
+
+const MONTHS = [
+  { label: "This Month", value: 0 },
+  { label: format(addMonths(new Date(), 1), "MMMM yyyy"), value: 1 },
+  { label: format(addMonths(new Date(), 2), "MMMM yyyy"), value: 2 },
+  { label: format(addMonths(new Date(), 3), "MMMM yyyy"), value: 3 },
+];
+
 export default function Home() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Deals");
@@ -41,6 +52,20 @@ export default function Home() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Date selection state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateOption, setDateOption] = useState<DateOption>("anytime");
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [checkoutDate, setCheckoutDate] = useState<Date | undefined>(undefined);
+  const dateRef = useRef<HTMLDivElement>(null);
+
+  // Guests selection state
+  const [showGuestPicker, setShowGuestPicker] = useState(false);
+  const [guests, setGuests] = useState(1);
+  const [nights, setNights] = useState(1);
+  const guestRef = useRef<HTMLDivElement>(null);
 
   const { data: deals, isLoading, error } = useDeals({
     search: search || undefined,
@@ -60,11 +85,17 @@ export default function Home() {
     );
   });
 
-  // Handle clicking outside to close suggestions
+  // Handle clicking outside to close dropdowns
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
+      }
+      if (dateRef.current && !dateRef.current.contains(event.target as Node)) {
+        setShowDatePicker(false);
+      }
+      if (guestRef.current && !guestRef.current.contains(event.target as Node)) {
+        setShowGuestPicker(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -75,8 +106,6 @@ export default function Home() {
     const locationString = `${location.city}, ${location.country}`;
     setSearch(locationString);
     setShowSuggestions(false);
-    
-    // Add to recent searches
     setRecentSearches(prev => {
       const filtered = prev.filter(s => s !== locationString);
       return [locationString, ...filtered].slice(0, 3);
@@ -86,6 +115,77 @@ export default function Home() {
   const handleClearSearch = () => {
     setSearch("");
     setShowSuggestions(true);
+  };
+
+  // Get display text for date selection
+  const getDateDisplayText = () => {
+    switch (dateOption) {
+      case "anytime":
+        return "Anytime";
+      case "7days":
+        return "Next 7 days";
+      case "14days":
+        return "Next 14 days";
+      case "21days":
+        return "Next 21 days";
+      case "month":
+        if (selectedMonth === 0) return "This Month";
+        return format(addMonths(new Date(), selectedMonth || 0), "MMM yyyy");
+      case "specific":
+        if (selectedDate) {
+          return format(selectedDate, "MMM d");
+        }
+        return "Select dates";
+      default:
+        return "Anytime";
+    }
+  };
+
+  const getDateSubtext = () => {
+    if (dateOption === "specific" && selectedDate && checkoutDate) {
+      return `${format(selectedDate, "MMM d")} - ${format(checkoutDate, "MMM d")}`;
+    }
+    return "Gap Nights Only";
+  };
+
+  const handleDateOptionSelect = (option: DateOption, monthValue?: number) => {
+    setDateOption(option);
+    if (option === "month" && monthValue !== undefined) {
+      setSelectedMonth(monthValue);
+    }
+    if (option !== "specific") {
+      setSelectedDate(undefined);
+      setCheckoutDate(undefined);
+      setShowDatePicker(false);
+    }
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+    
+    if (!selectedDate || (selectedDate && checkoutDate)) {
+      // Start fresh selection
+      setSelectedDate(date);
+      setCheckoutDate(addDays(date, nights));
+    } else {
+      // Complete the selection
+      const diffDays = Math.ceil((date.getTime() - selectedDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays > 0 && diffDays <= 3) {
+        setCheckoutDate(date);
+        setNights(diffDays);
+        setShowDatePicker(false);
+      } else if (diffDays <= 0) {
+        // Selected earlier date, restart
+        setSelectedDate(date);
+        setCheckoutDate(addDays(date, nights));
+      } else {
+        // More than 3 nights, limit to 3
+        setCheckoutDate(addDays(selectedDate, 3));
+        setNights(3);
+        setShowDatePicker(false);
+      }
+    }
+    setDateOption("specific");
   };
 
   return (
@@ -132,7 +232,6 @@ export default function Home() {
               {/* Autocomplete Dropdown */}
               {showSuggestions && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 min-w-[300px]">
-                  {/* Recent Searches */}
                   {recentSearches.length > 0 && !search && (
                     <div className="p-3 border-b border-border/50">
                       <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -155,8 +254,6 @@ export default function Home() {
                       ))}
                     </div>
                   )}
-
-                  {/* Suggestions */}
                   <div className="p-3">
                     <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                       {search ? "Matching Destinations" : "Popular Destinations"}
@@ -174,12 +271,8 @@ export default function Home() {
                               <MapPin className="w-5 h-5 text-primary" />
                             </div>
                             <div>
-                              <div className="font-semibold text-foreground">
-                                {loc.city}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {loc.state}, {loc.country}
-                              </div>
+                              <div className="font-semibold text-foreground">{loc.city}</div>
+                              <div className="text-xs text-muted-foreground">{loc.state}, {loc.country}</div>
                             </div>
                           </button>
                         ))}
@@ -194,28 +287,225 @@ export default function Home() {
               )}
             </div>
 
-            {/* WHEN */}
-            <div className="flex-1 px-4 py-2 border-r border-border/50">
+            {/* WHEN - with date picker */}
+            <div 
+              className="flex-1 px-4 py-2 border-r border-border/50 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors relative" 
+              ref={dateRef}
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              data-testid="date-picker-trigger"
+            >
               <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
                 When
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">Anytime</span>
+                <span className="text-sm font-semibold text-foreground">{getDateDisplayText()}</span>
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">Gap Nights Only</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{getDateSubtext()}</div>
+
+              {/* Date Picker Dropdown */}
+              {showDatePicker && (
+                <div 
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[360px]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="p-4">
+                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                      Choose your dates
+                    </div>
+                    
+                    {/* Quick Options */}
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      <button
+                        onClick={() => handleDateOptionSelect("anytime")}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
+                          dateOption === "anytime" ? "bg-primary text-white" : "bg-slate-100 hover:bg-slate-200"
+                        }`}
+                        data-testid="date-option-anytime"
+                      >
+                        Anytime
+                        {dateOption === "anytime" && <Check className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => handleDateOptionSelect("7days")}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
+                          dateOption === "7days" ? "bg-primary text-white" : "bg-slate-100 hover:bg-slate-200"
+                        }`}
+                        data-testid="date-option-7days"
+                      >
+                        Next 7 days
+                        {dateOption === "7days" && <Check className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => handleDateOptionSelect("14days")}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
+                          dateOption === "14days" ? "bg-primary text-white" : "bg-slate-100 hover:bg-slate-200"
+                        }`}
+                        data-testid="date-option-14days"
+                      >
+                        Next 14 days
+                        {dateOption === "14days" && <Check className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => handleDateOptionSelect("21days")}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
+                          dateOption === "21days" ? "bg-primary text-white" : "bg-slate-100 hover:bg-slate-200"
+                        }`}
+                        data-testid="date-option-21days"
+                      >
+                        Next 21 days
+                        {dateOption === "21days" && <Check className="w-4 h-4" />}
+                      </button>
+                    </div>
+
+                    {/* By Month */}
+                    <div className="mb-4">
+                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                        By Month
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        {MONTHS.map((month) => (
+                          <button
+                            key={month.value}
+                            onClick={() => handleDateOptionSelect("month", month.value)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                              dateOption === "month" && selectedMonth === month.value
+                                ? "bg-primary text-white"
+                                : "bg-slate-100 hover:bg-slate-200"
+                            }`}
+                            data-testid={`date-month-${month.value}`}
+                          >
+                            {month.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Specific Dates */}
+                    <div>
+                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                        Specific Dates (max 3 nights)
+                      </div>
+                      <CalendarComponent
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={handleDateSelect}
+                        disabled={(date) => date < new Date()}
+                        className="rounded-lg border"
+                      />
+                      {selectedDate && (
+                        <div className="mt-2 text-xs text-muted-foreground text-center">
+                          {checkoutDate 
+                            ? `${format(selectedDate, "MMM d")} → ${format(checkoutDate, "MMM d")} (${nights} night${nights > 1 ? "s" : ""})`
+                            : "Select checkout date"
+                          }
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* WHO */}
-            <div className="flex-1 px-4 py-2">
+            {/* WHO - with guest picker */}
+            <div 
+              className="flex-1 px-4 py-2 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors relative" 
+              ref={guestRef}
+              onClick={() => setShowGuestPicker(!showGuestPicker)}
+              data-testid="guest-picker-trigger"
+            >
               <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
                 Who
               </div>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">1 Guest</span>
+                <span className="text-sm font-semibold text-foreground">{guests} Guest{guests > 1 ? "s" : ""}</span>
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">1 Night</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{nights} Night{nights > 1 ? "s" : ""}</div>
+
+              {/* Guest Picker Dropdown */}
+              {showGuestPicker && (
+                <div 
+                  className="absolute top-full right-0 mt-2 bg-white rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[280px]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="p-4 space-y-4">
+                    {/* Guests */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-foreground">Guests</div>
+                        <div className="text-xs text-muted-foreground">Number of travelers</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setGuests(Math.max(1, guests - 1))}
+                          disabled={guests <= 1}
+                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          data-testid="button-guests-minus"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-6 text-center font-semibold">{guests}</span>
+                        <button
+                          onClick={() => setGuests(Math.min(8, guests + 1))}
+                          disabled={guests >= 8}
+                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          data-testid="button-guests-plus"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Nights */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-foreground">Nights</div>
+                        <div className="text-xs text-muted-foreground">Gap night stays (1-3)</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => {
+                            const newNights = Math.max(1, nights - 1);
+                            setNights(newNights);
+                            if (selectedDate) {
+                              setCheckoutDate(addDays(selectedDate, newNights));
+                            }
+                          }}
+                          disabled={nights <= 1}
+                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          data-testid="button-nights-minus"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-6 text-center font-semibold">{nights}</span>
+                        <button
+                          onClick={() => {
+                            const newNights = Math.min(3, nights + 1);
+                            setNights(newNights);
+                            if (selectedDate) {
+                              setCheckoutDate(addDays(selectedDate, newNights));
+                            }
+                          }}
+                          disabled={nights >= 3}
+                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          data-testid="button-nights-plus"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <Button 
+                      className="w-full" 
+                      onClick={() => setShowGuestPicker(false)}
+                      data-testid="button-apply-guests"
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Search Button */}
@@ -223,7 +513,11 @@ export default function Home() {
               size="icon" 
               className="h-12 w-12 rounded-full bg-primary hover:bg-primary/90 shadow-lg shrink-0"
               data-testid="button-search"
-              onClick={() => setShowSuggestions(false)}
+              onClick={() => {
+                setShowSuggestions(false);
+                setShowDatePicker(false);
+                setShowGuestPicker(false);
+              }}
             >
               <Search className="w-5 h-5" />
             </Button>
