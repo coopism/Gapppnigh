@@ -100,7 +100,27 @@ export class MemStorage implements IStorage {
         categoryTags: ["All Deals", "Nature", "Quiet"],
         cancellation: "Non-refundable",
         whyCheap: "Off-season promotion.",
-      }
+      },
+      {
+        id: "gn_005",
+        hotelName: "The Grand Historic",
+        location: "Melbourne, Australia",
+        stars: 5,
+        rating: "4.9",
+        reviewCount: 3200,
+        checkInDate: "2026-02-20",
+        checkOutDate: "2026-02-21",
+        nights: 1,
+        roomType: "Heritage Suite",
+        imageUrl: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800",
+        normalPrice: 550,
+        dealPrice: 299,
+        currency: "A$",
+        dealScore: 90,
+        categoryTags: ["All Deals", "Luxury", "City"],
+        cancellation: "Flexible",
+        whyCheap: "Gap night: 1-night orphan slot between conference bookings.",
+      },
     ];
 
     mockDeals.forEach(deal => this.deals.set(deal.id, deal));
