@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useDeals, type SortOption } from "@/hooks/use-deals";
 import { DealCard } from "@/components/DealCard";
 import { Navigation } from "@/components/Navigation";
-import { Search, MapPin, Calendar, Users, ChevronDown, Filter } from "lucide-react";
+import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,10 +21,26 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "rating", label: "Highest Rated" },
 ];
 
+const LOCATION_SUGGESTIONS = [
+  { city: "Melbourne", state: "VIC", country: "Australia" },
+  { city: "Sydney", state: "NSW", country: "Australia" },
+  { city: "Gold Coast", state: "QLD", country: "Australia" },
+  { city: "Brisbane", state: "QLD", country: "Australia" },
+  { city: "Perth", state: "WA", country: "Australia" },
+  { city: "Adelaide", state: "SA", country: "Australia" },
+  { city: "Hobart", state: "TAS", country: "Australia" },
+  { city: "Byron Bay", state: "NSW", country: "Australia" },
+  { city: "Cairns", state: "QLD", country: "Australia" },
+  { city: "Blue Mountains", state: "NSW", country: "Australia" },
+];
+
 export default function Home() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Deals");
   const [sortBy, setSortBy] = useState<SortOption>("best");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const { data: deals, isLoading, error } = useDeals({
     search: search || undefined,
@@ -34,6 +50,44 @@ export default function Home() {
 
   const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label || "Deal Score";
 
+  // Filter suggestions based on input
+  const filteredSuggestions = LOCATION_SUGGESTIONS.filter(loc => {
+    const searchLower = search.toLowerCase();
+    return (
+      loc.city.toLowerCase().includes(searchLower) ||
+      loc.state.toLowerCase().includes(searchLower) ||
+      loc.country.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Handle clicking outside to close suggestions
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectSuggestion = (location: typeof LOCATION_SUGGESTIONS[0]) => {
+    const locationString = `${location.city}, ${location.country}`;
+    setSearch(locationString);
+    setShowSuggestions(false);
+    
+    // Add to recent searches
+    setRecentSearches(prev => {
+      const filtered = prev.filter(s => s !== locationString);
+      return [locationString, ...filtered].slice(0, 3);
+    });
+  };
+
+  const handleClearSearch = () => {
+    setSearch("");
+    setShowSuggestions(true);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       <Navigation />
@@ -41,24 +95,103 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
         {/* Search Bar - 3 sections */}
         <div className="flex justify-center mb-8">
-          <div className="bg-white rounded-full shadow-lg border border-border/50 p-2 flex items-center gap-1 max-w-3xl w-full">
-            {/* WHERE */}
-            <div className="flex-1 px-4 py-2 border-r border-border/50">
+          <div className="bg-white rounded-full shadow-lg border border-border/50 p-2 flex items-center gap-1 max-w-3xl w-full relative">
+            {/* WHERE - with autocomplete */}
+            <div className="flex-1 px-4 py-2 border-r border-border/50 relative" ref={searchRef}>
               <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
                 Where
               </div>
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-primary" />
+                <MapPin className="w-4 h-4 text-primary shrink-0" />
                 <input
                   type="text"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Melbourne (VIC)"
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  placeholder="Search destinations..."
                   className="bg-transparent border-none outline-none text-sm font-semibold text-foreground placeholder:text-muted-foreground w-full"
                   data-testid="input-search"
                 />
+                {search && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="text-muted-foreground hover:text-foreground text-xs"
+                    data-testid="button-clear-search"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">↔ Anywhere</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {search ? `Searching: ${search}` : "↔ Anywhere"}
+              </div>
+
+              {/* Autocomplete Dropdown */}
+              {showSuggestions && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 min-w-[300px]">
+                  {/* Recent Searches */}
+                  {recentSearches.length > 0 && !search && (
+                    <div className="p-3 border-b border-border/50">
+                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Clock className="w-3 h-3" />
+                        Recent Searches
+                      </div>
+                      {recentSearches.map((recent, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setSearch(recent);
+                            setShowSuggestions(false);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-lg text-sm font-medium flex items-center gap-2"
+                          data-testid={`recent-search-${i}`}
+                        >
+                          <Clock className="w-4 h-4 text-muted-foreground" />
+                          {recent}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Suggestions */}
+                  <div className="p-3">
+                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                      {search ? "Matching Destinations" : "Popular Destinations"}
+                    </div>
+                    {filteredSuggestions.length > 0 ? (
+                      <div className="space-y-1">
+                        {filteredSuggestions.slice(0, 6).map((loc, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSelectSuggestion(loc)}
+                            className="w-full text-left px-3 py-2.5 hover:bg-primary/5 rounded-lg flex items-center gap-3 group transition-colors"
+                            data-testid={`suggestion-${loc.city.toLowerCase().replace(/\s+/g, '-')}`}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                              <MapPin className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-foreground">
+                                {loc.city}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {loc.state}, {loc.country}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-muted-foreground text-sm">
+                        No destinations found for "{search}"
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* WHEN */}
@@ -90,6 +223,7 @@ export default function Home() {
               size="icon" 
               className="h-12 w-12 rounded-full bg-primary hover:bg-primary/90 shadow-lg shrink-0"
               data-testid="button-search"
+              onClick={() => setShowSuggestions(false)}
             >
               <Search className="w-5 h-5" />
             </Button>
