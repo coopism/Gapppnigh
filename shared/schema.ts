@@ -21,6 +21,11 @@ export const deals = pgTable("deals", {
   categoryTags: text("category_tags").array().notNull(), // PostgreSQL array
   cancellation: text("cancellation").notNull(),
   whyCheap: text("why_cheap").notNull(),
+  // New fields for map and amenities
+  latitude: numeric("latitude"),
+  longitude: numeric("longitude"),
+  amenities: text("amenities").array(), // WiFi, Pool, Gym, Parking, etc.
+  nearbyHighlight: text("nearby_highlight"), // "5 min walk to beach"
 });
 
 export const waitlist = pgTable("waitlist", {

@@ -1,8 +1,17 @@
 import { Link } from "wouter";
-import { Star, MapPin, Bed, Calendar, Heart } from "lucide-react";
+import { Star, MapPin, Bed, Calendar, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation } from "lucide-react";
 import type { Deal } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
+
+const AMENITY_ICONS: Record<string, typeof Wifi> = {
+  "WiFi": Wifi,
+  "Gym": Dumbbell,
+  "Parking": Car,
+  "Restaurant": UtensilsCrossed,
+  "Pool": Waves,
+  "Spa": Sparkles,
+};
 
 interface DealCardProps {
   deal: Deal;
@@ -67,19 +76,51 @@ export function DealCard({ deal }: DealCardProps) {
             <span className="line-clamp-1">{deal.location}</span>
           </div>
 
+          {/* Nearby highlight */}
+          {deal.nearbyHighlight && (
+            <div className="flex items-center text-primary text-xs mb-1.5">
+              <Navigation className="w-3 h-3 mr-1.5 shrink-0" />
+              <span>{deal.nearbyHighlight}</span>
+            </div>
+          )}
+
           {/* Room type */}
           <div className="flex items-center text-muted-foreground text-sm mb-1.5">
             <Bed className="w-3.5 h-3.5 mr-1.5 shrink-0" />
             <span>{deal.roomType}</span>
           </div>
 
-          {/* Dates */}
-          <div className="flex items-center text-sm">
-            <Calendar className="w-3.5 h-3.5 mr-1.5 shrink-0 text-primary" />
-            <span className="text-foreground font-medium">{checkIn}</span>
-            <span className="mx-1 text-muted-foreground">-</span>
-            <span className="text-foreground font-medium">{checkOut}</span>
-            <span className="ml-1.5 text-xs text-muted-foreground">({deal.nights}N)</span>
+          {/* Amenities icons */}
+          {deal.amenities && deal.amenities.length > 0 && (
+            <div className="flex items-center gap-2 mb-2">
+              {deal.amenities.slice(0, 4).map((amenity) => {
+                const Icon = AMENITY_ICONS[amenity];
+                if (!Icon) return null;
+                return (
+                  <div key={amenity} className="text-muted-foreground" title={amenity}>
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
+                );
+              })}
+              {deal.amenities.length > 4 && (
+                <span className="text-xs text-muted-foreground">+{deal.amenities.length - 4}</span>
+              )}
+            </div>
+          )}
+
+          {/* Dates + Price */}
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center">
+              <Calendar className="w-3.5 h-3.5 mr-1.5 shrink-0 text-primary" />
+              <span className="text-foreground font-medium">{checkIn}</span>
+              <span className="mx-1 text-muted-foreground">-</span>
+              <span className="text-foreground font-medium">{checkOut}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-xs line-through text-muted-foreground">{deal.currency}{deal.normalPrice}</span>
+              <span className="ml-1 font-bold text-primary">{deal.currency}{deal.dealPrice}</span>
+              <div className="text-[10px] text-muted-foreground">/night</div>
+            </div>
           </div>
         </div>
       </div>

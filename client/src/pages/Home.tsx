@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { useSearch } from "wouter";
 import { useDeals, type SortOption } from "@/hooks/use-deals";
 import { DealCard } from "@/components/DealCard";
+import { DealsMap } from "@/components/DealsMap";
 import { Navigation } from "@/components/Navigation";
-import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check } from "lucide-react";
+import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -97,6 +98,9 @@ export default function Home() {
   const [guests, setGuests] = useState(1);
   const [nights, setNights] = useState(1);
   const guestRef = useRef<HTMLDivElement>(null);
+
+  // View mode (grid or map)
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
   const { data: deals, isLoading, error } = useDeals({
     search: search || undefined,
@@ -591,12 +595,34 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Section Header + Sort */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Explore today's deals</h2>
+        {/* Section Header + Sort + View Toggle */}
+        <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+          <h2 className="text-xl md:text-2xl font-bold text-foreground">Explore today's deals</h2>
 
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">Sort by:</span>
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* View Toggle */}
+            <div className="flex items-center bg-slate-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-2 rounded-md transition-colors ${
+                  viewMode === "grid" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid="button-view-grid"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("map")}
+                className={`p-2 rounded-md transition-colors ${
+                  viewMode === "map" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid="button-view-map"
+              >
+                <Map className="w-4 h-4" />
+              </button>
+            </div>
+
+            <span className="text-sm text-muted-foreground hidden md:inline">Sort by:</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="rounded-lg border-border gap-2 font-semibold !bg-white" data-testid="button-sort">
@@ -665,6 +691,10 @@ export default function Home() {
             >
               Clear all filters
             </Button>
+          </div>
+        ) : viewMode === "map" ? (
+          <div className="h-[500px] md:h-[600px] rounded-xl overflow-hidden border border-border/50">
+            <DealsMap deals={deals || []} />
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
