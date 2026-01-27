@@ -58,26 +58,24 @@ export default function DealDetail() {
       <Navigation />
       
       {/* Hero Image */}
-      <div className="relative h-[40vh] sm:h-[50vh] w-full overflow-hidden">
-        {/* Unsplash image background */}
-        <div className="absolute inset-0 bg-black/20 z-10"></div>
+      <div className="relative h-[50vh] sm:h-[60vh] w-full overflow-hidden">
         <img
           src={deal.imageUrl}
           alt={deal.hotelName}
           className="w-full h-full object-cover"
         />
-        <div className="absolute top-4 left-4 z-20">
+        <div className="absolute top-20 left-4 z-20">
           <Link href="/">
-            <Button variant="secondary" size="icon" className="rounded-full bg-white/90 backdrop-blur shadow-lg">
+            <Button variant="secondary" size="icon" className="rounded-full bg-white/90 backdrop-blur shadow-lg" data-testid="button-back">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
         </div>
-        <div className="absolute top-4 right-4 z-20 flex gap-2">
-          <Button variant="secondary" size="icon" className="rounded-full bg-white/90 backdrop-blur shadow-lg text-red-500 hover:text-red-600">
+        <div className="absolute top-20 right-4 z-20 flex gap-2">
+          <Button variant="secondary" size="icon" className="rounded-full bg-white/90 backdrop-blur shadow-lg text-red-500 hover:text-red-600" data-testid="button-favorite">
             <Heart className="w-5 h-5" />
           </Button>
-          <Button variant="secondary" size="icon" className="rounded-full bg-white/90 backdrop-blur shadow-lg">
+          <Button variant="secondary" size="icon" className="rounded-full bg-white/90 backdrop-blur shadow-lg" data-testid="button-share">
             <Share2 className="w-5 h-5" />
           </Button>
         </div>
