@@ -13,8 +13,8 @@ export function DealCard({ deal }: DealCardProps) {
     ((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100
   );
 
-  const checkIn = format(parseISO(deal.checkInDate), "yyyy-MM-dd");
-  const checkOut = format(parseISO(deal.checkOutDate), "yyyy-MM-dd");
+  const checkIn = format(parseISO(deal.checkInDate), "MMM d");
+  const checkOut = format(parseISO(deal.checkOutDate), "MMM d");
 
   return (
     <Link href={`/deal/${deal.id}`} className="block group" data-testid={`deal-card-${deal.id}`}>
@@ -74,10 +74,12 @@ export function DealCard({ deal }: DealCardProps) {
           </div>
 
           {/* Dates */}
-          <div className="flex items-center text-primary text-sm font-medium">
-            <Calendar className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-            <span>{checkIn} → {checkOut}</span>
-            <span className="ml-1.5 text-muted-foreground font-normal">({deal.nights} night{deal.nights > 1 ? "s" : ""})</span>
+          <div className="flex items-center text-sm">
+            <Calendar className="w-3.5 h-3.5 mr-1.5 shrink-0 text-primary" />
+            <span className="text-foreground font-medium">{checkIn}</span>
+            <span className="mx-1 text-muted-foreground">-</span>
+            <span className="text-foreground font-medium">{checkOut}</span>
+            <span className="ml-1.5 text-xs text-muted-foreground">({deal.nights}N)</span>
           </div>
         </div>
       </div>
