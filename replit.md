@@ -82,3 +82,6 @@ Database tables:
 - **Simplified Date Picker**: Three-tab interface (Within, By Month, Specific) replacing cluttered all-at-once display
 - **Extended Date Range**: Month selection goes through December 2026
 - **CSS Variables**: Added --popover and --card variables for proper dropdown backgrounds
+- **Map View**: Interactive Leaflet map showing hotel locations with markers and popups (toggle between grid/map views)
+- **Enhanced DealCard**: Amenity icons (WiFi, Pool, Gym, etc.), nearby highlights, per-night pricing display
+- **Schema Updates**: Added latitude/longitude coordinates, amenities array, nearbyHighlight fields to deals
