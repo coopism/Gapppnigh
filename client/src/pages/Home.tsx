@@ -37,14 +37,30 @@ const LOCATION_SUGGESTIONS = [
   { city: "Blue Mountains", state: "NSW", country: "Australia" },
 ];
 
-type DateOption = "anytime" | "7days" | "14days" | "21days" | "month" | "specific";
+type DateMode = "within" | "month" | "specific";
+type WithinOption = "anytime" | "7days" | "14days" | "21days";
 
-const MONTHS = [
-  { label: "This Month", value: 0 },
-  { label: format(addMonths(new Date(), 1), "MMMM yyyy"), value: 1 },
-  { label: format(addMonths(new Date(), 2), "MMMM yyyy"), value: 2 },
-  { label: format(addMonths(new Date(), 3), "MMMM yyyy"), value: 3 },
-];
+// Generate months from now until December 2026
+const generateMonths = () => {
+  const months = [];
+  const now = new Date();
+  const endDate = new Date(2026, 11, 31); // December 2026
+  let current = new Date(now.getFullYear(), now.getMonth(), 1);
+  let index = 0;
+  
+  while (current <= endDate) {
+    months.push({
+      label: index === 0 ? "This Month" : format(current, "MMMM yyyy"),
+      value: index,
+      date: new Date(current),
+    });
+    current = addMonths(current, 1);
+    index++;
+  }
+  return months;
+};
+
+const MONTHS = generateMonths();
 
 export default function Home() {
   const searchParams = useSearch();
@@ -63,7 +79,8 @@ export default function Home() {
 
   // Date selection state
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dateOption, setDateOption] = useState<DateOption>("anytime");
+  const [dateMode, setDateMode] = useState<DateMode>("within");
+  const [withinOption, setWithinOption] = useState<WithinOption>("anytime");
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [checkoutDate, setCheckoutDate] = useState<Date | undefined>(undefined);
@@ -127,18 +144,19 @@ export default function Home() {
 
   // Get display text for date selection
   const getDateDisplayText = () => {
-    switch (dateOption) {
-      case "anytime":
-        return "Anytime";
-      case "7days":
-        return "Next 7 days";
-      case "14days":
-        return "Next 14 days";
-      case "21days":
-        return "Next 21 days";
+    switch (dateMode) {
+      case "within":
+        switch (withinOption) {
+          case "anytime": return "Anytime";
+          case "7days": return "Next 7 days";
+          case "14days": return "Next 14 days";
+          case "21days": return "Next 21 days";
+          default: return "Anytime";
+        }
       case "month":
+        if (selectedMonth === null) return "Select month";
         if (selectedMonth === 0) return "This Month";
-        return format(addMonths(new Date(), selectedMonth || 0), "MMM yyyy");
+        return format(addMonths(new Date(), selectedMonth), "MMM yyyy");
       case "specific":
         if (selectedDate) {
           return format(selectedDate, "MMM d");
@@ -150,26 +168,31 @@ export default function Home() {
   };
 
   const getDateSubtext = () => {
-    if (dateOption === "specific" && selectedDate && checkoutDate) {
+    if (dateMode === "specific" && selectedDate && checkoutDate) {
       return `${format(selectedDate, "MMM d")} - ${format(checkoutDate, "MMM d")} (${nights}N)`;
     }
     return `${nights} Night${nights > 1 ? "s" : ""}`;
   };
 
-  const handleDateOptionSelect = (option: DateOption, monthValue?: number) => {
-    setDateOption(option);
-    if (option === "month" && monthValue !== undefined) {
-      setSelectedMonth(monthValue);
-    }
-    if (option !== "specific") {
-      setSelectedDate(undefined);
-      setCheckoutDate(undefined);
-      setShowDatePicker(false);
-    }
+  const handleWithinSelect = (option: WithinOption) => {
+    setWithinOption(option);
+    setSelectedDate(undefined);
+    setCheckoutDate(undefined);
+    setShowDatePicker(false);
+  };
+
+  const handleMonthSelect = (monthValue: number) => {
+    setSelectedMonth(monthValue);
+    setSelectedDate(undefined);
+    setCheckoutDate(undefined);
+    setShowDatePicker(false);
   };
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
+    
+    // Always set mode to specific when selecting a date
+    setDateMode("specific");
     
     if (!selectedDate || (selectedDate && checkoutDate)) {
       // Start fresh selection
@@ -193,7 +216,6 @@ export default function Home() {
         setShowDatePicker(false);
       }
     }
-    setDateOption("specific");
   };
 
   return (
@@ -314,86 +336,110 @@ export default function Home() {
               {/* Date Picker Dropdown */}
               {showDatePicker && (
                 <div 
-                  className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[360px]"
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[340px]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="p-4">
-                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-                      Choose your dates
-                    </div>
-                    
-                    {/* Quick Options */}
-                    <div className="grid grid-cols-2 gap-2 mb-4">
+                    {/* Mode Tabs */}
+                    <div className="flex gap-1 p-1 bg-slate-100 rounded-lg mb-4">
                       <button
-                        onClick={() => handleDateOptionSelect("anytime")}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
-                          dateOption === "anytime" ? "bg-primary text-white" : "bg-slate-100 hover:bg-slate-200"
+                        onClick={() => setDateMode("within")}
+                        className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                          dateMode === "within" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground"
                         }`}
-                        data-testid="date-option-anytime"
+                        data-testid="date-mode-within"
                       >
-                        Anytime
-                        {dateOption === "anytime" && <Check className="w-4 h-4" />}
+                        Within
                       </button>
                       <button
-                        onClick={() => handleDateOptionSelect("7days")}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
-                          dateOption === "7days" ? "bg-primary text-white" : "bg-slate-100 hover:bg-slate-200"
+                        onClick={() => setDateMode("month")}
+                        className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                          dateMode === "month" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground"
                         }`}
-                        data-testid="date-option-7days"
+                        data-testid="date-mode-month"
                       >
-                        Next 7 days
-                        {dateOption === "7days" && <Check className="w-4 h-4" />}
+                        By Month
                       </button>
                       <button
-                        onClick={() => handleDateOptionSelect("14days")}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
-                          dateOption === "14days" ? "bg-primary text-white" : "bg-slate-100 hover:bg-slate-200"
+                        onClick={() => setDateMode("specific")}
+                        className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                          dateMode === "specific" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground"
                         }`}
-                        data-testid="date-option-14days"
+                        data-testid="date-mode-specific"
                       >
-                        Next 14 days
-                        {dateOption === "14days" && <Check className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => handleDateOptionSelect("21days")}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
-                          dateOption === "21days" ? "bg-primary text-white" : "bg-slate-100 hover:bg-slate-200"
-                        }`}
-                        data-testid="date-option-21days"
-                      >
-                        Next 21 days
-                        {dateOption === "21days" && <Check className="w-4 h-4" />}
+                        Specific
                       </button>
                     </div>
 
-                    {/* By Month */}
-                    <div className="mb-4">
-                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                        By Month
+                    {/* Within Options */}
+                    {dateMode === "within" && (
+                      <div className="space-y-2">
+                        {[
+                          { value: "anytime" as WithinOption, label: "Anytime" },
+                          { value: "7days" as WithinOption, label: "Next 7 days" },
+                          { value: "14days" as WithinOption, label: "Next 14 days" },
+                          { value: "21days" as WithinOption, label: "Next 21 days" },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => handleWithinSelect(option.value)}
+                            className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
+                              withinOption === option.value ? "bg-primary text-white" : "bg-slate-50 text-foreground"
+                            }`}
+                            data-testid={`date-option-${option.value}`}
+                          >
+                            {option.label}
+                            {withinOption === option.value && <Check className="w-4 h-4" />}
+                          </button>
+                        ))}
                       </div>
-                      <div className="flex gap-2 flex-wrap">
+                    )}
+
+                    {/* Month Selection */}
+                    {dateMode === "month" && (
+                      <div className="max-h-[280px] overflow-y-auto space-y-1">
                         {MONTHS.map((month) => (
                           <button
                             key={month.value}
-                            onClick={() => handleDateOptionSelect("month", month.value)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                              dateOption === "month" && selectedMonth === month.value
-                                ? "bg-primary text-white"
-                                : "bg-slate-100 hover:bg-slate-200"
+                            onClick={() => handleMonthSelect(month.value)}
+                            className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
+                              selectedMonth === month.value ? "bg-primary text-white" : "bg-slate-50 text-foreground"
                             }`}
                             data-testid={`date-month-${month.value}`}
                           >
                             {month.label}
+                            {selectedMonth === month.value && <Check className="w-4 h-4" />}
                           </button>
                         ))}
                       </div>
-                    </div>
+                    )}
 
-                    {/* Nights Selector */}
-                    <div className="flex items-center justify-between py-3 border-y border-border/50">
+                    {/* Specific Dates - Calendar */}
+                    {dateMode === "specific" && (
                       <div>
-                        <div className="font-semibold text-foreground">Nights</div>
-                        <div className="text-xs text-muted-foreground">Gap night stays (1-3)</div>
+                        <CalendarComponent
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={handleDateSelect}
+                          disabled={(date) => date < new Date() || date > new Date(2026, 11, 31)}
+                          className="rounded-lg border"
+                        />
+                        {selectedDate && (
+                          <div className="mt-2 text-xs text-muted-foreground text-center">
+                            {checkoutDate 
+                              ? `${format(selectedDate, "MMM d")} → ${format(checkoutDate, "MMM d")} (${nights} night${nights > 1 ? "s" : ""})`
+                              : "Select checkout date"
+                            }
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Nights Selector - always visible at bottom */}
+                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-border/50">
+                      <div>
+                        <div className="font-semibold text-foreground text-sm">Nights</div>
+                        <div className="text-xs text-muted-foreground">1-3 nights only</div>
                       </div>
                       <div className="flex items-center gap-3">
                         <button
@@ -405,7 +451,7 @@ export default function Home() {
                             }
                           }}
                           disabled={nights <= 1}
-                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                           data-testid="button-nights-minus"
                         >
                           <Minus className="w-4 h-4" />
@@ -420,34 +466,12 @@ export default function Home() {
                             }
                           }}
                           disabled={nights >= 3}
-                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                           data-testid="button-nights-plus"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
                       </div>
-                    </div>
-
-                    {/* Specific Dates */}
-                    <div>
-                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                        Specific Dates
-                      </div>
-                      <CalendarComponent
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={handleDateSelect}
-                        disabled={(date) => date < new Date()}
-                        className="rounded-lg border"
-                      />
-                      {selectedDate && (
-                        <div className="mt-2 text-xs text-muted-foreground text-center">
-                          {checkoutDate 
-                            ? `${format(selectedDate, "MMM d")} → ${format(checkoutDate, "MMM d")} (${nights} night${nights > 1 ? "s" : ""})`
-                            : "Select checkout date"
-                          }
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -561,7 +585,7 @@ export default function Home() {
             <span className="text-sm text-muted-foreground">Sort by:</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="rounded-lg border-border gap-2 font-semibold" data-testid="button-sort">
+                <Button variant="outline" className="rounded-lg border-border gap-2 font-semibold !bg-white" data-testid="button-sort">
                   {currentSortLabel}
                   <ChevronDown className="w-4 h-4" />
                 </Button>
@@ -617,7 +641,7 @@ export default function Home() {
               Try adjusting your search or filters to find what you're looking for.
             </p>
             <Button 
-              variant="link" 
+              variant="ghost" 
               onClick={() => {
                 setSearch("");
                 setActiveCategory("All Deals");

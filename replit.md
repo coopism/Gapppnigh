@@ -73,3 +73,12 @@ Database tables:
 - `@replit/vite-plugin-runtime-error-modal`: Development error overlay
 - `@replit/vite-plugin-cartographer`: Development tooling
 - `connect-pg-simple`: PostgreSQL session storage (available but not currently used)
+
+## Recent Changes
+
+### January 2026
+- **Landing Page Restructure**: Dictionary-style "Gap Night" definition is now the hero section, with search bar integrated below the explanation text
+- **Definition Text**: "An unsold night between hotel bookings — discounted so it doesn't go unused."
+- **Simplified Date Picker**: Three-tab interface (Within, By Month, Specific) replacing cluttered all-at-once display
+- **Extended Date Range**: Month selection goes through December 2026
+- **CSS Variables**: Added --popover and --card variables for proper dropdown backgrounds
