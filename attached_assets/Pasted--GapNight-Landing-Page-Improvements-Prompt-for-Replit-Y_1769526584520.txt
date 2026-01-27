@@ -1,0 +1,169 @@
+# GapNight Landing Page Improvements — Prompt for Replit
+
+You are improving an existing GapNight landing page. Use the attached screenshot as the **target hero layout and style** (modern, airy, soft gradient background, rounded UI, teal accents, bold headline).
+
+## Goal
+Update the landing page to:
+1) Match the **new hero design** shown in the screenshot (layout, typography, spacing, feel).
+2) Add a **dictionary/definition-style section** that explains what a “Gap Night” is (to build trust + brand the term).
+3) Keep the page conversion-focused with clear CTAs for both consumers and hotels.
+
+---
+
+## Brand & Product Summary (use this as truth)
+GapNight is a hotel deals marketplace that sells **unsold “gap nights”**:
+- Usually **1-night openings** between existing bookings.
+- Hotels discount these nights because they would otherwise go unused.
+- Users can search by **location without selecting exact dates** and see the best deals in a rolling window (default: next 7 days).
+- Hotels control pricing, availability, and room count.
+
+---
+
+## 1) Header / Navigation (top bar)
+### Layout
+- Left: GapNight logo + wordmark
+- Middle/right: links
+  - Browse Deals
+  - For Hotels
+- Far right: primary CTA button
+  - **Join Waitlist** (pill-shaped, teal background, white text)
+- Sticky on scroll (optional)
+
+### Style
+- Minimal, white background, subtle border/shadow
+- Rounded logo tile (like screenshot)
+
+---
+
+## 2) Hero Section (match screenshot)
+### Background
+- Soft radial/gradient background with light grey-blue tones.
+- Centered hero content with plenty of whitespace.
+
+### Hero content (centered)
+1) Small pill badge above headline:
+   - Text: **Australia’s #1 Gap Night Marketplace**
+   - Icon: sparkle/star (optional)
+   - Style: light background, teal text, rounded, subtle shadow
+
+2) Headline (large, bold, two-tone emphasis)
+   - Line 1: **Luxury Hotels at**
+   - Line 2: **Clearance Prices** (teal highlight)
+   - Use big, clean font, strong weight.
+
+3) Subheadline (1–2 lines, readable)
+   - Use exactly or close to:
+     - `Discover "gap nights" — single-night openings between bookings that hotels sell at up to 70% off. Same room, same service, incredible savings.`
+
+4) Search bar (large, rounded, with icon)
+   - Placeholder: **Where do you want to stay?**
+   - Left icon: location pin
+   - Right: Search button (teal pill) with magnifier icon + label “Search”
+   - This search does not require dates; just location text.
+   - Mock behavior: updates deal list section below or scrolls to deals.
+
+5) Social proof stats row (3 columns)
+   - `15+` Active Deals
+   - `50%` Avg. Savings
+   - `4.5` Avg. Rating (add small star icon)
+   - Use subtle labels, bold numbers.
+
+### Hero CTA logic
+- Primary CTA is search.
+- Secondary CTAs in hero (optional, smaller):
+  - “Browse Deals”
+  - “List Your Hotel”
+
+---
+
+## 3) Add NEW “Definition” Section (dictionary-style)
+Place directly **below the hero** (or as a left-right split section):
+
+### Visual style
+- Minimal dictionary aesthetic, lots of whitespace, serif headline is allowed.
+- Looks like a definition card or printed dictionary excerpt.
+
+### Copy (use this structure)
+- Title: **Gap Night**
+- Pronunciation: `[gap-nahyt]`
+- Part of speech: `noun`
+- Definition line (keep simple + trustworthy):
+  - `A single unsold night between hotel bookings — discounted so it doesn’t go unused.`
+- One supporting line:
+  - `Hotels list these nights directly on GapNight, so you get real discounts on real rooms.`
+- Optional mini bullet list (max 3):
+  - `• Usually 1 night`
+  - `• Limited rooms`
+  - `• Often 20–70% off`
+
+### Microcopy tip
+Avoid jargon like “distressed inventory”. Keep it consumer-friendly.
+
+---
+
+## 4) Deals Preview Section (below definition)
+Add a section titled:
+- **Explore today’s gap night deals**
+
+Display 6–10 sample deal cards:
+- Card includes:
+  - left image thumbnail
+  - hotel name
+  - star rating (e.g., 4.6) + star icons
+  - location
+  - dates (e.g., “Tue 12 Mar → Wed 13 Mar”)
+  - normal price (strikethrough)
+  - deal price (bold)
+  - badge: `XX% off` or `Deal score 90`
+- Card style:
+  - rounded corners, subtle shadow, clean spacing
+- Sort dropdown (optional):
+  - Best / Cheapest / Biggest discount / Highest rating
+
+---
+
+## 5) “How it works” Section (simple, trust-building)
+3 steps, icons optional:
+1) **Search a location** (no dates needed)
+2) **Pick a gap night deal** (1-night openings)
+3) **Book for less** (hotel-approved discounts)
+
+Keep short.
+
+---
+
+## 6) “For Hotels” Section (conversion block)
+Add a clear section for hotels:
+- Headline: **Fill your gap nights without discounting your whole calendar**
+- Bullets:
+  - Only list nights you want to fill
+  - Control price + inventory
+  - Reach new last-minute guests
+- CTA button: **List Your Hotel**
+- This can link to `/list-your-hotel` (mock)
+
+---
+
+## 7) Footer
+Include:
+- Short description of GapNight
+- Links: Browse Deals, For Hotels, Terms, Privacy
+- Optional disclaimer:
+  - “Discounts vary by property and availability.”
+
+---
+
+## Styling & Implementation Notes
+- Build mobile-first; hero should stack nicely.
+- Use a modern font (e.g., Inter for body; optional serif for “Gap Night” definition title only).
+- Use consistent teal accent color across buttons and highlights.
+- No backend required — static mock data is fine.
+- Use smooth scroll when clicking “Browse Deals”.
+
+---
+
+## Acceptance Criteria
+- Landing page hero closely matches the screenshot’s look/feel: centered headline, teal emphasis, pill badge, large search bar, stats row.
+- Page includes the new dictionary-style “Gap Night” explanation section.
+- Deals preview cards look like a premium “deal feed” and include crossed-out normal price + bold discounted price.
+- Clear consumer path (search/browse) and hotel path (list your hotel).
