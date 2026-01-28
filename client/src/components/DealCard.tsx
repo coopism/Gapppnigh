@@ -1,8 +1,7 @@
 import { Link } from "wouter";
-import { Star, MapPin, Bed, Calendar, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation } from "lucide-react";
+import { Star, MapPin, Bed, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation, CalendarDays } from "lucide-react";
 import type { Deal } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
-import { format, parseISO } from "date-fns";
 
 const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "WiFi": Wifi,
@@ -21,9 +20,6 @@ export function DealCard({ deal }: DealCardProps) {
   const discountPercent = Math.round(
     ((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100
   );
-
-  const checkIn = format(parseISO(deal.checkInDate), "MMM d");
-  const checkOut = format(parseISO(deal.checkOutDate), "MMM d");
 
   return (
     <Link href={`/deal/${deal.id}`} className="block group" data-testid={`deal-card-${deal.id}`}>
@@ -92,7 +88,7 @@ export function DealCard({ deal }: DealCardProps) {
 
           {/* Amenities icons */}
           {deal.amenities && deal.amenities.length > 0 && (
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               {deal.amenities.slice(0, 4).map((amenity) => {
                 const Icon = AMENITY_ICONS[amenity];
                 if (!Icon) return null;
@@ -108,13 +104,11 @@ export function DealCard({ deal }: DealCardProps) {
             </div>
           )}
 
-          {/* Dates + Price */}
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center">
-              <Calendar className="w-3.5 h-3.5 mr-1.5 shrink-0 text-primary" />
-              <span className="text-foreground font-medium">{checkIn}</span>
-              <span className="mx-1 text-muted-foreground">-</span>
-              <span className="text-foreground font-medium">{checkOut}</span>
+          {/* Availability hint + Price */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs text-primary">
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span className="font-medium">{deal.nights === 1 ? '1-3 nights available' : `${deal.nights}+ nights available`}</span>
             </div>
             <div className="text-right">
               <span className="text-xs line-through text-muted-foreground">{deal.currency}{deal.normalPrice}</span>
