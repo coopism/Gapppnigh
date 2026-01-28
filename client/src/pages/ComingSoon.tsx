@@ -172,7 +172,7 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
             <div className="border-t border-border/50 my-8"></div>
 
             {/* Waitlist Form */}
-            <div className="max-w-md">
+            <div className="max-w-md mx-auto text-center">
               <h2 className="text-xl font-semibold mb-4">Be the first to know</h2>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 text-left">
