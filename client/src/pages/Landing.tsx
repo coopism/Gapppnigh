@@ -108,11 +108,11 @@ export default function Landing() {
             {/* Dictionary Card */}
             <div className="bg-card/80 backdrop-blur-sm rounded-3xl p-6 md:p-12 border border-border/50 shadow-xl">
               {/* Header with title and pronunciation */}
-              <div className="mb-6 md:mb-8 text-center md:text-left">
+              <div className="mb-6 md:mb-8">
                 <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-2 md:mb-3" style={{ fontFamily: "Georgia, serif" }}>
                   Gap Night
                 </h1>
-                <div className="flex items-center justify-center md:justify-start gap-2 md:gap-3 text-muted-foreground">
+                <div className="flex items-center gap-2 md:gap-3 text-muted-foreground">
                   <span className="text-lg md:text-xl italic">[gap-nahyt]</span>
                   <span className="text-xs md:text-sm bg-muted px-2 md:px-3 py-0.5 md:py-1 rounded-full font-medium">noun</span>
                 </div>
@@ -120,7 +120,7 @@ export default function Landing() {
               
               {/* Definition */}
               <div className="space-y-4 md:space-y-6">
-                <p className="text-lg md:text-2xl text-foreground leading-relaxed text-center md:text-left">
+                <p className="text-lg md:text-2xl text-foreground leading-relaxed">
                   An unsold night between hotel bookings — discounted so it doesn't go unused.
                 </p>
                 <p className="hidden md:block text-lg text-muted-foreground">

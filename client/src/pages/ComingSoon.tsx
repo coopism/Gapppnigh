@@ -140,7 +140,7 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
       <main className="flex-1 flex items-center justify-center px-4 py-8 relative z-10">
         <div className="w-full max-w-2xl space-y-8">
           {/* Dictionary Card - Hero Definition */}
-          <div className="bg-card/80 backdrop-blur-sm rounded-3xl p-6 md:p-10 border border-border/50 shadow-xl text-center">
+          <div className="bg-card/80 backdrop-blur-sm rounded-3xl p-6 md:p-10 border border-border/50 shadow-xl">
             {/* Coming Soon Badge */}
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-6">
               <Sparkles className="w-4 h-4" />
@@ -152,7 +152,7 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
               <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-2" style={{ fontFamily: "Georgia, serif" }}>
                 Gap Night
               </h1>
-              <div className="flex items-center justify-center gap-3 text-muted-foreground">
+              <div className="flex items-center gap-3 text-muted-foreground">
                 <span className="text-lg md:text-xl italic">[gap-nahyt]</span>
                 <span className="text-xs md:text-sm bg-muted px-3 py-1 rounded-full font-medium">noun</span>
               </div>
@@ -163,7 +163,7 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
               <p className="text-lg md:text-2xl text-foreground leading-relaxed">
                 An unsold night between hotel bookings — discounted so it doesn't go unused.
               </p>
-              <p className="text-base md:text-lg text-muted-foreground max-w-lg mx-auto">
+              <p className="text-base md:text-lg text-muted-foreground max-w-lg">
                 Hotels list these nights directly on GapNight, so you get real discounts on real rooms.
               </p>
             </div>
@@ -172,7 +172,7 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
             <div className="border-t border-border/50 my-8"></div>
 
             {/* Waitlist Form */}
-            <div className="max-w-md mx-auto">
+            <div className="max-w-md">
               <h2 className="text-xl font-semibold mb-4">Be the first to know</h2>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 text-left">
