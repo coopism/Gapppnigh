@@ -1,9 +1,9 @@
 import { useRoute, Link } from "wouter";
-import { useDeal } from "@/hooks/use-deals";
+import { useDeal, useHotelAvailability } from "@/hooks/use-deals";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { 
-  ArrowLeft, Star, MapPin, CheckCircle2, Share2, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation as NavIcon
+  ArrowLeft, Star, MapPin, Share2, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation as NavIcon, Calendar, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useState, useEffect } from "react";
+import { format, parseISO } from "date-fns";
 
 const markerIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -35,6 +37,15 @@ export default function DealDetail() {
   const [, params] = useRoute("/deal/:id");
   const id = params?.id || "";
   const { data: deal, isLoading } = useDeal(id);
+  const { data: hotelDeals } = useHotelAvailability(deal?.hotelName || "");
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+
+  // Auto-select current deal when data loads
+  useEffect(() => {
+    if (deal && !selectedOption) {
+      setSelectedOption(deal.id);
+    }
+  }, [deal, selectedOption]);
 
   if (isLoading) {
     return (
@@ -71,6 +82,19 @@ export default function DealDetail() {
   const discountPercent = Math.round(
     ((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100
   );
+
+  // Filter to only deals for this exact hotel
+  const availabilityOptions = (hotelDeals || []).filter(
+    d => d.hotelName === deal.hotelName
+  );
+
+  const formatDateRange = (checkInDate: string, checkOutDate: string) => {
+    const checkIn = parseISO(checkInDate);
+    const checkOut = parseISO(checkOutDate);
+    return `${format(checkIn, 'MMM d')} - ${format(checkOut, 'MMM d')}`;
+  };
+
+  const selectedAvailability = availabilityOptions.find(opt => opt.id === selectedOption);
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,6 +137,13 @@ export default function DealDetail() {
                 <Heart className="w-4 h-4" />
               </Button>
             </div>
+            
+            {/* Discount badge */}
+            <div className="absolute top-4 left-4">
+              <Badge className="bg-amber-500 text-white font-bold shadow-lg px-3 py-1.5 text-sm">
+                {discountPercent}% OFF
+              </Badge>
+            </div>
           </div>
 
           {/* Right Column - Details */}
@@ -148,51 +179,113 @@ export default function DealDetail() {
               </div>
             </div>
 
-            {/* Why is this cheap? */}
-            <div className="bg-card rounded-xl p-5 border border-border/50 mb-6">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                <div>
-                  <h3 className="font-bold text-foreground mb-1">Why is this cheap?</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {deal.whyCheap}
-                  </p>
+            {/* Availability Selector - Clean Compact Design */}
+            <div className="bg-card rounded-xl border border-border/50 mb-6 overflow-hidden">
+              <div className="px-4 py-3 border-b border-border/50 bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  <h3 className="font-semibold text-foreground text-sm">Available Gap Nights</h3>
                 </div>
+              </div>
+              
+              <div className="p-2">
+                {availabilityOptions.length > 0 ? (
+                  availabilityOptions.map((option) => {
+                    const isSelected = selectedOption === option.id;
+                    const optionDiscount = Math.round(((option.normalPrice - option.dealPrice) / option.normalPrice) * 100);
+                    
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => setSelectedOption(option.id)}
+                        className={`w-full flex items-center justify-between p-3 rounded-lg transition-all mb-1 last:mb-0 ${
+                          isSelected 
+                            ? 'bg-primary/10 border-2 border-primary' 
+                            : 'bg-background border-2 border-transparent'
+                        }`}
+                        data-testid={`availability-option-${option.id}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                          }`}>
+                            {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                          </div>
+                          <div className="text-left">
+                            <div className="font-semibold text-foreground text-sm">
+                              {formatDateRange(option.checkInDate, option.checkOutDate)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {option.nights} night{option.nights > 1 ? 's' : ''} · {option.roomType}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs line-through text-muted-foreground">
+                              {option.currency}{option.normalPrice}
+                            </span>
+                            <span className="font-bold text-primary">
+                              {option.currency}{option.dealPrice}
+                            </span>
+                          </div>
+                          <div className="text-xs text-primary font-medium">
+                            {optionDiscount}% off
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="p-4 text-center text-muted-foreground text-sm">
+                    Loading availability...
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Price Card */}
+            {/* Book Now Section */}
             <div className="bg-card rounded-xl p-5 border border-border/50">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="text-sm text-muted-foreground line-through mb-1">
-                    Normal price: {deal.currency}{deal.normalPrice}
+              {selectedAvailability ? (
+                <>
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">
+                        {formatDateRange(selectedAvailability.checkInDate, selectedAvailability.checkOutDate)} · {selectedAvailability.nights} night{selectedAvailability.nights > 1 ? 's' : ''}
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-bold text-foreground">
+                          {selectedAvailability.currency}{selectedAvailability.dealPrice * selectedAvailability.nights}
+                        </span>
+                        <span className="text-sm text-muted-foreground line-through">
+                          {selectedAvailability.currency}{selectedAvailability.normalPrice * selectedAvailability.nights}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {selectedAvailability.currency}{selectedAvailability.dealPrice}/night
+                      </div>
+                    </div>
+                    <Badge className="bg-primary/10 text-primary border-primary/20">
+                      Selected
+                    </Badge>
                   </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-bold text-foreground">
-                      {deal.currency}{deal.dealPrice}
-                    </span>
-                    <span className="text-lg font-semibold text-primary">
-                      (-{discountPercent}%)
-                    </span>
-                  </div>
+                  <Button className="w-full h-12 text-base font-semibold rounded-xl" data-testid="button-request-booking">
+                    Request Booking
+                  </Button>
+                </>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground text-sm mb-4">
+                    Select an available date above to continue
+                  </p>
+                  <Button disabled className="w-full h-12 text-base font-semibold rounded-xl" data-testid="button-request-booking-disabled">
+                    Select Dates to Book
+                  </Button>
                 </div>
-                <div className="text-right">
-                  <Badge variant="outline" className="rounded-md border-primary/30 text-primary font-semibold mb-1">
-                    {deal.checkInDate}
-                  </Badge>
-                  <div className="text-xs text-muted-foreground">
-                    {deal.nights} Night Stay
-                  </div>
-                </div>
-              </div>
+              )}
 
-              <Button className="w-full h-12 text-base font-semibold rounded-xl mb-3" data-testid="button-request-booking">
-                Request Booking
-              </Button>
-
-              <div className="text-center text-sm text-muted-foreground">
-                Free cancellation: <span className="font-semibold text-foreground">{deal.cancellation}</span>
+              <div className="text-center text-sm text-muted-foreground mt-3">
+                {deal.cancellation}
               </div>
             </div>
           </div>

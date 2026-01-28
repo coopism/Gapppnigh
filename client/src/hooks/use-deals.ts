@@ -42,3 +42,15 @@ export function useDeal(id: string) {
     },
   });
 }
+
+export function useHotelAvailability(hotelName: string) {
+  return useQuery({
+    queryKey: [api.deals.list.path, 'hotel', hotelName],
+    queryFn: async () => {
+      const res = await fetch(`${api.deals.list.path}?search=${encodeURIComponent(hotelName)}`);
+      if (!res.ok) throw new Error("Failed to fetch hotel availability");
+      return api.deals.list.responses[200].parse(await res.json());
+    },
+    enabled: !!hotelName,
+  });
+}
