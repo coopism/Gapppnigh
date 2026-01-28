@@ -6,16 +6,13 @@ import {
   Check, 
   X, 
   Info, 
-  ChevronDown,
   Eye,
   Upload,
-  Undo2,
   Moon,
   Sun,
   ArrowLeft,
   Calendar,
   DollarSign,
-  Percent,
   HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -138,30 +135,32 @@ function detectOrphanNights(ari: ARIEntry[], hotel: Hotel): OrphanNightCandidate
     const prevEntry = getEntry(entry.roomTypeId, prevDate);
     const nextEntry = getEntry(entry.roomTypeId, nextDate);
     
+    const prevUnavailable = !prevEntry || prevEntry.available === 0;
+    const nextUnavailable = !nextEntry || nextEntry.available === 0;
+    
     let isOrphan = false;
     let reason = "";
     let suggestedDiscount = 20;
     
-    if (prevEntry?.available === 0 && nextEntry?.available === 0) {
+    if (prevUnavailable && nextUnavailable) {
       isOrphan = true;
-      reason = "1-night gap between sold/blocked nights";
+      reason = "True 1-night gap: sold/blocked on both sides";
       suggestedDiscount = 35;
     }
-    else if ((prevEntry?.available === 0 && nextEntry?.available !== 0) || 
-             (prevEntry?.available !== 0 && nextEntry?.available === 0)) {
+    else if (prevUnavailable && nextEntry && nextEntry.available > 0 && nextEntry.minStay >= 2) {
       isOrphan = true;
-      reason = "Edge night adjacent to blocked period";
-      suggestedDiscount = 25;
-    }
-    else if (entry.minStay >= 2) {
-      isOrphan = true;
-      reason = "Restriction-created orphan (min stay requirement)";
+      reason = "Gap created by min-stay on following night";
       suggestedDiscount = 30;
     }
-    else if (entry.closedToArrival) {
+    else if (nextUnavailable && prevEntry && prevEntry.available > 0 && entry.closedToArrival) {
       isOrphan = true;
-      reason = "Closed to arrival but available";
+      reason = "Closed to arrival before blocked period";
       suggestedDiscount = 25;
+    }
+    else if (entry.minStay >= 2 && (prevUnavailable || nextUnavailable)) {
+      isOrphan = true;
+      reason = "Restriction-created orphan (min stay + adjacent block)";
+      suggestedDiscount = 30;
     }
     
     if (isOrphan) {
@@ -197,8 +196,7 @@ function calculateDealPrice(barRate: number, rule: PricingRule, override?: { pri
     case 'percent_off':
       return Math.round(barRate * (1 - rule.value / 100));
     case 'floor_price':
-      const discounted = Math.round(barRate * 0.7);
-      return Math.max(rule.value, discounted);
+      return rule.value;
     case 'fixed_price':
       return rule.value;
     default:
@@ -236,18 +234,18 @@ export default function OrphanNightsDashboard() {
     const savedCandidates = localStorage.getItem(`gapnight_orphan_candidates_${selectedHotelId}`);
     const savedRule = localStorage.getItem(`gapnight_pricing_rules_${selectedHotelId}`);
     
-    if (savedAri) setAriData(JSON.parse(savedAri));
-    if (savedCandidates) setOrphanCandidates(JSON.parse(savedCandidates));
-    if (savedRule) setPricingRule(JSON.parse(savedRule));
+    setAriData(savedAri ? JSON.parse(savedAri) : []);
+    setOrphanCandidates(savedCandidates ? JSON.parse(savedCandidates) : []);
+    if (savedRule) {
+      setPricingRule(JSON.parse(savedRule));
+    } else {
+      setPricingRule({ mode: 'percent_off', value: 25, applyTo: 'all' });
+    }
   }, [selectedHotelId]);
   
   useEffect(() => {
-    if (ariData.length > 0) {
-      localStorage.setItem(`gapnight_ari_cache_${selectedHotelId}`, JSON.stringify(ariData));
-    }
-    if (orphanCandidates.length > 0) {
-      localStorage.setItem(`gapnight_orphan_candidates_${selectedHotelId}`, JSON.stringify(orphanCandidates));
-    }
+    localStorage.setItem(`gapnight_ari_cache_${selectedHotelId}`, JSON.stringify(ariData));
+    localStorage.setItem(`gapnight_orphan_candidates_${selectedHotelId}`, JSON.stringify(orphanCandidates));
     localStorage.setItem(`gapnight_pricing_rules_${selectedHotelId}`, JSON.stringify(pricingRule));
   }, [ariData, orphanCandidates, pricingRule, selectedHotelId]);
   

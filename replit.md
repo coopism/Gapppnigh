@@ -92,3 +92,14 @@ Database tables:
 - **Scroll-to-Top Button**: Floating button appears when scrolling down
 - **Smooth Scrolling**: CSS scroll-behavior: smooth for better UX
 - **Dark Mode CSS Variables**: Complete dark palette with proper contrast ratios
+- **Coming Soon Page**: Dictionary-style definition hero with waitlist signup and hidden partner access
+- **Partner Access Gating**: Password-protected access to full platform (stored in PARTNER_ACCESS_PASSWORD secret)
+- **Hotel Dashboard**: Front-end mockup at `/hotel/dashboard/orphan-nights` for hotels to review and price orphan nights
+  - Simulated ARI (Availability/Rates/Inventory) fetch for next 7/14/30 days
+  - Automatic orphan night detection (true gaps, restriction-created, closed-to-arrival)
+  - Pricing controls: % off BAR, floor price, or fixed price
+  - Per-night price overrides
+  - Approve and publish workflow with localStorage persistence
+  - Clean admin UI with filters, sorting, and status tracking
+- **SEO Optimization**: Comprehensive meta tags, Open Graph, Twitter cards for social sharing
+- **Public Legal Pages**: Terms and Privacy pages accessible without partner access
