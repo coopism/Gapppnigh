@@ -54,9 +54,16 @@ export function Footer() {
                   hello@gapnight.com
                 </a>
               </li>
-              <li className="text-white/70 text-sm">FAQs</li>
-              <li className="text-white/70 text-sm">Privacy Policy</li>
-              <li className="text-white/70 text-sm">Terms of Service</li>
+              <li>
+                <Link href="/privacy" className="text-white/70 hover:text-white text-sm transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="text-white/70 hover:text-white text-sm transition-colors">
+                  Terms of Service
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

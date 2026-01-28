@@ -13,6 +13,8 @@ import Deals from "@/pages/Home";
 import DealDetail from "@/pages/DealDetail";
 import ListYourHotel from "@/pages/ListYourHotel";
 import Waitlist from "@/pages/Waitlist";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
 import NotFound from "@/pages/NotFound";
 
 function MainRouter() {
@@ -23,6 +25,8 @@ function MainRouter() {
       <Route path="/deal/:id" component={DealDetail} />
       <Route path="/list-your-hotel" component={ListYourHotel} />
       <Route path="/waitlist" component={Waitlist} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
       <Route component={NotFound} />
     </Switch>
   );
