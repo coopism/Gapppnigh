@@ -1,0 +1,265 @@
+```md
+# Replit Prompt — Build Backend + Hotel Owner Portal (Auth + Dashboard + Publishing + Deals Redesign)
+
+You are extending the GapNight mock site into a working MVP with:
+- a backend API
+- secure hotel-owner login
+- hotel owner dashboard to manage hotel profiles + availability + publishing
+- ability for owners to remove their hotel
+- revamp consumer deals UI to group deals by hotel, then show available dates on click
+
+## Tech Stack (use this unless the project already uses something else)
+- Next.js (App Router) fullstack OR Node/Express + React frontend (choose what matches existing project)
+- Database: SQLite (via Prisma) OR simple file-based DB (low complexity)
+- Auth: email + password using secure hashing (bcrypt/argon2)
+- Session: HttpOnly cookie session or JWT stored in HttpOnly cookie (not localStorage)
+
+---
+
+# 1) Core Data Model (Database)
+
+## Tables
+
+### HotelOwner
+- id (uuid)
+- email (unique)
+- passwordHash
+- name (optional)
+- createdAt
+
+### Hotel
+- id (uuid)
+- ownerId (FK -> HotelOwner)
+- chainName (string)  // for grouping multiple hotels under one owner
+- name (string)
+- description (text)
+- address (string)
+- city (string)
+- state (string)
+- country (string)
+- latitude (float, optional)
+- longitude (float, optional)
+- starRating (int or float)
+- amenities (json/text)
+- images (json array of urls or stored paths)
+- contactEmail (string, optional)
+- isActive (boolean, default true)
+- createdAt
+- updatedAt
+
+### RoomType
+- id (uuid)
+- hotelId (FK -> Hotel)
+- name (string) // “Standard Queen”, “King”, etc.
+- inventory (int) // number of rooms for this type
+- createdAt
+- updatedAt
+
+### Availability (ARI-lite for MVP)
+Store per room type per date:
+- id (uuid)
+- roomTypeId (FK -> RoomType)
+- date (YYYY-MM-DD)
+- available (int)        // available rooms remaining
+- barRate (int)          // base rate for that night
+- minStay (int, default 1)
+- closedToArrival (boolean, default false)
+- createdAt
+- updatedAt
+
+### PublishedDeal
+Stores the “published gap night deals” that appear on the consumer side:
+- id (uuid)
+- hotelId (FK -> Hotel)
+- roomTypeId (FK -> RoomType)
+- date (YYYY-MM-DD)
+- barRate (int)
+- dealPrice (int)
+- discountPercent (int)
+- reason (string, optional)
+- status (enum: DRAFT, PUBLISHED)
+- createdAt
+- updatedAt
+
+> NOTE: Availability drives what can be sold. PublishedDeal is what we surface in the consumer feed. Deals should only appear if availability(date) > 0.
+
+---
+
+# 2) Seed Data (create a couple chains + hotels)
+Seed these in the DB on first run:
+- Chain: “Crown Collection”
+  - Hotel: “Crown City Suites (Melbourne)”
+  - Hotel: “Crown Riverfront (Southbank)”
+- Chain: “Bayview Group”
+  - Hotel: “Bayview Boutique (Geelong)”
+  - Hotel: “Bayview Coastal (Mornington)”
+
+Create 1–2 owners:
+- owner1 manages Crown Collection
+- owner2 manages Bayview Group
+
+Seed room types and 30-day availability (random but realistic):
+- Ensure there are detectable “orphan nights” (availability islands and minStay=2 nights)
+- Seed some published deals as examples.
+
+---
+
+# 3) Auth Requirements (Secure Email + Password)
+Create:
+- `/owner/login` page
+- `/owner/register` page (optional for MVP; can be disabled and only seeded owners exist)
+- `/owner/logout` endpoint
+
+Security:
+- Hash passwords with bcrypt or argon2
+- Validate email format
+- Rate limit login attempts (basic)
+- Use HttpOnly cookies for session tokens
+- Protect all owner routes with auth middleware
+
+---
+
+# 4) Backend API Endpoints
+
+## Auth
+- POST `/api/auth/login`
+  - body: { email, password }
+  - sets secure session cookie
+- POST `/api/auth/logout`
+  - clears cookie
+- GET `/api/auth/me`
+  - returns current owner basic info
+
+## Hotels (Owner-only)
+- GET `/api/owner/hotels`
+  - list hotels owned by logged-in owner
+- POST `/api/owner/hotels`
+  - create new hotel
+- PUT `/api/owner/hotels/:hotelId`
+  - update hotel profile (name, description, address, stars, amenities, contactEmail, etc.)
+- DELETE `/api/owner/hotels/:hotelId`
+  - “remove hotel”: set isActive=false (soft delete)
+  - also unpublish all deals for that hotel
+
+## Images (Owner-only)
+- POST `/api/owner/hotels/:hotelId/images`
+  - upload image (store locally /uploads or in public folder)
+  - return URL
+- DELETE `/api/owner/hotels/:hotelId/images`
+  - remove image by URL or id
+
+## Room Types (Owner-only)
+- GET `/api/owner/hotels/:hotelId/room-types`
+- POST `/api/owner/hotels/:hotelId/room-types`
+- PUT `/api/owner/room-types/:roomTypeId`
+- DELETE `/api/owner/room-types/:roomTypeId`
+
+## Availability (Owner-only)
+- GET `/api/owner/room-types/:roomTypeId/availability?start=YYYY-MM-DD&end=YYYY-MM-DD`
+- PUT `/api/owner/room-types/:roomTypeId/availability/bulk`
+  - body: { startDate, endDate, available, barRate, minStay, closedToArrival }
+  - applies across a range
+- PUT `/api/owner/room-types/:roomTypeId/availability/:date`
+  - per-date override
+
+## Deal Publishing (Owner-only)
+- POST `/api/owner/hotels/:hotelId/deals/generate-orphans`
+  - server-side: detect orphan nights from Availability (next 30 days)
+  - return list of candidates with reasons and suggested discount
+- POST `/api/owner/hotels/:hotelId/deals/publish`
+  - body: pricing rule OR explicit per-date prices
+  - server creates/updates PublishedDeal rows (status=PUBLISHED)
+  - only publish where availability(date) > 0
+- POST `/api/owner/hotels/:hotelId/deals/unpublish`
+  - body: list of deal ids or date range
+  - sets status=DRAFT or deletes
+
+## Consumer (Public)
+- GET `/api/public/hotels`
+  - list active hotels with summary + images + stars + location
+- GET `/api/public/hotels/:hotelId`
+  - hotel details + room types
+- GET `/api/public/hotels/:hotelId/deal-dates?start=YYYY-MM-DD&end=YYYY-MM-DD`
+  - returns available published deal dates for that hotel
+  - includes cheapest dealPrice per date + room type summary
+- GET `/api/public/deals`
+  - returns deals grouped by hotel for the new consumer UI:
+    - [{ hotel, minPrice, maxDiscount, nextAvailableDate, coverImage, stars, location, dealDateCount }]
+
+---
+
+# 5) Owner Portal UI
+
+## Pages
+- `/owner/login` (secure login)
+- `/owner/dashboard` (list hotels for this owner + create/edit)
+- `/owner/hotels/:hotelId` (hotel management tabs)
+
+### Hotel management tabs (inside `/owner/hotels/:hotelId`)
+1) **Profile**
+   - name, description, address, location, stars, amenities, contact email
+2) **Images**
+   - upload/remove images
+3) **Room Types**
+   - add/edit inventory counts
+4) **Availability**
+   - calendar/range editor for next 30 days
+   - bulk apply rules (available, barRate, minStay)
+5) **Gap Night Deals**
+   - “Generate orphan nights”
+   - show candidate list
+   - pricing rule (global + per-date override)
+   - publish/unpublish
+
+Also add a **Danger Zone** section:
+- “Remove Hotel” button (soft delete) with confirmation
+
+---
+
+# 6) Deals Page Redesign (Consumer UI)
+Revamp the consumer deals page:
+
+### Old
+- Shows deals date-by-date
+
+### New
+- Show deals **grouped by hotel**:
+  - hotel card: name, stars, location, cover image
+  - badges: “Up to X% off”, “From $Y”
+  - small line: “X deal dates in the next 30 days”
+- When user clicks a hotel card:
+  - navigate to `/hotels/:hotelId` or `/deals/:hotelId`
+  - show a date list/calendar of published deal dates + prices
+  - user selects a date to view details
+
+> For now, booking can remain “Request to book” or a placeholder checkout. The key is availability browsing.
+
+---
+
+# 7) Access Control
+- Owners can ONLY edit hotels they own
+- Validate ownerId on every owner route
+- Public endpoints return only isActive hotels and published deals
+
+---
+
+# 8) Acceptance Criteria
+- Secure login (email/password) works
+- Owner dashboard lists seeded hotels by chain
+- Owner can update hotel profile fields and images
+- Owner can manage room types and availability for next 30 days
+- Orphan-night generation runs server-side from availability data
+- Publishing creates PublishedDeal records
+- Removing a hotel hides it from public pages
+- Consumer deals page shows hotels (not dates), and clicking shows available deal dates
+
+---
+
+# 9) Implementation Notes
+- Use server-side validation for all writes
+- Use consistent date handling (YYYY-MM-DD)
+- Keep the system stable even if no deals exist
+- Keep code readable and modular; comment the key parts (auth middleware, orphan detection, publishing)
+
+Build this end-to-end so it works locally in Replit.
+```
