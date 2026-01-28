@@ -72,9 +72,18 @@ export function Footer() {
           <p className="text-white/50 text-sm">
             {currentYear} GapNight. All rights reserved.
           </p>
-          <p className="text-white/50 text-xs">
-            Made with care in Australia
-          </p>
+          <div className="flex items-center gap-4">
+            <Link 
+              href="/owner/login" 
+              className="text-white/30 hover:text-white/50 text-xs transition-colors"
+              data-testid="link-partner-login"
+            >
+              Partner Portal
+            </Link>
+            <p className="text-white/50 text-xs">
+              Made with care in Australia
+            </p>
+          </div>
         </div>
       </div>
     </footer>
