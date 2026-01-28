@@ -24,7 +24,7 @@ export async function registerRoutes(
   });
 
   app.get(api.deals.get.path, async (req, res) => {
-    const deal = await storage.getDeal(req.params.id);
+    const deal = await storage.getDeal(req.params.id as string);
     if (!deal) {
       return res.status(404).json({ message: "Deal not found" });
     }
@@ -211,7 +211,7 @@ export async function registerRoutes(
   });
 
   app.get("/api/owner/hotels/:hotelId", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId);
+    const hotel = await storage.getHotel(req.params.hotelId as string);
     if (!hotel || hotel.ownerId !== req.owner!.id) {
       return res.status(404).json({ message: "Hotel not found" });
     }
@@ -219,14 +219,14 @@ export async function registerRoutes(
   });
 
   app.put("/api/owner/hotels/:hotelId", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId);
+    const hotel = await storage.getHotel(req.params.hotelId as string);
     if (!hotel || hotel.ownerId !== req.owner!.id) {
       return res.status(404).json({ message: "Hotel not found" });
     }
     
     try {
       const data = hotelSchema.partial().parse(req.body);
-      const updated = await storage.updateHotel(req.params.hotelId, data);
+      const updated = await storage.updateHotel(req.params.hotelId as string, data);
       res.json(updated);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -237,12 +237,12 @@ export async function registerRoutes(
   });
 
   app.delete("/api/owner/hotels/:hotelId", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId);
+    const hotel = await storage.getHotel(req.params.hotelId as string);
     if (!hotel || hotel.ownerId !== req.owner!.id) {
       return res.status(404).json({ message: "Hotel not found" });
     }
     
-    await storage.deactivateHotel(req.params.hotelId);
+    await storage.deactivateHotel(req.params.hotelId as string);
     res.json({ success: true, message: "Hotel deactivated" });
   });
 
@@ -256,17 +256,17 @@ export async function registerRoutes(
   });
 
   app.get("/api/owner/hotels/:hotelId/room-types", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId);
+    const hotel = await storage.getHotel(req.params.hotelId as string);
     if (!hotel || hotel.ownerId !== req.owner!.id) {
       return res.status(404).json({ message: "Hotel not found" });
     }
     
-    const roomTypes = await storage.getHotelRoomTypes(req.params.hotelId);
+    const roomTypes = await storage.getHotelRoomTypes(req.params.hotelId as string);
     res.json(roomTypes);
   });
 
   app.post("/api/owner/hotels/:hotelId/room-types", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId);
+    const hotel = await storage.getHotel(req.params.hotelId as string);
     if (!hotel || hotel.ownerId !== req.owner!.id) {
       return res.status(404).json({ message: "Hotel not found" });
     }
@@ -275,7 +275,7 @@ export async function registerRoutes(
       const data = roomTypeSchema.parse(req.body);
       const roomType = await storage.createRoomType({
         id: uuidv4(),
-        hotelId: req.params.hotelId,
+        hotelId: req.params.hotelId as string,
         ...data,
       });
       res.status(201).json(roomType);
@@ -289,13 +289,13 @@ export async function registerRoutes(
 
   app.put("/api/owner/room-types/:roomTypeId", authMiddleware, async (req, res) => {
     // Verify ownership through hotel
-    const roomTypes = await storage.getHotelRoomTypes(req.params.roomTypeId);
+    const roomTypes = await storage.getHotelRoomTypes(req.params.roomTypeId as string);
     // Get the room type first
     const allRoomTypes = await Promise.all(
       (await storage.getOwnerHotels(req.owner!.id)).map(h => storage.getHotelRoomTypes(h.id))
     );
     const ownerRoomTypes = allRoomTypes.flat();
-    const roomType = ownerRoomTypes.find(rt => rt.id === req.params.roomTypeId);
+    const roomType = ownerRoomTypes.find(rt => rt.id === req.params.roomTypeId as string);
     
     if (!roomType) {
       return res.status(404).json({ message: "Room type not found" });
@@ -303,7 +303,7 @@ export async function registerRoutes(
     
     try {
       const data = roomTypeSchema.partial().parse(req.body);
-      const updated = await storage.updateRoomType(req.params.roomTypeId, data);
+      const updated = await storage.updateRoomType(req.params.roomTypeId as string, data);
       res.json(updated);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -318,13 +318,13 @@ export async function registerRoutes(
       (await storage.getOwnerHotels(req.owner!.id)).map(h => storage.getHotelRoomTypes(h.id))
     );
     const ownerRoomTypes = allRoomTypes.flat();
-    const roomType = ownerRoomTypes.find(rt => rt.id === req.params.roomTypeId);
+    const roomType = ownerRoomTypes.find(rt => rt.id === req.params.roomTypeId as string);
     
     if (!roomType) {
       return res.status(404).json({ message: "Room type not found" });
     }
     
-    await storage.deleteRoomType(req.params.roomTypeId);
+    await storage.deleteRoomType(req.params.roomTypeId as string);
     res.json({ success: true });
   });
 
@@ -352,7 +352,7 @@ export async function registerRoutes(
     }
     
     const availability = await storage.getAvailability(
-      req.params.roomTypeId,
+      req.params.roomTypeId as string,
       start as string,
       end as string
     );
@@ -362,7 +362,7 @@ export async function registerRoutes(
   app.put("/api/owner/room-types/:roomTypeId/availability/bulk", authMiddleware, async (req, res) => {
     try {
       const { startDate, endDate, ...data } = bulkAvailabilitySchema.parse(req.body);
-      await storage.bulkUpdateAvailability(req.params.roomTypeId, startDate, endDate, data);
+      await storage.bulkUpdateAvailability(req.params.roomTypeId as string, startDate, endDate, data);
       res.json({ success: true });
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -377,8 +377,8 @@ export async function registerRoutes(
       const data = availabilitySchema.parse(req.body);
       const availability = await storage.upsertAvailability({
         id: uuidv4(),
-        roomTypeId: req.params.roomTypeId,
-        date: req.params.date,
+        roomTypeId: req.params.roomTypeId as string,
+        date: req.params.date as string,
         ...data,
       });
       res.json(availability);
@@ -395,12 +395,12 @@ export async function registerRoutes(
   // ========================================
   
   app.post("/api/owner/hotels/:hotelId/deals/generate-orphans", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId);
+    const hotel = await storage.getHotel(req.params.hotelId as string);
     if (!hotel || hotel.ownerId !== req.owner!.id) {
       return res.status(404).json({ message: "Hotel not found" });
     }
     
-    const roomTypes = await storage.getHotelRoomTypes(req.params.hotelId);
+    const roomTypes = await storage.getHotelRoomTypes(req.params.hotelId as string);
     const candidates: any[] = [];
     
     // Generate date range for next 30 days
@@ -478,7 +478,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/owner/hotels/:hotelId/deals/publish", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId);
+    const hotel = await storage.getHotel(req.params.hotelId as string);
     if (!hotel || hotel.ownerId !== req.owner!.id) {
       return res.status(404).json({ message: "Hotel not found" });
     }
@@ -512,17 +512,17 @@ export async function registerRoutes(
   });
 
   app.get("/api/owner/hotels/:hotelId/deals", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId);
+    const hotel = await storage.getHotel(req.params.hotelId as string);
     if (!hotel || hotel.ownerId !== req.owner!.id) {
       return res.status(404).json({ message: "Hotel not found" });
     }
     
-    const deals = await storage.getHotelDeals(req.params.hotelId);
+    const deals = await storage.getHotelDeals(req.params.hotelId as string);
     res.json(deals);
   });
 
   app.post("/api/owner/hotels/:hotelId/deals/unpublish", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId);
+    const hotel = await storage.getHotel(req.params.hotelId as string);
     if (!hotel || hotel.ownerId !== req.owner!.id) {
       return res.status(404).json({ message: "Hotel not found" });
     }
@@ -546,7 +546,7 @@ export async function registerRoutes(
   });
 
   app.get("/api/public/hotels/:hotelId", async (req, res) => {
-    const hotel = await storage.getPublicHotel(req.params.hotelId);
+    const hotel = await storage.getPublicHotel(req.params.hotelId as string);
     if (!hotel) {
       return res.status(404).json({ message: "Hotel not found" });
     }
@@ -558,7 +558,7 @@ export async function registerRoutes(
   app.get("/api/public/hotels/:hotelId/deal-dates", async (req, res) => {
     const { start, end } = req.query;
     const deals = await storage.getPublicDealsByHotel(
-      req.params.hotelId,
+      req.params.hotelId as string,
       start as string,
       end as string
     );
