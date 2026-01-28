@@ -32,6 +32,18 @@ function MainRouter() {
   );
 }
 
+function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
+  return (
+    <Switch>
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
+      <Route>
+        <ComingSoon onPartnerAccess={onPartnerAccess} />
+      </Route>
+    </Switch>
+  );
+}
+
 function App() {
   const [hasPartnerAccess, setHasPartnerAccess] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -63,7 +75,7 @@ function App() {
               <ScrollToTop />
             </>
           ) : (
-            <ComingSoon onPartnerAccess={handlePartnerAccess} />
+            <PublicRouter onPartnerAccess={handlePartnerAccess} />
           )}
         </TooltipProvider>
       </ThemeProvider>
