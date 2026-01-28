@@ -388,11 +388,11 @@ export default function Landing() {
                 <div className="space-y-3">
                   <div className="bg-white/5 rounded-lg p-3 flex justify-between items-center">
                     <span className="text-sm text-white/80">Avg. gap night fill rate</span>
-                    <span className="font-bold text-primary">78%</span>
+                    <span className="font-bold text-primary">??</span>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3 flex justify-between items-center">
                     <span className="text-sm text-white/80">Revenue recovered</span>
-                    <span className="font-bold text-primary">A$2.4M+</span>
+                    <span className="font-bold text-primary">??</span>
                   </div>
                 </div>
               </div>
