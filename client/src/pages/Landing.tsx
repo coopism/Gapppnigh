@@ -342,15 +342,15 @@ export default function Landing() {
       </section>
 
       {/* For Hotels Section */}
-      <section className="py-16 md:py-20 bg-foreground text-background">
+      <section className="py-16 md:py-20 bg-neutral-900 dark:bg-neutral-950 text-white">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-12 items-center">
             <div>
               <Badge variant="secondary" className="mb-4">For Hotels</Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
                 Fill your gap nights without discounting your whole calendar
               </h2>
-              <ul className="space-y-3 text-background/70 mb-8">
+              <ul className="space-y-3 text-white/70 mb-8">
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <span>Only list nights you want to fill</span>
@@ -375,23 +375,23 @@ export default function Landing() {
               </Button>
             </div>
             <div className="hidden md:block">
-              <div className="bg-background/10 rounded-2xl p-8 border border-background/20">
+              <div className="bg-white/10 rounded-2xl p-8 border border-white/20">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
                     <Building2 className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <div className="font-bold">Hotel Partners</div>
-                    <div className="text-sm text-background/60">Join 50+ Australian hotels</div>
+                    <div className="font-bold text-white">Hotel Partners</div>
+                    <div className="text-sm text-white/60">Join 50+ Australian hotels</div>
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <div className="bg-background/5 rounded-lg p-3 flex justify-between items-center">
-                    <span className="text-sm">Avg. gap night fill rate</span>
+                  <div className="bg-white/5 rounded-lg p-3 flex justify-between items-center">
+                    <span className="text-sm text-white/80">Avg. gap night fill rate</span>
                     <span className="font-bold text-primary">78%</span>
                   </div>
-                  <div className="bg-background/5 rounded-lg p-3 flex justify-between items-center">
-                    <span className="text-sm">Revenue recovered</span>
+                  <div className="bg-white/5 rounded-lg p-3 flex justify-between items-center">
+                    <span className="text-sm text-white/80">Revenue recovered</span>
                     <span className="font-bold text-primary">A$2.4M+</span>
                   </div>
                 </div>
@@ -424,11 +424,11 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 bg-foreground text-background/60">
+      <footer className="py-12 bg-neutral-900 dark:bg-neutral-950 text-white/60">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2">
-              <div className="text-2xl font-bold text-background mb-3">
+              <div className="text-2xl font-bold text-white mb-3">
                 Gap<span className="text-primary">Night</span>
               </div>
               <p className="text-sm max-w-sm">
@@ -436,7 +436,7 @@ export default function Landing() {
               </p>
             </div>
             <div>
-              <div className="font-semibold text-background mb-3">Quick Links</div>
+              <div className="font-semibold text-white mb-3">Quick Links</div>
               <ul className="space-y-2 text-sm">
                 <li><a href="/deals" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-deals">Browse Deals</a></li>
                 <li><a href="/list-your-hotel" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-hotels">For Hotels</a></li>
@@ -444,18 +444,18 @@ export default function Landing() {
               </ul>
             </div>
             <div>
-              <div className="font-semibold text-background mb-3">Legal</div>
+              <div className="font-semibold text-white mb-3">Legal</div>
               <ul className="space-y-2 text-sm">
                 <li><a href="#" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-terms">Terms of Service</a></li>
                 <li><a href="#" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-privacy">Privacy Policy</a></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-background/20 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-sm">
+          <div className="border-t border-white/20 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-sm text-white/80">
               © 2026 GapNight. All rights reserved.
             </div>
-            <div className="text-xs text-background/40">
+            <div className="text-xs text-white/40">
               Discounts vary by property and availability.
             </div>
           </div>
