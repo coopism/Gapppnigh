@@ -51,6 +51,10 @@ interface RoomTypePricing {
   fixedPrice: number;
 }
 
+interface RoomTypeBarRate {
+  barRate: number;
+}
+
 export default function HotelDeals() {
   const [, params] = useRoute("/owner/hotels/:hotelId/deals");
   const hotelId = params?.hotelId;
@@ -71,6 +75,7 @@ export default function HotelDeals() {
   });
   
   const [roomTypePricing, setRoomTypePricing] = useState<Record<string, RoomTypePricing>>({});
+  const [roomTypeBarRates, setRoomTypeBarRates] = useState<Record<string, number>>({});
   const [selectedRoomTypeForPricing, setSelectedRoomTypeForPricing] = useState<string>('default');
   
   const [roomTypeFilter, setRoomTypeFilter] = useState<string>('all');
@@ -78,6 +83,8 @@ export default function HotelDeals() {
   
   const [editingCandidateId, setEditingCandidateId] = useState<string | null>(null);
   const [editingPrice, setEditingPrice] = useState<string>('');
+  const [editingBarRoomTypeId, setEditingBarRoomTypeId] = useState<string | null>(null);
+  const [editingBarRate, setEditingBarRate] = useState<string>('');
 
   const { data: hotel, isLoading: hotelLoading } = useQuery<HotelProfile>({
     queryKey: ["/api/owner/hotels", hotelId],
@@ -129,6 +136,11 @@ export default function HotelDeals() {
 
   const getPricingForRoomType = (roomTypeId: string): RoomTypePricing => {
     return roomTypePricing[roomTypeId] || defaultPricing;
+  };
+
+  const getEffectiveBarRate = (candidate: OrphanCandidate): number => {
+    const customBarRate = roomTypeBarRates[candidate.roomTypeId];
+    return customBarRate !== undefined ? customBarRate : candidate.barRate;
   };
 
   const getCurrentPricing = (): RoomTypePricing => {
@@ -193,15 +205,19 @@ export default function HotelDeals() {
     
     switch (sortBy) {
       case 'cheapest':
-        filtered.sort((a, b) => 
-          calculateDealPrice(a.barRate, a.roomTypeId, a.overridePrice) - 
-          calculateDealPrice(b.barRate, b.roomTypeId, b.overridePrice)
-        );
+        filtered.sort((a, b) => {
+          const barA = getEffectiveBarRate(a);
+          const barB = getEffectiveBarRate(b);
+          return calculateDealPrice(barA, a.roomTypeId, a.overridePrice) - 
+                 calculateDealPrice(barB, b.roomTypeId, b.overridePrice);
+        });
         break;
       case 'biggest_discount':
         filtered.sort((a, b) => {
-          const discountA = getDiscountPercent(a.barRate, calculateDealPrice(a.barRate, a.roomTypeId, a.overridePrice));
-          const discountB = getDiscountPercent(b.barRate, calculateDealPrice(b.barRate, b.roomTypeId, b.overridePrice));
+          const barA = getEffectiveBarRate(a);
+          const barB = getEffectiveBarRate(b);
+          const discountA = getDiscountPercent(barA, calculateDealPrice(barA, a.roomTypeId, a.overridePrice));
+          const discountB = getDiscountPercent(barB, calculateDealPrice(barB, b.roomTypeId, b.overridePrice));
           return discountB - discountA;
         });
         break;
@@ -210,7 +226,7 @@ export default function HotelDeals() {
     }
     
     return filtered;
-  }, [candidates, roomTypeFilter, sortBy, defaultPricing, roomTypePricing]);
+  }, [candidates, roomTypeFilter, sortBy, defaultPricing, roomTypePricing, roomTypeBarRates]);
 
   if (!isAuthenticated) {
     setLocation("/owner/login");
@@ -269,8 +285,35 @@ export default function HotelDeals() {
 
   const handleStartEdit = (candidate: OrphanCandidate) => {
     setEditingCandidateId(candidate.id);
-    const currentPrice = calculateDealPrice(candidate.barRate, candidate.roomTypeId, candidate.overridePrice);
+    const effectiveBar = getEffectiveBarRate(candidate);
+    const currentPrice = calculateDealPrice(effectiveBar, candidate.roomTypeId, candidate.overridePrice);
     setEditingPrice(currentPrice.toString());
+  };
+
+  const handleStartEditBar = (roomTypeId: string, currentBar: number) => {
+    setEditingBarRoomTypeId(roomTypeId);
+    const customBar = roomTypeBarRates[roomTypeId];
+    setEditingBarRate((customBar !== undefined ? customBar : currentBar).toString());
+  };
+
+  const handleSaveBarRate = (roomTypeId: string) => {
+    const rate = parseInt(editingBarRate);
+    if (!isNaN(rate) && rate > 0) {
+      setRoomTypeBarRates(prev => ({
+        ...prev,
+        [roomTypeId]: rate,
+      }));
+    }
+    setEditingBarRoomTypeId(null);
+    setEditingBarRate('');
+  };
+
+  const handleClearBarRate = (roomTypeId: string) => {
+    setRoomTypeBarRates(prev => {
+      const next = { ...prev };
+      delete next[roomTypeId];
+      return next;
+    });
   };
 
   const handleSaveEdit = (candidateId: string) => {
@@ -294,13 +337,14 @@ export default function HotelDeals() {
     const dealsToPublish = candidates
       .filter(c => selectedIds.has(c.id))
       .map(c => {
-        const dealPrice = calculateDealPrice(c.barRate, c.roomTypeId, c.overridePrice);
+        const effectiveBar = getEffectiveBarRate(c);
+        const dealPrice = calculateDealPrice(effectiveBar, c.roomTypeId, c.overridePrice);
         return {
           roomTypeId: c.roomTypeId,
           date: c.date,
-          barRate: c.barRate,
+          barRate: effectiveBar,
           dealPrice,
-          discountPercent: getDiscountPercent(c.barRate, dealPrice),
+          discountPercent: getDiscountPercent(effectiveBar, dealPrice),
         };
       });
     
@@ -490,10 +534,13 @@ export default function HotelDeals() {
                         </TableHeader>
                         <TableBody>
                           {filteredCandidates.map(candidate => {
-                            const dealPrice = calculateDealPrice(candidate.barRate, candidate.roomTypeId, candidate.overridePrice);
-                            const discount = getDiscountPercent(candidate.barRate, dealPrice);
+                            const effectiveBar = getEffectiveBarRate(candidate);
+                            const dealPrice = calculateDealPrice(effectiveBar, candidate.roomTypeId, candidate.overridePrice);
+                            const discount = getDiscountPercent(effectiveBar, dealPrice);
                             const isEditing = editingCandidateId === candidate.id;
+                            const isEditingBar = editingBarRoomTypeId === candidate.roomTypeId;
                             const hasOverride = candidate.overridePrice !== undefined;
+                            const hasCustomBar = roomTypeBarRates[candidate.roomTypeId] !== undefined;
                             
                             return (
                               <TableRow key={candidate.id} data-testid={`row-candidate-${candidate.id}`}>
@@ -509,7 +556,62 @@ export default function HotelDeals() {
                                 </TableCell>
                                 <TableCell>{candidate.roomTypeName}</TableCell>
                                 <TableCell>{candidate.available}</TableCell>
-                                <TableCell>A${candidate.barRate}</TableCell>
+                                <TableCell>
+                                  {isEditingBar ? (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-muted-foreground">A$</span>
+                                      <Input
+                                        type="number"
+                                        value={editingBarRate}
+                                        onChange={(e) => setEditingBarRate(e.target.value)}
+                                        className="w-20 h-8"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') handleSaveBarRate(candidate.roomTypeId);
+                                          if (e.key === 'Escape') setEditingBarRoomTypeId(null);
+                                        }}
+                                        data-testid={`input-bar-${candidate.roomTypeId}`}
+                                      />
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost" 
+                                        className="h-8 px-2"
+                                        onClick={() => handleSaveBarRate(candidate.roomTypeId)}
+                                      >
+                                        Save
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 group">
+                                      <span className={hasCustomBar ? 'text-blue-600 font-medium' : ''}>
+                                        A${effectiveBar}
+                                      </span>
+                                      {hasCustomBar && (
+                                        <Badge variant="outline" className="text-xs ml-1">Custom</Badge>
+                                      )}
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onClick={() => handleStartEditBar(candidate.roomTypeId, candidate.barRate)}
+                                        data-testid={`button-edit-bar-${candidate.roomTypeId}`}
+                                      >
+                                        <Edit2 className="h-3 w-3" />
+                                      </Button>
+                                      {hasCustomBar && (
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground"
+                                          onClick={() => handleClearBarRate(candidate.roomTypeId)}
+                                          data-testid={`button-clear-bar-${candidate.roomTypeId}`}
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )}
+                                </TableCell>
                                 <TableCell>
                                   {isEditing ? (
                                     <div className="flex items-center gap-1">
@@ -767,7 +869,10 @@ export default function HotelDeals() {
                           A${Math.round(
                             candidates
                               .filter(c => selectedIds.has(c.id))
-                              .reduce((sum, c) => sum + calculateDealPrice(c.barRate, c.roomTypeId, c.overridePrice), 0) / selectedIds.size
+                              .reduce((sum, c) => {
+                                const bar = getEffectiveBarRate(c);
+                                return sum + calculateDealPrice(bar, c.roomTypeId, c.overridePrice);
+                              }, 0) / selectedIds.size
                           )}
                         </span>
                       </div>
@@ -778,8 +883,9 @@ export default function HotelDeals() {
                             candidates
                               .filter(c => selectedIds.has(c.id))
                               .reduce((sum, c) => {
-                                const dealPrice = calculateDealPrice(c.barRate, c.roomTypeId, c.overridePrice);
-                                return sum + getDiscountPercent(c.barRate, dealPrice);
+                                const bar = getEffectiveBarRate(c);
+                                const dealPrice = calculateDealPrice(bar, c.roomTypeId, c.overridePrice);
+                                return sum + getDiscountPercent(bar, dealPrice);
                               }, 0) / selectedIds.size
                           )}%
                         </span>
@@ -794,6 +900,36 @@ export default function HotelDeals() {
                   )}
                 </CardContent>
               </Card>
+
+              {Object.keys(roomTypeBarRates).length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Custom Normal Rates</CardTitle>
+                    <CardDescription>Your set BAR prices by room type</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {Object.entries(roomTypeBarRates).map(([rtId, barRate]) => {
+                      const rt = roomTypes.find(r => r.id === rtId);
+                      return (
+                        <div key={rtId} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
+                          <span className="text-sm font-medium">{rt?.name || rtId}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">A${barRate}/night</Badge>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={() => handleClearBarRate(rtId)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              )}
 
               {Object.keys(roomTypePricing).length > 0 && (
                 <Card>
