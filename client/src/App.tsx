@@ -15,6 +15,7 @@ import ListYourHotel from "@/pages/ListYourHotel";
 import Waitlist from "@/pages/Waitlist";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
+import OrphanNightsDashboard from "@/pages/hotel/dashboard/OrphanNights";
 import NotFound from "@/pages/NotFound";
 
 function MainRouter() {
@@ -27,6 +28,7 @@ function MainRouter() {
       <Route path="/waitlist" component={Waitlist} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
+      <Route path="/hotel/dashboard/orphan-nights" component={OrphanNightsDashboard} />
       <Route component={NotFound} />
     </Switch>
   );

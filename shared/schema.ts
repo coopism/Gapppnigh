@@ -51,3 +51,52 @@ export type Deal = typeof deals.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type InsertWaitlist = z.infer<typeof insertWaitlistSchema>;
 export type InsertHotelInquiry = z.infer<typeof insertHotelInquirySchema>;
+
+// Hotel Dashboard Types (Front-end only, not persisted to DB)
+export interface Hotel {
+  id: string;
+  name: string;
+  location: string;
+  roomTypes: RoomType[];
+}
+
+export interface RoomType {
+  id: string;
+  name: string;
+  hotelId: string;
+}
+
+export interface ARIEntry {
+  hotelId: string;
+  roomTypeId: string;
+  date: string;
+  available: number;
+  barRate: number;
+  minStay: number;
+  closedToArrival: boolean;
+}
+
+export interface OrphanNightCandidate {
+  id: string;
+  hotelId: string;
+  roomTypeId: string;
+  roomTypeName: string;
+  date: string;
+  barRate: number;
+  available: number;
+  reason: string;
+  suggestedDiscountPercent: number;
+  status: 'draft' | 'approved' | 'published';
+  included: boolean;
+  overridePrice?: number;
+  overrideDiscountPercent?: number;
+}
+
+export type PricingMode = 'percent_off' | 'floor_price' | 'fixed_price';
+
+export interface PricingRule {
+  mode: PricingMode;
+  value: number;
+  applyTo: 'all' | 'selected_room_type' | 'checked_only';
+  selectedRoomTypeId?: string;
+}

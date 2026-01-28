@@ -1,0 +1,252 @@
+````md
+# Replit Prompt — Build “Hotel Dashboard: Orphan Nights Review + Pricing” Component (GapNight)
+
+Build a **front-end mock** of the hotel dashboard that supports this exact flow:
+
+1) Connect to the channel manager / PMS and **pull ARI** (Availability / Rates / Inventory) for the **next 30 days**  
+2) Our system **detects orphan nights** from ARI (no guest bookings / no PII)  
+3) Hotel reviews detected orphan nights and sets pricing:
+   - **Option A:** a global rule (e.g., “20% off BAR” or “floor price $159”)
+   - **Option B:** per-night override (tweak specific nights)
+4) The approved orphan-night deals get “published” to GapNight
+
+⚠️ This is a **mockup component**: use local mock data and localStorage; simulate the ARI fetch + detection. No real SiteMinder API calls needed yet, but build it so it is ready for when we intergrate 
+
+---
+
+## Route / Page
+Create a page at: `/hotel/dashboard/orphan-nights`
+
+### Layout (Clean, modern, admin style)
+- Top: header with hotel selector + “Connection status”
+- Main content split:
+  - Left/center: Orphan night table/list
+  - Right: Pricing rule card + publish panel
+
+Use the same design language as the main site:
+- rounded cards
+- subtle shadow
+- teal primary actions
+- light neutral background
+
+---
+
+## 1) “Connect” + ARI Pull (Simulated)
+### UI
+At the top show:
+- Hotel dropdown (select hotel)
+- Status pill:
+  - “Connected (Mock)” or “Not connected”
+- Button: **Refresh next 30 days**
+
+### Behavior
+When user clicks refresh:
+- Simulate an API call (timeout 800–1200ms)
+- Load ARI data for the selected hotel for the next 30 days
+
+---
+
+## 2) ARI Data Model (Mock)
+Create mock ARI data for 2–3 hotels, 2–4 room types each.
+
+### ARI shape (per room type, per date)
+```js
+{
+  hotelId: "h_melb_001",
+  roomTypeId: "rt_king",
+  date: "2026-02-14",
+  available: 3,      // inventory available that night
+  barRate: 320,      // hotel’s public “best available rate” for that night
+  minStay: 2,        // restriction (common cause of orphan nights)
+  closedToArrival: false
+}
+````
+
+Store ARI for 30 days per room type.
+
+---
+
+## 3) Orphan Night Detection (Front-end logic)
+
+Detect **candidate orphan nights** for each room type.
+
+### Definition for MVP (keep it simple)
+
+A date `D` is an “orphan night” candidate when:
+
+* `available(D) > 0` (rooms exist)
+* and it is **hard to sell normally** due to surrounding constraints.
+
+Use this pragmatic detection rule:
+
+**Rule A (classic 1-night gap):**
+
+* Availability exists on D
+* Adjacent nights are effectively “blocked/sold”:
+
+  * `available(D-1) == 0` AND `available(D+1) == 0`
+  * (works for true sold-out gaps)
+
+**Rule B (restriction-created orphan):**
+
+* Availability exists on D
+* Adjacent nights have availability, BUT restrictions make D hard to sell:
+
+  * `minStay(D) >= 2` AND the system is showing “next 30 days, 1-night deals”
+  * OR `closedToArrival(D) == true` but the night is open (makes it awkward)
+* Also treat “single-night islands” as candidates:
+
+  * `available(D) > 0` and `available(D-1) == 0` OR `available(D+1) == 0`
+
+### Output object (OrphanNightCandidate)
+
+```js
+{
+  id: "on_001",
+  hotelId: "h_melb_001",
+  roomTypeId: "rt_king",
+  date: "2026-02-14",
+  barRate: 320,
+  available: 3,
+  reason: "1-night gap between sold/blocked nights",
+  suggestedDiscountPercent: 30 // optional heuristic
+}
+```
+
+Display these in a list/table.
+
+---
+
+## 4) Orphan Nights Review Table
+
+Table columns:
+
+* Date
+* Room type
+* Availability
+* BAR rate
+* Reason (short)
+* Pricing (computed deal price)
+* Status: Draft / Approved / Published
+* Toggle: Include in GapNight (checkbox)
+
+Filters:
+
+* Room type dropdown
+* “Only show 1-night gaps”
+* “Only show restriction-created gaps”
+* Sort: Biggest discount / Cheapest / Soonest
+
+---
+
+## 5) Pricing Controls (Option A + Option B)
+
+### Pricing Rule Card (Option A)
+
+Controls:
+
+* Pricing mode dropdown:
+
+  1. `% off BAR`
+  2. `Floor price`
+  3. `Fixed price`
+* Input:
+
+  * If `% off`: slider or input (e.g., 10–70%)
+  * If floor: `$159`
+  * If fixed: `$199`
+
+Also include:
+
+* “Apply rule to all detected orphan nights”
+* “Apply only to selected room type”
+* “Apply only to checked nights”
+
+### Per-night overrides (Option B)
+
+In the table each night should allow:
+
+* “Override price” input
+* or “Override discount %” input
+  When overridden:
+* show a small tag “Override”
+
+### Deal Price Calculation
+
+* If `% off BAR`: `dealPrice = round(barRate * (1 - pct/100))`
+* If floor: `dealPrice = max(floor, round(barRate * (1 - pct/100)))` (if you keep pct, optional)
+* If fixed: use fixed
+
+Show:
+
+* crossed-out BAR
+* deal price bold
+* discount % badge
+
+---
+
+## 6) Publish Workflow (Mock)
+
+A “Publish to GapNight” panel:
+
+* Shows count of approved nights
+* Button: **Publish Deals**
+* On publish:
+
+  * Mark selected as `Published`
+  * Save published deals to localStorage key:
+
+    * `gapnight_published_deals_{hotelId}`
+
+Also include:
+
+* Button: “Unpublish” (sets back to Approved)
+
+No backend required.
+
+---
+
+## 7) Storage
+
+Persist:
+
+* Selected pricing rule per hotel
+* Overrides per orphan-night record
+* Publish state
+
+Use localStorage keys:
+
+* `gapnight_ari_cache_{hotelId}`
+* `gapnight_orphan_candidates_{hotelId}`
+* `gapnight_pricing_rules_{hotelId}`
+* `gapnight_orphan_overrides_{hotelId}`
+* `gapnight_published_deals_{hotelId}`
+
+---
+
+## 8) Nice UX touches
+
+* Loading skeleton when “Refreshing ARI”
+* Small info tooltip: “We only use availability + rates, no guest data”
+* Badge that explains “Why orphan nights exist”
+* Date range selector: next 7 / 14 / 30 days (default 30 in dashboard)
+* “Preview in consumer feed” link that routes to `/deals?hotelId=...` (mock)
+
+---
+
+## 9) Deliverable Summary
+
+Implement a fully working **front-end** dashboard page:
+
+* Simulated ARI fetch for next 30 days
+* Automatic orphan night detection
+* Pricing rule + per-night override
+* Approve + publish states
+* LocalStorage persistence
+* Clean admin UI
+
+No real integration yet—just structure it so the ARI fetch function can later be replaced with a real SiteMinder call.
+
+```
+::contentReference[oaicite:0]{index=0}
+```
