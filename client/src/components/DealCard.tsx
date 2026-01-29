@@ -1,7 +1,8 @@
 import { Link } from "wouter";
-import { Star, MapPin, Bed, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation, CalendarDays } from "lucide-react";
+import { Star, MapPin, Bed, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation, CalendarDays, Wine, Umbrella, Bell, ConciergeBell } from "lucide-react";
 import type { Deal } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
+import { formatPrice } from "@/lib/utils";
 
 const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "WiFi": Wifi,
@@ -10,6 +11,10 @@ const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "Restaurant": UtensilsCrossed,
   "Pool": Waves,
   "Spa": Sparkles,
+  "Bar": Wine,
+  "Beach Access": Umbrella,
+  "Room Service": Bell,
+  "Concierge": ConciergeBell,
 };
 
 interface DealCardProps {
@@ -111,8 +116,8 @@ export function DealCard({ deal }: DealCardProps) {
               <span className="font-medium">{deal.nights === 1 ? '1-3 nights available' : `${deal.nights}+ nights available`}</span>
             </div>
             <div className="text-right">
-              <span className="text-xs line-through text-muted-foreground">{deal.currency}{deal.normalPrice}</span>
-              <span className="ml-1 font-bold text-primary">{deal.currency}{deal.dealPrice}</span>
+              <span className="text-xs line-through text-muted-foreground">{formatPrice(deal.normalPrice, deal.currency)}</span>
+              <span className="ml-1 font-bold text-primary">{formatPrice(deal.dealPrice, deal.currency)}</span>
               <div className="text-[10px] text-muted-foreground">/night</div>
             </div>
           </div>

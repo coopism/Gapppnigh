@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
+import { formatPrice } from "@/lib/utils";
 
 const bookingSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -229,7 +230,7 @@ export default function Booking() {
                 </div>
                 <div>
                   <div className="text-muted-foreground">Total</div>
-                  <div className="font-bold text-primary">{deal.currency}{grandTotal}</div>
+                  <div className="font-bold text-primary">{formatPrice(grandTotal, deal.currency)}</div>
                 </div>
               </div>
             </div>
@@ -310,6 +311,7 @@ export default function Booking() {
                             <Input 
                               placeholder="Given name(s)" 
                               data-testid="input-first-name"
+                              autoComplete="given-name"
                               {...field} 
                             />
                           </FormControl>
@@ -327,6 +329,7 @@ export default function Booking() {
                             <Input 
                               placeholder="Surname" 
                               data-testid="input-last-name"
+                              autoComplete="family-name"
                               {...field} 
                             />
                           </FormControl>
@@ -351,6 +354,7 @@ export default function Booking() {
                                 placeholder="you@example.com" 
                                 className="pl-9"
                                 data-testid="input-email"
+                                autoComplete="email"
                                 {...field} 
                               />
                             </div>
@@ -391,6 +395,7 @@ export default function Booking() {
                                   placeholder="Phone number" 
                                   className="pl-9"
                                   data-testid="input-phone"
+                                  autoComplete="tel-national"
                                   {...field} 
                                 />
                               </div>
@@ -477,6 +482,7 @@ export default function Booking() {
                               placeholder="1234 5678 9012 3456"
                               maxLength={19}
                               data-testid="input-card-number"
+                              autoComplete="cc-number"
                               {...field}
                               onChange={(e) => {
                                 const formatted = formatCardNumber(e.target.value);
@@ -499,6 +505,7 @@ export default function Booking() {
                             <Input 
                               placeholder="Name as shown on card"
                               data-testid="input-cardholder-name"
+                              autoComplete="cc-name"
                               {...field} 
                             />
                           </FormControl>
@@ -519,6 +526,7 @@ export default function Booking() {
                                 placeholder="MM/YY"
                                 maxLength={5}
                                 data-testid="input-expiry"
+                                autoComplete="cc-exp"
                                 {...field}
                                 onChange={(e) => {
                                   const formatted = formatExpiryDate(e.target.value);
@@ -542,6 +550,7 @@ export default function Booking() {
                                 placeholder="123"
                                 maxLength={4}
                                 data-testid="input-cvv"
+                                autoComplete="cc-csc"
                                 {...field} 
                               />
                             </FormControl>
@@ -567,7 +576,7 @@ export default function Booking() {
                   disabled={isSubmitting}
                   data-testid="button-complete-booking"
                 >
-                  {isSubmitting ? "Processing..." : `Complete Booking - ${deal.currency}${grandTotal}`}
+                  {isSubmitting ? "Processing..." : `Complete Booking - ${formatPrice(grandTotal, deal.currency)}`}
                 </Button>
 
                 <p className="text-xs text-muted-foreground text-center">
@@ -648,16 +657,16 @@ export default function Booking() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">1 room × {deal.nights} night{deal.nights > 1 ? "s" : ""}</span>
-                    <span className="text-foreground">{deal.currency}{totalPrice}</span>
+                    <span className="text-foreground">{formatPrice(totalPrice, deal.currency)}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Includes GST ({deal.currency}{gstIncluded})</span>
+                    <span>Includes GST ({formatPrice(gstIncluded, deal.currency)})</span>
                     <span className="text-green-600">Included</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Gap Night Fee (3%)</span>
                     <div className="flex items-center gap-2">
-                      <span className="line-through">{deal.currency}{gapNightFee}</span>
+                      <span className="line-through">{formatPrice(gapNightFee, deal.currency)}</span>
                       <Badge variant="outline" className="text-xs text-green-600 border-green-600">
                         Promotion - Waived
                       </Badge>
@@ -666,11 +675,11 @@ export default function Booking() {
                 </div>
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-border/50">
                   <span className="font-bold text-lg text-foreground">Total</span>
-                  <span className="font-bold text-xl text-foreground">{deal.currency}{grandTotal}</span>
+                  <span className="font-bold text-xl text-foreground">{formatPrice(grandTotal, deal.currency)}</span>
                 </div>
                 <div className="flex items-center gap-1 mt-2 flex-wrap">
                   <span className="text-xs line-through text-muted-foreground">
-                    Was {deal.currency}{deal.normalPrice * deal.nights}
+                    Was {formatPrice(deal.normalPrice * deal.nights, deal.currency)}
                   </span>
                   <Badge className="bg-amber-500 text-white text-xs">
                     {discountPercent}% off

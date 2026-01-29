@@ -48,7 +48,7 @@ export function Navigation() {
           <div className="md:hidden flex items-center gap-2">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
+                <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-hamburger" aria-label="Open menu">
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
@@ -67,7 +67,7 @@ export function Navigation() {
                   </Link>
                   <Link href="/list-your-hotel">
                     <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
-                      <Hotel className="w-5 h-5 mr-3" /> List Your Hotel
+                      <Hotel className="w-5 h-5 mr-3" /> For Hotels
                     </Button>
                   </Link>
                   <Link href="/waitlist">

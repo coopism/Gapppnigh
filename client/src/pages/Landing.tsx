@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, parseISO } from "date-fns";
+import { formatPrice } from "@/lib/utils";
 
 const LOCATION_SUGGESTIONS = [
   { city: "Melbourne", state: "VIC" },
@@ -299,10 +300,10 @@ export default function Landing() {
                       
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-sm text-muted-foreground line-through">
-                          {deal.currency}{deal.normalPrice}
+                          {formatPrice(deal.normalPrice, deal.currency)}
                         </span>
                         <span className="text-lg font-bold text-foreground">
-                          {deal.currency}{deal.dealPrice}
+                          {formatPrice(deal.dealPrice, deal.currency)}
                         </span>
                         <Badge className="bg-amber-500 text-white text-xs">
                           {discountPercent}% off

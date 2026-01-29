@@ -108,6 +108,16 @@ Database tables:
 - **Promotional Fee**: 3% Gap Night Fee shown but crossed out as "Promotion - Waived"
 - **Booked Deal Filtering**: Booked deals are automatically removed from listings
 - **Hotel Owner Portal**: Full login system with bcrypt password hashing at /owner/login
+- **QA Bug Fixes (January 2026)**:
+  - Fixed currency formatting: Prices now display as "$247" instead of "AUD247" using formatPrice utility
+  - Added data-testid="button-hamburger" to mobile navigation
+  - Fixed font consistency: ComingSoon.tsx now uses font-serif class instead of inline style
+  - Added aria-labels to icon-only buttons (grid/map toggle)
+  - Added autocomplete attributes to all form inputs (name, email, phone, payment fields)
+  - Added focus-visible ring styles to category filter buttons
+  - Removed duplicate not-found.tsx file
+  - Added more amenity icons: Bar, Beach Access, Room Service, Concierge
+  - Standardized navigation link text ("For Hotels" on both desktop and mobile)
 
 ## Test Accounts
 

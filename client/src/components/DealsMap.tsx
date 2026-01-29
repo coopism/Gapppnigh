@@ -6,6 +6,7 @@ import { Star, Calendar } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Link } from "wouter";
 import "leaflet/dist/leaflet.css";
+import { formatPrice } from "@/lib/utils";
 
 const customIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -112,10 +113,10 @@ export function DealsMap({ deals, selectedDealId, onDealSelect }: DealsMapProps)
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-xs line-through text-muted-foreground">
-                        {deal.currency}{deal.normalPrice}
+                        {formatPrice(deal.normalPrice, deal.currency)}
                       </span>
                       <span className="ml-2 font-bold text-primary">
-                        {deal.currency}{deal.dealPrice}
+                        {formatPrice(deal.dealPrice, deal.currency)}
                       </span>
                     </div>
                     <span className="text-xs font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">

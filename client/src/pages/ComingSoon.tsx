@@ -149,7 +149,7 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
 
             {/* Header with title and pronunciation */}
             <div className="mb-6">
-              <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-2" style={{ fontFamily: "Georgia, serif" }}>
+              <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-2 font-serif">
                 Gap Night
               </h1>
               <div className="flex items-center gap-3 text-muted-foreground">

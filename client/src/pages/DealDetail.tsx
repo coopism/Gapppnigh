@@ -13,6 +13,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
+import { formatPrice } from "@/lib/utils";
 
 const markerIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -230,10 +231,10 @@ export default function DealDetail() {
                         <div className="text-right">
                           <div className="flex items-center gap-2">
                             <span className="text-xs line-through text-muted-foreground">
-                              {option.currency}{option.normalPrice}
+                              {formatPrice(option.normalPrice, option.currency)}
                             </span>
                             <span className="font-bold text-primary">
-                              {option.currency}{option.dealPrice}
+                              {formatPrice(option.dealPrice, option.currency)}
                             </span>
                           </div>
                           <div className="text-xs text-primary font-medium">
@@ -262,14 +263,14 @@ export default function DealDetail() {
                       </div>
                       <div className="flex items-baseline gap-2">
                         <span className="text-3xl font-bold text-foreground">
-                          {selectedAvailability.currency}{selectedAvailability.dealPrice * selectedAvailability.nights}
+                          {formatPrice(selectedAvailability.dealPrice * selectedAvailability.nights, selectedAvailability.currency)}
                         </span>
                         <span className="text-sm text-muted-foreground line-through">
-                          {selectedAvailability.currency}{selectedAvailability.normalPrice * selectedAvailability.nights}
+                          {formatPrice(selectedAvailability.normalPrice * selectedAvailability.nights, selectedAvailability.currency)}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        {selectedAvailability.currency}{selectedAvailability.dealPrice}/night
+                        {formatPrice(selectedAvailability.dealPrice, selectedAvailability.currency)}/night
                       </div>
                     </div>
                     <Badge className="bg-primary/10 text-primary border-primary/20">

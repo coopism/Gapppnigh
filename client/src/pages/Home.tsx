@@ -584,6 +584,7 @@ export default function Home() {
               data-testid={`chip-category-${cat.toLowerCase().replace(/\s+/g, '-')}`}
               className={`
                 whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-medium transition-all
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
                 ${
                   activeCategory === cat
                     ? "bg-foreground text-background shadow-md"
@@ -609,6 +610,7 @@ export default function Home() {
                   viewMode === "grid" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
                 }`}
                 data-testid="button-view-grid"
+                aria-label="Grid view"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
@@ -618,6 +620,7 @@ export default function Home() {
                   viewMode === "map" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
                 }`}
                 data-testid="button-view-map"
+                aria-label="Map view"
               >
                 <Map className="w-4 h-4" />
               </button>
