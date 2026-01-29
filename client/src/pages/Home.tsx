@@ -27,16 +27,16 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 ];
 
 const LOCATION_SUGGESTIONS = [
-  { city: "Melbourne", state: "VIC", country: "Australia" },
-  { city: "Sydney", state: "NSW", country: "Australia" },
-  { city: "Gold Coast", state: "QLD", country: "Australia" },
-  { city: "Brisbane", state: "QLD", country: "Australia" },
-  { city: "Perth", state: "WA", country: "Australia" },
-  { city: "Adelaide", state: "SA", country: "Australia" },
-  { city: "Hobart", state: "TAS", country: "Australia" },
-  { city: "Byron Bay", state: "NSW", country: "Australia" },
-  { city: "Cairns", state: "QLD", country: "Australia" },
-  { city: "Blue Mountains", state: "NSW", country: "Australia" },
+  { city: "Melbourne", state: "VIC" },
+  { city: "Geelong", state: "VIC" },
+  { city: "Mornington", state: "VIC" },
+  { city: "Cape Schanck", state: "VIC" },
+  { city: "Macedon", state: "VIC" },
+  { city: "Sydney", state: "NSW" },
+  { city: "Gold Coast", state: "QLD" },
+  { city: "Brisbane", state: "QLD" },
+  { city: "Perth", state: "WA" },
+  { city: "Adelaide", state: "SA" },
 ];
 
 type DateMode = "within" | "month" | "specific";
@@ -117,7 +117,7 @@ export default function Home() {
     return (
       loc.city.toLowerCase().includes(searchLower) ||
       loc.state.toLowerCase().includes(searchLower) ||
-      loc.country.toLowerCase().includes(searchLower)
+      `${loc.city}, ${loc.state}`.toLowerCase().includes(searchLower)
     );
   });
 
@@ -139,7 +139,7 @@ export default function Home() {
   }, []);
 
   const handleSelectSuggestion = (location: typeof LOCATION_SUGGESTIONS[0]) => {
-    const locationString = `${location.city}, ${location.country}`;
+    const locationString = `${location.city}, ${location.state}`;
     setSearch(locationString);
     setShowSuggestions(false);
     setRecentSearches(prev => {
@@ -313,7 +313,7 @@ export default function Home() {
                             </div>
                             <div>
                               <div className="font-semibold text-foreground">{loc.city}</div>
-                              <div className="text-xs text-muted-foreground">{loc.state}, {loc.country}</div>
+                              <div className="text-xs text-muted-foreground">{loc.state}, Australia</div>
                             </div>
                           </button>
                         ))}

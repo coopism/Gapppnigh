@@ -9,16 +9,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format, parseISO } from "date-fns";
 
 const LOCATION_SUGGESTIONS = [
-  { city: "Melbourne", state: "VIC", country: "Australia" },
-  { city: "Sydney", state: "NSW", country: "Australia" },
-  { city: "Gold Coast", state: "QLD", country: "Australia" },
-  { city: "Brisbane", state: "QLD", country: "Australia" },
-  { city: "Perth", state: "WA", country: "Australia" },
-  { city: "Adelaide", state: "SA", country: "Australia" },
-  { city: "Hobart", state: "TAS", country: "Australia" },
-  { city: "Byron Bay", state: "NSW", country: "Australia" },
-  { city: "Cairns", state: "QLD", country: "Australia" },
-  { city: "Blue Mountains", state: "NSW", country: "Australia" },
+  { city: "Melbourne", state: "VIC" },
+  { city: "Geelong", state: "VIC" },
+  { city: "Mornington", state: "VIC" },
+  { city: "Cape Schanck", state: "VIC" },
+  { city: "Macedon", state: "VIC" },
+  { city: "Sydney", state: "NSW" },
+  { city: "Gold Coast", state: "QLD" },
+  { city: "Brisbane", state: "QLD" },
+  { city: "Perth", state: "WA" },
+  { city: "Adelaide", state: "SA" },
 ];
 
 const HOW_IT_WORKS = [
@@ -55,7 +55,8 @@ export default function Landing() {
     const searchLower = search.toLowerCase();
     return (
       loc.city.toLowerCase().includes(searchLower) ||
-      loc.state.toLowerCase().includes(searchLower)
+      loc.state.toLowerCase().includes(searchLower) ||
+      `${loc.city}, ${loc.state}`.toLowerCase().includes(searchLower)
     );
   });
 
@@ -78,7 +79,7 @@ export default function Landing() {
   };
 
   const handleSelectSuggestion = (location: typeof LOCATION_SUGGESTIONS[0]) => {
-    const locationString = `${location.city}, ${location.country}`;
+    const locationString = `${location.city}, ${location.state}`;
     setSearch(locationString);
     setShowSuggestions(false);
     setLocation(`/deals?search=${encodeURIComponent(locationString)}`);
@@ -167,7 +168,7 @@ export default function Landing() {
                                 </div>
                                 <div>
                                   <div className="font-semibold text-foreground">{loc.city}</div>
-                                  <div className="text-sm text-muted-foreground">{loc.state}, {loc.country}</div>
+                                  <div className="text-sm text-muted-foreground">{loc.state}, Australia</div>
                                 </div>
                               </button>
                             ))}
@@ -455,8 +456,18 @@ export default function Landing() {
             <div className="text-sm text-white/80">
               © 2026 GapNight. All rights reserved.
             </div>
-            <div className="text-xs text-white/40">
-              Discounts vary by property and availability.
+            <div className="flex items-center gap-4">
+              <a 
+                href="/owner/login" 
+                className="text-sm text-white/70 hover:text-white transition-colors"
+                data-testid="link-developer-portal"
+              >
+                Developer Portal
+              </a>
+              <span className="text-white/30">|</span>
+              <div className="text-xs text-white/40">
+                Discounts vary by property and availability.
+              </div>
             </div>
           </div>
         </div>
