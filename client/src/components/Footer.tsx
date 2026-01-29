@@ -1,5 +1,6 @@
 import { Link } from "wouter";
-import { Sparkles, Mail, MapPin, Phone } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
+import { GapNightLogo } from "./GapNightLogo";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -10,9 +11,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div className="md:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
+              <GapNightLogo size={32} />
               <span className="font-display font-bold text-xl text-white">GapNight</span>
             </Link>
             <p className="text-white/70 text-sm leading-relaxed max-w-sm mb-4">

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Hotel, Menu, Home, Sparkles, UserPlus, Moon, Sun } from "lucide-react";
+import { Hotel, Menu, Home, UserPlus, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sheet";
 import { ThemeToggle } from "./ThemeToggle";
 import { useTheme } from "./ThemeProvider";
+import { GapNightLogo } from "./GapNightLogo";
 
 export function Navigation() {
   const [location] = useLocation();
@@ -22,8 +23,8 @@ export function Navigation() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/25 group-hover:scale-110 transition-transform">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            <div className="group-hover:scale-110 transition-transform">
+              <GapNightLogo size={32} />
             </div>
             <span className="font-display font-bold text-xl tracking-tight">GapNight</span>
           </Link>
@@ -55,7 +56,7 @@ export function Navigation() {
               <SheetContent>
                 <SheetHeader>
                   <SheetTitle className="font-display text-2xl font-bold flex items-center gap-2">
-                    <Sparkles className="w-6 h-6 text-primary" />
+                    <GapNightLogo size={28} />
                     GapNight
                   </SheetTitle>
                 </SheetHeader>

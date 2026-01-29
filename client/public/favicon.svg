@@ -1,0 +1,24 @@
+<svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Top-left teal crescent with notch -->
+  <path
+    d="M50 5 
+       C25 5 5 25 5 50 
+       L22 50 
+       L38 34 
+       L38 50 
+       C38 43 43 38 50 38 
+       L50 5 Z"
+    fill="#14B8A6"
+  />
+  
+  <!-- Bottom-right navy crescent -->
+  <path
+    d="M50 95 
+       C75 95 95 75 95 50 
+       L78 50 
+       C78 57 73 62 66 62 
+       L50 62 
+       L50 95 Z"
+    fill="#1E3A5F"
+  />
+</svg>
