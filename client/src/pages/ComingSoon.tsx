@@ -238,8 +238,16 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
             </div>
           </div>
 
-          {/* Partner Access - Hidden but accessible */}
-          <div className="text-center">
+          {/* Partner Access & Developer Portal */}
+          <div className="text-center flex items-center justify-center gap-4">
+            <a 
+              href="/owner/login"
+              className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors inline-flex items-center gap-1"
+              data-testid="link-developer-portal"
+            >
+              Developer Portal
+            </a>
+            <span className="text-muted-foreground/30">|</span>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <button 

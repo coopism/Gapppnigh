@@ -76,9 +76,9 @@ export function Footer() {
             <Link 
               href="/owner/login" 
               className="text-white/30 hover:text-white/50 text-xs transition-colors"
-              data-testid="link-partner-login"
+              data-testid="link-developer-portal"
             >
-              Partner Portal
+              Developer Portal
             </Link>
             <p className="text-white/50 text-xs">
               Made with care in Australia
