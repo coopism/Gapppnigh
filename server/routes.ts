@@ -5,6 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { authMiddleware, SESSION_COOKIE_NAME } from "./auth";
 import { v4 as uuidv4 } from "uuid";
+import { sendBookingConfirmationEmail } from "./email";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -610,6 +611,18 @@ export async function registerRoutes(
         status: "CONFIRMED",
         emailSent: false,
       });
+      
+      // Send confirmation email asynchronously
+      sendBookingConfirmationEmail(booking)
+        .then(async (sent) => {
+          if (sent) {
+            await storage.updateBookingEmailSent(bookingId);
+            console.log(`Confirmation email sent for booking ${bookingId}`);
+          }
+        })
+        .catch((err) => {
+          console.error(`Failed to send email for booking ${bookingId}:`, err);
+        });
       
       res.status(201).json({ 
         success: true, 
