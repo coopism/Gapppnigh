@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Hotel, Menu, Home, Sparkles, UserPlus, Moon, Sun, Code } from "lucide-react";
+import { Hotel, Menu, Home, Sparkles, UserPlus, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -36,13 +36,6 @@ export function Navigation() {
             <Link href="/list-your-hotel" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/list-your-hotel") ? "text-primary" : "text-muted-foreground"}`}>
               For Hotels
             </Link>
-            <Link 
-              href="/owner/login" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/owner/login") ? "text-primary" : "text-muted-foreground"}`}
-              data-testid="link-developer-portal-nav"
-            >
-              Developer Portal
-            </Link>
             <ThemeToggle />
             <Link href="/waitlist">
                <Button variant={isActive("/waitlist") ? "secondary" : "default"} size="sm" className="rounded-full px-5 font-bold shadow-md hover:shadow-lg transition-all">
@@ -75,11 +68,6 @@ export function Navigation() {
                   <Link href="/list-your-hotel">
                     <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
                       <Hotel className="w-5 h-5 mr-3" /> List Your Hotel
-                    </Button>
-                  </Link>
-                  <Link href="/owner/login" data-testid="link-developer-portal-mobile">
-                    <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
-                      <Code className="w-5 h-5 mr-3" /> Developer Portal
                     </Button>
                   </Link>
                   <Link href="/waitlist">
