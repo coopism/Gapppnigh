@@ -25,6 +25,7 @@ import HotelNew from "@/pages/owner/HotelNew";
 import HotelManage from "@/pages/owner/HotelManage";
 import HotelDeals from "@/pages/owner/HotelDeals";
 import HotelDealsPublic, { HotelDealDetail } from "@/pages/HotelDealsPublic";
+import Booking from "@/pages/Booking";
 
 function MainRouter() {
   return (
@@ -32,6 +33,7 @@ function MainRouter() {
       <Route path="/" component={Landing} />
       <Route path="/deals" component={Deals} />
       <Route path="/deal/:id" component={DealDetail} />
+      <Route path="/booking/:dealId" component={Booking} />
       <Route path="/list-your-hotel" component={ListYourHotel} />
       <Route path="/waitlist" component={Waitlist} />
       <Route path="/terms" component={Terms} />

@@ -1,4 +1,4 @@
-import { useRoute, Link } from "wouter";
+import { useRoute, Link, useLocation } from "wouter";
 import { useDeal, useHotelAvailability } from "@/hooks/use-deals";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -35,6 +35,7 @@ const AMENITY_ICONS: Record<string, typeof Wifi> = {
 
 export default function DealDetail() {
   const [, params] = useRoute("/deal/:id");
+  const [, setLocation] = useLocation();
   const id = params?.id || "";
   const { data: deal, isLoading } = useDeal(id);
   const { data: hotelDeals } = useHotelAvailability(deal?.hotelName || "");
@@ -46,6 +47,12 @@ export default function DealDetail() {
       setSelectedOption(deal.id);
     }
   }, [deal, selectedOption]);
+  
+  const handleBooking = () => {
+    if (selectedOption) {
+      setLocation(`/booking/${selectedOption}`);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -269,7 +276,11 @@ export default function DealDetail() {
                       Selected
                     </Badge>
                   </div>
-                  <Button className="w-full h-12 text-base font-semibold rounded-xl" data-testid="button-request-booking">
+                  <Button 
+                    className="w-full h-12 text-base font-semibold rounded-xl" 
+                    onClick={handleBooking}
+                    data-testid="button-request-booking"
+                  >
                     Request Booking
                   </Button>
                 </>
