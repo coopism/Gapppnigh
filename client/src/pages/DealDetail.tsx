@@ -298,25 +298,25 @@ export default function DealDetail() {
             <div>
               <h2 className="text-xl font-bold text-foreground mb-4">About this room</h2>
               <div className="bg-card rounded-xl p-5 border border-border/50">
-                <h3 className="font-bold text-foreground mb-2">{deal.roomType}</h3>
+                <h3 className="font-bold text-foreground mb-2">{selectedAvailability?.roomType || deal.roomType}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                   Experience luxury in this spacious room featuring modern amenities and 
                   stunning views. Perfect for a short gap-night stay, this room offers 
                   everything you need for a comfortable and memorable experience.
                 </p>
                 
-                {deal.nearbyHighlight && (
+                {(selectedAvailability?.nearbyHighlight || deal.nearbyHighlight) && (
                   <div className="flex items-center gap-2 text-primary text-sm mb-4 p-3 bg-primary/10 rounded-lg">
                     <NavIcon className="w-4 h-4 shrink-0" />
-                    <span className="font-medium">{deal.nearbyHighlight}</span>
+                    <span className="font-medium">{selectedAvailability?.nearbyHighlight || deal.nearbyHighlight}</span>
                   </div>
                 )}
 
-                {deal.amenities && deal.amenities.length > 0 && (
+                {((selectedAvailability?.amenities || deal.amenities) && (selectedAvailability?.amenities || deal.amenities)!.length > 0) && (
                   <div>
                     <h4 className="text-sm font-semibold text-foreground mb-3">Amenities</h4>
                     <div className="flex flex-wrap gap-3">
-                      {deal.amenities.map((amenity) => {
+                      {(selectedAvailability?.amenities || deal.amenities || []).map((amenity) => {
                         const Icon = AMENITY_ICONS[amenity];
                         return (
                           <div key={amenity} className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary px-3 py-2 rounded-lg">
