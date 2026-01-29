@@ -1,0 +1,88 @@
+# GapNight: Full QA + Fix Everything (Bug Report + Code Changes)
+
+You are a senior full-stack engineer + QA.
+
+## Objective
+1) Crawl and test the GapNight web app end-to-end.
+2) Produce a **comprehensive bug report** (prioritized).
+3) Then **fix every issue you listed** directly in the codebase.
+4) Provide a clear summary of what changed + how to verify.
+
+## Constraints / Expectations
+- Fixes must be committed as real code changes (not just suggestions).
+- Do not change the product direction — keep existing layout and features, just make them correct, consistent, and stable.
+- Maintain the GapNight brand theme: deep navy + teal accents + soft gradients, rounded cards/buttons, minimal premium feel.
+- Ensure the site is fully responsive (mobile/tablet/desktop).
+- Prefer simple, maintainable changes over rewrites.
+
+---
+
+## Part A — Comprehensive Bug Report
+### Testing Requirements
+Test all pages/routes:
+- Landing page
+- Deals list page
+- Hotel detail page
+- Any owner pages that exist (login/dashboard) even if mocked
+
+Test on:
+- Desktop: 1440x900
+- Tablet: 768x1024
+- Mobile: 390x844 and 320x568
+Browsers: Chromium default.
+
+### Report Format
+Create a Markdown report named: `BUG_REPORT.md`
+
+Include:
+1) Executive summary (1 paragraph)
+2) Prioritized list of issues (Blocker/High/Medium/Low)
+3) Each issue must include:
+   - Title
+   - Severity + Priority
+   - Steps to reproduce
+   - Expected vs actual
+   - Root cause hypothesis
+   - Proposed fix
+4) Include UX/polish issues (spacing, typography, consistency, accessibility).
+5) Include performance issues (layout shift, image sizing, slow loads).
+
+---
+
+## Part B — Fix All Issues
+After writing `BUG_REPORT.md`, implement fixes.
+
+### Must-fix categories
+- Navigation: broken links, wrong routes, anchor scroll, active states
+- Responsive: overflow, misaligned hero, cards wrapping, text clipping
+- Visual consistency: colors, typography scale, shadows, border radii, spacing
+- Accessibility: focus states, button labels, keyboard navigation, contrast
+- Error states: empty deals, missing images, no search result, API failure placeholders
+- Performance: optimize images, prevent layout shift, reduce huge assets, avoid re-render loops
+- Data formatting: currency formatting, date formatting, percent badges
+
+### Code Quality Requirements
+- No console errors/warnings on load
+- Remove dead code
+- Add small helper utilities where needed (formatPrice, formatDate, classnames)
+- Add basic unit tests if project already has test setup; otherwise add minimal runtime checks only
+
+---
+
+## Part C — Deliverables
+1) `BUG_REPORT.md` created/updated.
+2) All fixes applied in code.
+3) A final summary in the chat:
+   - List of fixed issues (by BUG-###)
+   - Which files were changed
+   - How to verify quickly (a short checklist)
+4) If you add any new env vars/config, document them in `README.md`.
+
+---
+
+## Notes / Current Known Intent
+GapNight is a gap-night hotel deals marketplace.
+- Users search a location without selecting dates.
+- Deals should appear grouped by hotel, and clicking a hotel shows available deal dates.
+
+Now start: audit the running app, write `BUG_REPORT.md`, then fix everything you found.
