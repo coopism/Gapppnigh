@@ -98,19 +98,54 @@ export default function Booking() {
   };
 
   const onSubmit = async (data: BookingForm) => {
+    if (!deal) return;
+    
     setIsSubmitting(true);
     
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const ref = `GN${Date.now().toString(36).toUpperCase()}`;
-    setBookingRef(ref);
-    setBookingComplete(true);
-    setIsSubmitting(false);
-    
-    toast({
-      title: "Booking Request Submitted",
-      description: `Your booking reference is ${ref}`,
-    });
+    try {
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dealId: deal.id,
+          hotelName: deal.hotelName,
+          roomType: deal.roomType,
+          checkInDate: deal.checkInDate,
+          checkOutDate: deal.checkOutDate,
+          nights: deal.nights,
+          guestFirstName: data.firstName,
+          guestLastName: data.lastName,
+          guestEmail: data.email,
+          guestPhone: data.phone,
+          guestCountryCode: data.countryCode,
+          specialRequests: data.specialRequests,
+          totalPrice: grandTotal,
+          currency: deal.currency,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to create booking");
+      }
+      
+      setBookingRef(result.booking.id);
+      setBookingComplete(true);
+      
+      toast({
+        title: "Booking Confirmed!",
+        description: `Your booking reference is ${result.booking.id}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Booking Failed",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) {
@@ -152,8 +187,9 @@ export default function Booking() {
   const checkInDate = parseISO(deal.checkInDate);
   const checkOutDate = parseISO(deal.checkOutDate);
   const totalPrice = deal.dealPrice * deal.nights;
-  const taxes = Math.round(totalPrice * 0.1);
-  const grandTotal = totalPrice + taxes;
+  const gstIncluded = Math.round(totalPrice / 11); // GST is 1/11 of GST-inclusive price
+  const gapNightFee = Math.round(totalPrice * 0.03); // 3% Gap Night Fee (crossed out as promotion)
+  const grandTotal = totalPrice; // Total is just the room price - GST is included, fee is waived
 
   if (bookingComplete) {
     return (
@@ -615,21 +651,26 @@ export default function Booking() {
                     <span className="text-foreground">{deal.currency}{totalPrice}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Room price</span>
-                    <span>{deal.currency}{totalPrice}</span>
+                    <span>Includes GST ({deal.currency}{gstIncluded})</span>
+                    <span className="text-green-600">Included</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
-                    <span>GST (10%)</span>
-                    <span>{deal.currency}{taxes}</span>
+                    <span>Gap Night Fee (3%)</span>
+                    <div className="flex items-center gap-2">
+                      <span className="line-through">{deal.currency}{gapNightFee}</span>
+                      <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                        Promotion - Waived
+                      </Badge>
+                    </div>
                   </div>
                 </div>
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-border/50">
                   <span className="font-bold text-lg text-foreground">Total</span>
                   <span className="font-bold text-xl text-foreground">{deal.currency}{grandTotal}</span>
                 </div>
-                <div className="flex items-center gap-1 mt-2">
+                <div className="flex items-center gap-1 mt-2 flex-wrap">
                   <span className="text-xs line-through text-muted-foreground">
-                    Was {deal.currency}{deal.normalPrice * deal.nights + Math.round(deal.normalPrice * deal.nights * 0.1)}
+                    Was {deal.currency}{deal.normalPrice * deal.nights}
                   </span>
                   <Badge className="bg-amber-500 text-white text-xs">
                     {discountPercent}% off

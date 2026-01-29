@@ -1,9 +1,10 @@
 import { 
-  deals, waitlist, hotelInquiries, hotelOwners, hotels, roomTypes, availability, publishedDeals, ownerSessions,
+  deals, waitlist, hotelInquiries, hotelOwners, hotels, roomTypes, availability, publishedDeals, ownerSessions, bookings,
   type Deal, type InsertWaitlist, type InsertHotelInquiry, 
   type HotelOwner, type InsertHotelOwner, type HotelProfile, type InsertHotel,
   type RoomTypeRecord, type InsertRoomType, type AvailabilityRecord, type InsertAvailability,
-  type PublishedDeal, type InsertPublishedDeal, type OwnerSession
+  type PublishedDeal, type InsertPublishedDeal, type OwnerSession,
+  type Booking, type InsertBooking
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
@@ -59,6 +60,14 @@ export interface IStorage {
   getPublicHotel(hotelId: string): Promise<HotelProfile | undefined>;
   getPublicDealsByHotel(hotelId: string, startDate?: string, endDate?: string): Promise<PublishedDeal[]>;
   getPublicDealsGrouped(): Promise<any[]>;
+  
+  // Booking methods
+  createBooking(data: InsertBooking): Promise<Booking>;
+  getBooking(id: string): Promise<Booking | undefined>;
+  getBookingsByDealId(dealId: string): Promise<Booking[]>;
+  isDealBooked(dealId: string): Promise<boolean>;
+  updateBookingEmailSent(id: string): Promise<void>;
+  getAllBookings(): Promise<Booking[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -69,6 +78,15 @@ export class DatabaseStorage implements IStorage {
   
   async getDeals(search?: string, category?: string, sort?: string): Promise<Deal[]> {
     let results = await db.select().from(deals);
+    
+    // Filter out booked deals
+    const allBookings = await this.getAllBookings();
+    const bookedDealIds = new Set(
+      allBookings
+        .filter(b => b.status === "CONFIRMED")
+        .map(b => b.dealId)
+    );
+    results = results.filter(deal => !bookedDealIds.has(deal.id));
     
     if (search) {
       const lowerSearch = search.toLowerCase();
@@ -433,6 +451,43 @@ export class DatabaseStorage implements IStorage {
     
     return result;
   }
+
+  // ========================================
+  // BOOKING METHODS
+  // ========================================
+  
+  async createBooking(data: InsertBooking): Promise<Booking> {
+    const [booking] = await db.insert(bookings).values(data).returning();
+    return booking;
+  }
+
+  async getBooking(id: string): Promise<Booking | undefined> {
+    const result = await db.select().from(bookings).where(eq(bookings.id, id));
+    return result[0];
+  }
+
+  async getBookingsByDealId(dealId: string): Promise<Booking[]> {
+    return await db.select().from(bookings).where(eq(bookings.dealId, dealId));
+  }
+
+  async isDealBooked(dealId: string): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(bookings)
+      .where(and(
+        eq(bookings.dealId, dealId),
+        eq(bookings.status, "CONFIRMED")
+      ));
+    return result.length > 0;
+  }
+
+  async updateBookingEmailSent(id: string): Promise<void> {
+    await db.update(bookings).set({ emailSent: true }).where(eq(bookings.id, id));
+  }
+
+  async getAllBookings(): Promise<Booking[]> {
+    return await db.select().from(bookings);
+  }
 }
 
 // Legacy MemStorage for backward compatibility during transition
@@ -711,6 +766,44 @@ export class MemStorage implements IStorage {
 
   async getPublicDealsGrouped(): Promise<any[]> {
     return [];
+  }
+
+  // Booking methods for MemStorage
+  private bookingsMap: Map<string, Booking> = new Map();
+
+  async createBooking(data: InsertBooking): Promise<Booking> {
+    const booking: Booking = {
+      ...data,
+      createdAt: new Date(),
+    } as Booking;
+    this.bookingsMap.set(data.id, booking);
+    return booking;
+  }
+
+  async getBooking(id: string): Promise<Booking | undefined> {
+    return this.bookingsMap.get(id);
+  }
+
+  async getBookingsByDealId(dealId: string): Promise<Booking[]> {
+    return Array.from(this.bookingsMap.values()).filter(b => b.dealId === dealId);
+  }
+
+  async isDealBooked(dealId: string): Promise<boolean> {
+    return Array.from(this.bookingsMap.values()).some(
+      b => b.dealId === dealId && b.status === "CONFIRMED"
+    );
+  }
+
+  async updateBookingEmailSent(id: string): Promise<void> {
+    const booking = this.bookingsMap.get(id);
+    if (booking) {
+      booking.emailSent = true;
+      this.bookingsMap.set(id, booking);
+    }
+  }
+
+  async getAllBookings(): Promise<Booking[]> {
+    return Array.from(this.bookingsMap.values());
   }
 }
 

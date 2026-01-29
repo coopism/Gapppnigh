@@ -570,5 +570,72 @@ export async function registerRoutes(
     res.json(groupedDeals);
   });
 
+  // ========================================
+  // BOOKING ROUTES
+  // ========================================
+  
+  const bookingSchema = z.object({
+    dealId: z.string(),
+    hotelName: z.string(),
+    roomType: z.string(),
+    checkInDate: z.string(),
+    checkOutDate: z.string(),
+    nights: z.number(),
+    guestFirstName: z.string().min(1),
+    guestLastName: z.string().min(1),
+    guestEmail: z.string().email(),
+    guestPhone: z.string().min(8),
+    guestCountryCode: z.string().default("+61"),
+    specialRequests: z.string().optional(),
+    totalPrice: z.number(),
+    currency: z.string().default("$"),
+  });
+
+  app.post("/api/bookings", async (req, res) => {
+    try {
+      const data = bookingSchema.parse(req.body);
+      
+      // Check if deal is already booked
+      const isBooked = await storage.isDealBooked(data.dealId);
+      if (isBooked) {
+        return res.status(400).json({ message: "This deal has already been booked" });
+      }
+      
+      // Generate booking reference
+      const bookingId = `GN${Date.now()}`;
+      
+      const booking = await storage.createBooking({
+        id: bookingId,
+        ...data,
+        status: "CONFIRMED",
+        emailSent: false,
+      });
+      
+      res.status(201).json({ 
+        success: true, 
+        booking,
+        message: "Booking confirmed successfully"
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  app.get("/api/bookings/:id", async (req, res) => {
+    const booking = await storage.getBooking(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    res.json(booking);
+  });
+
+  app.get("/api/deals/:dealId/booked", async (req, res) => {
+    const isBooked = await storage.isDealBooked(req.params.dealId);
+    res.json({ booked: isBooked });
+  });
+
   return httpServer;
 }

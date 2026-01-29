@@ -238,3 +238,32 @@ export interface PricingRule {
   applyTo: 'all' | 'selected_room_type' | 'checked_only';
   selectedRoomTypeId?: string;
 }
+
+// ========================================
+// BOOKINGS TABLE
+// ========================================
+
+export const bookings = pgTable("bookings", {
+  id: text("id").primaryKey(), // Booking reference like "GN1234567890"
+  dealId: text("deal_id").notNull(),
+  hotelName: text("hotel_name").notNull(),
+  roomType: text("room_type").notNull(),
+  checkInDate: text("check_in_date").notNull(),
+  checkOutDate: text("check_out_date").notNull(),
+  nights: integer("nights").notNull(),
+  guestFirstName: text("guest_first_name").notNull(),
+  guestLastName: text("guest_last_name").notNull(),
+  guestEmail: text("guest_email").notNull(),
+  guestPhone: text("guest_phone").notNull(),
+  guestCountryCode: text("guest_country_code").notNull().default("+61"),
+  specialRequests: text("special_requests"),
+  totalPrice: integer("total_price").notNull(), // Total paid (GST inclusive)
+  currency: text("currency").notNull().default("$"),
+  status: text("status").notNull().default("CONFIRMED"), // CONFIRMED | CANCELLED | COMPLETED
+  emailSent: boolean("email_sent").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertBookingSchema = createInsertSchema(bookings).omit({ createdAt: true });
+export type Booking = typeof bookings.$inferSelect;
+export type InsertBooking = z.infer<typeof insertBookingSchema>;
