@@ -75,11 +75,12 @@ export function Footer() {
           <div className="flex items-center gap-4">
             <Link 
               href="/owner/login" 
-              className="text-white/30 hover:text-white/50 text-xs transition-colors"
+              className="text-white/70 hover:text-white text-sm transition-colors"
               data-testid="link-developer-portal"
             >
               Developer Portal
             </Link>
+            <span className="text-white/30">|</span>
             <p className="text-white/50 text-xs">
               Made with care in Australia
             </p>
