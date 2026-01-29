@@ -6,9 +6,17 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(amount: number, currency: string = "AUD"): string {
+  // Normalize currency codes - convert display symbols to ISO codes
+  let isoCurrency = currency;
+  if (currency === "A$" || currency === "AUD" || !currency) {
+    isoCurrency = "AUD";
+  } else if (currency === "$" || currency === "US$") {
+    isoCurrency = "USD";
+  }
+  
   return new Intl.NumberFormat("en-AU", {
     style: "currency",
-    currency: currency,
+    currency: isoCurrency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);

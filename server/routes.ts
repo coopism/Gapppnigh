@@ -404,13 +404,22 @@ export async function registerRoutes(
     const roomTypes = await storage.getHotelRoomTypes(req.params.hotelId as string);
     const candidates: any[] = [];
     
-    // Generate date range for next 30 days
+    // Get the days parameter from query string (default 30)
+    const days = parseInt(req.query.days as string) || 30;
+    
+    // Generate date range
     const today = new Date();
     const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + 30);
+    endDate.setDate(endDate.getDate() + days);
     
     const startStr = today.toISOString().split('T')[0];
     const endStr = endDate.toISOString().split('T')[0];
+    
+    // Get existing published deals to exclude them from candidates
+    const existingDeals = await storage.getHotelDeals(req.params.hotelId as string);
+    const publishedDealKeys = new Set(
+      existingDeals.map(d => `${d.roomTypeId}_${d.date}`)
+    );
     
     for (const roomType of roomTypes) {
       const availability = await storage.getAvailability(roomType.id, startStr, endStr);
@@ -421,6 +430,10 @@ export async function registerRoutes(
       for (let i = 0; i < availability.length; i++) {
         const day = availability[i];
         if (day.available <= 0) continue;
+        
+        // Skip if this room type + date already has a published deal
+        const dealKey = `${roomType.id}_${day.date}`;
+        if (publishedDealKeys.has(dealKey)) continue;
         
         const prev = availability[i - 1];
         const next = availability[i + 1];
@@ -484,13 +497,20 @@ export async function registerRoutes(
       return res.status(404).json({ message: "Hotel not found" });
     }
     
+    // Get room types for this hotel to lookup room type names
+    const hotelRoomTypes = await storage.getHotelRoomTypes(hotel.id);
+    const roomTypeMap = new Map(hotelRoomTypes.map(rt => [rt.id, rt]));
+    
     try {
-      const { deals } = publishDealSchema.parse(req.body);
+      const { deals: dealsToPublish } = publishDealSchema.parse(req.body);
       const createdDeals: any[] = [];
       
-      for (const deal of deals) {
+      for (const deal of dealsToPublish) {
+        const publishedDealId = uuidv4();
+        
+        // Create the published deal record
         const created = await storage.createPublishedDeal({
-          id: uuidv4(),
+          id: publishedDealId,
           hotelId: hotel.id,
           roomTypeId: deal.roomTypeId,
           date: deal.date,
@@ -501,6 +521,39 @@ export async function registerRoutes(
           status: "PUBLISHED",
         });
         createdDeals.push(created);
+        
+        // Also create a consumer-facing deal so it shows on the main deals page
+        const roomType = roomTypeMap.get(deal.roomTypeId);
+        const checkInDate = deal.date;
+        const checkOutDate = new Date(deal.date);
+        checkOutDate.setDate(checkOutDate.getDate() + 1);
+        
+        const consumerDealId = `portal_${publishedDealId.substring(0, 8)}`;
+        
+        await storage.createDeal({
+          id: consumerDealId,
+          hotelName: hotel.name,
+          location: `${hotel.city}, ${hotel.country}`,
+          stars: hotel.starRating,
+          rating: "4.5", // Default rating for new hotels
+          reviewCount: 0,
+          checkInDate: checkInDate,
+          checkOutDate: checkOutDate.toISOString().split('T')[0],
+          nights: 1,
+          roomType: roomType?.name || "Standard Room",
+          imageUrl: hotel.images?.[0] || "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800",
+          normalPrice: deal.barRate,
+          dealPrice: deal.dealPrice,
+          currency: "AUD", // Use ISO currency code
+          dealScore: Math.round(deal.discountPercent * 2.5), // Approximate deal score from discount
+          categoryTags: ["All Deals", "Gap Night"],
+          cancellation: "Non-refundable",
+          whyCheap: deal.reason || "Gap night: 1-night orphan slot between longer bookings.",
+          latitude: hotel.latitude || null,
+          longitude: hotel.longitude || null,
+          amenities: hotel.amenities || [],
+          nearbyHighlight: null,
+        });
       }
       
       res.status(201).json({ success: true, deals: createdDeals });
@@ -534,6 +587,57 @@ export async function registerRoutes(
     }
     
     await storage.unpublishDeals(dealIds);
+    res.json({ success: true });
+  });
+
+  // Update a single published deal (edit pricing)
+  const updateDealSchema = z.object({
+    dealPrice: z.number().optional(),
+    discountPercent: z.number().optional(),
+    status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
+  });
+
+  app.patch("/api/owner/hotels/:hotelId/deals/:dealId", authMiddleware, async (req, res) => {
+    const hotel = await storage.getHotel(req.params.hotelId as string);
+    if (!hotel || hotel.ownerId !== req.owner!.id) {
+      return res.status(404).json({ message: "Hotel not found" });
+    }
+    
+    try {
+      const updates = updateDealSchema.parse(req.body);
+      const updated = await storage.updatePublishedDeal(req.params.dealId as string, updates);
+      if (!updated) {
+        return res.status(404).json({ message: "Deal not found" });
+      }
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: err.errors });
+      }
+      throw err;
+    }
+  });
+
+  // Delete a single published deal
+  app.delete("/api/owner/hotels/:hotelId/deals/:dealId", authMiddleware, async (req, res) => {
+    const hotel = await storage.getHotel(req.params.hotelId as string);
+    if (!hotel || hotel.ownerId !== req.owner!.id) {
+      return res.status(404).json({ message: "Hotel not found" });
+    }
+    
+    const dealId = req.params.dealId as string;
+    
+    // Delete the published deal
+    await storage.deletePublishedDeal(dealId);
+    
+    // Also try to delete the consumer-facing deal (uses portal_ prefix)
+    const consumerDealId = `portal_${dealId.substring(0, 8)}`;
+    try {
+      await storage.deleteDeal(consumerDealId);
+    } catch (e) {
+      // Consumer deal may not exist, ignore error
+    }
+    
     res.json({ success: true });
   });
 

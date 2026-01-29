@@ -1,6 +1,6 @@
 import { 
   deals, waitlist, hotelInquiries, hotelOwners, hotels, roomTypes, availability, publishedDeals, ownerSessions, bookings,
-  type Deal, type InsertWaitlist, type InsertHotelInquiry, 
+  type Deal, type InsertDeal, type InsertWaitlist, type InsertHotelInquiry, 
   type HotelOwner, type InsertHotelOwner, type HotelProfile, type InsertHotel,
   type RoomTypeRecord, type InsertRoomType, type AvailabilityRecord, type InsertAvailability,
   type PublishedDeal, type InsertPublishedDeal, type OwnerSession,
@@ -68,6 +68,11 @@ export interface IStorage {
   isDealBooked(dealId: string): Promise<boolean>;
   updateBookingEmailSent(id: string): Promise<void>;
   getAllBookings(): Promise<Booking[]>;
+  
+  // Consumer deal methods
+  createDeal(data: InsertDeal): Promise<Deal>;
+  deleteDeal(dealId: string): Promise<void>;
+  updateDeal(dealId: string, data: Partial<InsertDeal>): Promise<Deal | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -488,6 +493,28 @@ export class DatabaseStorage implements IStorage {
   async getAllBookings(): Promise<Booking[]> {
     return await db.select().from(bookings);
   }
+
+  // ========================================
+  // CONSUMER DEAL METHODS
+  // ========================================
+  
+  async createDeal(data: InsertDeal): Promise<Deal> {
+    const [deal] = await db.insert(deals).values(data).returning();
+    return deal;
+  }
+
+  async deleteDeal(dealId: string): Promise<void> {
+    await db.delete(deals).where(eq(deals.id, dealId));
+  }
+
+  async updateDeal(dealId: string, data: Partial<InsertDeal>): Promise<Deal | undefined> {
+    const [deal] = await db
+      .update(deals)
+      .set(data)
+      .where(eq(deals.id, dealId))
+      .returning();
+    return deal;
+  }
 }
 
 // Legacy MemStorage for backward compatibility during transition
@@ -804,6 +831,24 @@ export class MemStorage implements IStorage {
 
   async getAllBookings(): Promise<Booking[]> {
     return Array.from(this.bookingsMap.values());
+  }
+
+  async createDeal(data: InsertDeal): Promise<Deal> {
+    const deal = data as Deal;
+    this.deals.set(deal.id, deal);
+    return deal;
+  }
+
+  async deleteDeal(dealId: string): Promise<void> {
+    this.deals.delete(dealId);
+  }
+
+  async updateDeal(dealId: string, data: Partial<InsertDeal>): Promise<Deal | undefined> {
+    const deal = this.deals.get(dealId);
+    if (!deal) return undefined;
+    const updated = { ...deal, ...data } as Deal;
+    this.deals.set(dealId, updated);
+    return updated;
   }
 }
 

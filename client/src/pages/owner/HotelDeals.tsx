@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { 
   Building2, ArrowLeft, RefreshCw, Loader2, Calendar, 
-  DollarSign, Percent, AlertTriangle, Zap, Info, Edit2, X
+  DollarSign, Percent, AlertTriangle, Zap, Info, Edit2, X, Trash2, Check
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
@@ -85,6 +85,10 @@ export default function HotelDeals() {
   const [editingPrice, setEditingPrice] = useState<string>('');
   const [editingBarRoomTypeId, setEditingBarRoomTypeId] = useState<string | null>(null);
   const [editingBarRate, setEditingBarRate] = useState<string>('');
+  
+  const [editingDealId, setEditingDealId] = useState<string | null>(null);
+  const [editingDealPrice, setEditingDealPrice] = useState<string>('');
+  const [deletingDealId, setDeletingDealId] = useState<string | null>(null);
 
   const { data: hotel, isLoading: hotelLoading } = useQuery<HotelProfile>({
     queryKey: ["/api/owner/hotels", hotelId],
@@ -131,6 +135,40 @@ export default function HotelDeals() {
     },
     onError: () => {
       toast({ title: "Failed to publish deals", variant: "destructive" });
+    },
+  });
+
+  const updateDealMutation = useMutation({
+    mutationFn: async ({ dealId, dealPrice, discountPercent }: { dealId: string; dealPrice: number; discountPercent: number }) => {
+      const response = await apiRequest("PATCH", `/api/owner/hotels/${hotelId}/deals/${dealId}`, {
+        dealPrice,
+        discountPercent,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/hotels", hotelId, "deals"] });
+      setEditingDealId(null);
+      setEditingDealPrice('');
+      toast({ title: "Deal updated successfully!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update deal", variant: "destructive" });
+    },
+  });
+
+  const deleteDealMutation = useMutation({
+    mutationFn: async (dealId: string) => {
+      const response = await apiRequest("DELETE", `/api/owner/hotels/${hotelId}/deals/${dealId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/owner/hotels", hotelId, "deals"] });
+      setDeletingDealId(null);
+      toast({ title: "Deal deleted successfully!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete deal", variant: "destructive" });
     },
   });
 
@@ -705,7 +743,7 @@ export default function HotelDeals() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Published Deals</CardTitle>
-                    <CardDescription>Your active gap night deals</CardDescription>
+                    <CardDescription>Your active gap night deals - edit price or delete</CardDescription>
                   </CardHeader>
                   <CardContent className="p-0">
                     <Table>
@@ -715,23 +753,131 @@ export default function HotelDeals() {
                           <TableHead>Deal Price</TableHead>
                           <TableHead>Discount</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead className="w-24">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {existingDeals.map(deal => (
-                          <TableRow key={deal.id} data-testid={`row-deal-${deal.id}`}>
-                            <TableCell>{format(parseISO(deal.date), "EEE, MMM d, yyyy")}</TableCell>
-                            <TableCell>A${deal.dealPrice}</TableCell>
-                            <TableCell>
-                              <Badge variant="secondary">-{deal.discountPercent}%</Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={deal.status === "PUBLISHED" ? "default" : "outline"}>
-                                {deal.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {existingDeals.map(deal => {
+                          const isEditing = editingDealId === deal.id;
+                          const isDeleting = deletingDealId === deal.id;
+                          
+                          return (
+                            <TableRow key={deal.id} data-testid={`row-deal-${deal.id}`}>
+                              <TableCell>{format(parseISO(deal.date), "EEE, MMM d, yyyy")}</TableCell>
+                              <TableCell>
+                                {isEditing ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-muted-foreground">A$</span>
+                                    <Input
+                                      type="number"
+                                      value={editingDealPrice}
+                                      onChange={(e) => setEditingDealPrice(e.target.value)}
+                                      className="w-20 h-8"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          const newPrice = parseInt(editingDealPrice);
+                                          if (!isNaN(newPrice) && newPrice > 0) {
+                                            const discountPercent = Math.round((1 - newPrice / deal.barRate) * 100);
+                                            updateDealMutation.mutate({ dealId: deal.id, dealPrice: newPrice, discountPercent });
+                                          }
+                                        }
+                                        if (e.key === 'Escape') {
+                                          setEditingDealId(null);
+                                          setEditingDealPrice('');
+                                        }
+                                      }}
+                                      data-testid={`input-deal-price-${deal.id}`}
+                                    />
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-8 w-8"
+                                      disabled={updateDealMutation.isPending}
+                                      onClick={() => {
+                                        const newPrice = parseInt(editingDealPrice);
+                                        if (!isNaN(newPrice) && newPrice > 0) {
+                                          const discountPercent = Math.round((1 - newPrice / deal.barRate) * 100);
+                                          updateDealMutation.mutate({ dealId: deal.id, dealPrice: newPrice, discountPercent });
+                                        }
+                                      }}
+                                      data-testid={`button-save-deal-${deal.id}`}
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-8 w-8"
+                                      onClick={() => {
+                                        setEditingDealId(null);
+                                        setEditingDealPrice('');
+                                      }}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="font-semibold text-green-600">A${deal.dealPrice}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">-{deal.discountPercent}%</Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={deal.status === "PUBLISHED" ? "default" : "outline"}>
+                                  {deal.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {isDeleting ? (
+                                  <div className="flex items-center gap-1">
+                                    <Button 
+                                      size="sm" 
+                                      variant="destructive"
+                                      disabled={deleteDealMutation.isPending}
+                                      onClick={() => deleteDealMutation.mutate(deal.id)}
+                                      data-testid={`button-confirm-delete-${deal.id}`}
+                                    >
+                                      {deleteDealMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Confirm'}
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => setDeletingDealId(null)}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8"
+                                      onClick={() => {
+                                        setEditingDealId(deal.id);
+                                        setEditingDealPrice(deal.dealPrice.toString());
+                                      }}
+                                      data-testid={`button-edit-deal-${deal.id}`}
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                      onClick={() => setDeletingDealId(deal.id)}
+                                      data-testid={`button-delete-deal-${deal.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </CardContent>
