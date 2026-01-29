@@ -103,3 +103,26 @@ Database tables:
   - Clean admin UI with filters, sorting, and status tracking
 - **SEO Optimization**: Comprehensive meta tags, Open Graph, Twitter cards for social sharing
 - **Public Legal Pages**: Terms and Privacy pages accessible without partner access
+- **Functional Booking System**: Real database-backed bookings with guest details, email confirmations via Resend
+- **GST Display**: Prices show GST as included (Australian standard), not added separately
+- **Promotional Fee**: 3% Gap Night Fee shown but crossed out as "Promotion - Waived"
+- **Booked Deal Filtering**: Booked deals are automatically removed from listings
+- **Hotel Owner Portal**: Full login system with bcrypt password hashing at /owner/login
+
+## Test Accounts
+
+### Consumer Access
+- Partner password: `ly*^2yg;a@huO` (grants access to browse and book deals)
+
+### Hotel Owner Accounts
+- **crown@example.com** / `password123` - Owns Crown Collection (Crown City Suites, Crown Riverfront)
+- **bayview@example.com** / `password123` - Owns Bayview Group (Bayview Boutique, Bayview Coastal)
+
+## Database Seed
+Run `npx tsx scripts/seed.ts` to populate the database with:
+- 2 hotel owner accounts
+- 4 hotels (Crown City Suites, Crown Riverfront, Bayview Boutique, Bayview Coastal)
+- 8 room types
+- 240 availability records
+- 14 published deals (hotel portal)
+- 10 consumer-facing deals
