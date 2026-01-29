@@ -13,26 +13,25 @@ export function GapNightLogo({ className = "", size = 32 }: GapNightLogoProps) {
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      {/* Top-left teal crescent with notch */}
+      {/* Top-left teal crescent with angular notch */}
       <path
-        d="M50 5 
-           C25 5 5 25 5 50 
-           L22 50 
-           L38 34 
-           L38 50 
-           C38 43 43 38 50 38 
-           L50 5 Z"
-        fill="#14B8A6"
+        d="M50 8
+           A42 42 0 0 0 8 50
+           L25 50
+           L42 33
+           L42 50
+           A8 8 0 0 1 50 42
+           L50 8 Z"
+        fill="#2DD4BF"
       />
       
       {/* Bottom-right navy crescent */}
       <path
-        d="M50 95 
-           C75 95 95 75 95 50 
-           L78 50 
-           C78 57 73 62 66 62 
-           L50 62 
-           L50 95 Z"
+        d="M50 92
+           A42 42 0 0 0 92 50
+           L75 50
+           A25 25 0 0 1 50 75
+           L50 92 Z"
         fill="#1E3A5F"
       />
     </svg>
