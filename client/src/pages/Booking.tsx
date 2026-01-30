@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { 
   ArrowLeft, Star, MapPin, Calendar, CreditCard, User, Mail, Phone, 
-  MessageSquare, ChevronDown, ChevronUp, Check, Shield, Clock, AlertCircle
+  MessageSquare, ChevronDown, ChevronUp, Check, Shield, Clock, AlertCircle, Loader
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,30 +153,156 @@ export default function Booking() {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
           <Skeleton className="h-6 w-32 mb-6" />
+          
+          {/* Progress indicator skeleton */}
+          <div className="flex items-center gap-3 mb-8">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-px w-8" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-px w-8" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-              <Skeleton className="h-48 w-full rounded-xl" />
-              <Skeleton className="h-32 w-full rounded-xl" />
-              <Skeleton className="h-64 w-full rounded-xl" />
+              {/* Badges skeleton */}
+              <div className="bg-card rounded-xl p-6 border border-border/50">
+                <div className="flex gap-2">
+                  <Skeleton className="h-7 w-40" />
+                  <Skeleton className="h-7 w-40" />
+                </div>
+              </div>
+
+              {/* Guest info section skeleton */}
+              <div className="bg-card rounded-xl p-6 border border-border/50">
+                <div className="flex items-center gap-3 mb-6">
+                  <Skeleton className="h-5 w-5" />
+                  <Skeleton className="h-6 w-48" />
+                </div>
+                <Skeleton className="h-4 w-80 mb-6" />
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Special requests skeleton */}
+              <div className="bg-card rounded-xl p-6 border border-border/50">
+                <Skeleton className="h-6 w-full mb-4" />
+              </div>
+
+              {/* Payment skeleton */}
+              <div className="bg-card rounded-xl p-6 border border-border/50">
+                <div className="flex items-center gap-3 mb-6">
+                  <Skeleton className="h-5 w-5" />
+                  <Skeleton className="h-6 w-48" />
+                </div>
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit button skeleton */}
+              <Skeleton className="h-12 w-full rounded-lg" />
             </div>
-            <div>
-              <Skeleton className="h-96 w-full rounded-xl" />
+
+            {/* Booking summary skeleton */}
+            <div className="lg:col-span-1">
+              <div className="bg-card rounded-xl border border-border/50 overflow-hidden sticky top-6">
+                {/* Hotel image and info */}
+                <div className="flex gap-4 p-4 border-b border-border/50">
+                  <Skeleton className="h-20 w-24 rounded-lg shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-40" />
+                  </div>
+                </div>
+
+                {/* Room type */}
+                <div className="p-4 border-b border-border/50">
+                  <Skeleton className="h-5 w-32 mb-2" />
+                  <Skeleton className="h-3 w-48" />
+                </div>
+
+                {/* Dates */}
+                <div className="p-4 border-b border-border/50 space-y-3">
+                  <Skeleton className="h-5 w-64" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                  <Skeleton className="h-4 w-32" />
+                </div>
+
+                {/* Price details */}
+                <div className="p-4 border-b border-border/50 space-y-2">
+                  <Skeleton className="h-5 w-32 mb-3" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <div className="border-t border-border/50 mt-4 pt-4">
+                    <Skeleton className="h-6 w-48" />
+                  </div>
+                </div>
+
+                {/* Cancellation policy */}
+                <div className="p-4">
+                  <Skeleton className="h-5 w-40 mb-2" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
   if (!deal) {
     return (
-      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
-        <h1 className="text-2xl font-bold">Deal not found</h1>
-        <Link href="/deals">
-          <Button>Back to Deals</Button>
-        </Link>
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="max-w-2xl mx-auto px-4 sm:px-6 py-12 flex items-center justify-center">
+          <div className="bg-card rounded-2xl p-8 border border-border/50 text-center w-full">
+            <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground mb-2">Deal Not Found</h1>
+            <p className="text-muted-foreground mb-8">
+              Sorry, we couldn't find the deal you're looking for. It may have been removed or the link might be incorrect.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link href="/deals">
+                <Button data-testid="button-back-to-deals">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Deals
+                </Button>
+              </Link>
+              <Link href="/">
+                <Button variant="outline" data-testid="button-back-home">
+                  Back to Homepage
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </main>
+        <Footer />
       </div>
     );
   }
@@ -438,6 +564,7 @@ export default function Booking() {
                                 placeholder="E.g. early check-in, high floor, quiet room, etc."
                                 className="min-h-[100px]"
                                 data-testid="input-special-requests"
+                                autoComplete="off"
                                 {...field} 
                               />
                             </FormControl>
@@ -576,7 +703,14 @@ export default function Booking() {
                   disabled={isSubmitting}
                   data-testid="button-complete-booking"
                 >
-                  {isSubmitting ? "Processing..." : `Complete Booking - ${formatPrice(grandTotal, deal.currency)}`}
+                  {isSubmitting ? (
+                    <>
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    `Complete Booking - ${formatPrice(grandTotal, deal.currency)}`
+                  )}
                 </Button>
 
                 <p className="text-xs text-muted-foreground text-center">

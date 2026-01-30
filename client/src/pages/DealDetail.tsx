@@ -59,30 +59,124 @@ export default function DealDetail() {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+          {/* Back Link Skeleton */}
           <Skeleton className="h-6 w-32 mb-6" />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Skeleton className="aspect-[4/3] rounded-2xl" />
-            <div className="space-y-4">
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-6 w-64" />
-              <Skeleton className="h-32 w-full rounded-xl" />
-              <Skeleton className="h-40 w-full rounded-xl" />
+          
+          {/* Main Content - Two Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            {/* Left Column - Hero Image Skeleton */}
+            <div className="relative">
+              <Skeleton className="aspect-[4/3] rounded-2xl" />
+              {/* Action buttons skeleton */}
+              <div className="absolute top-4 right-4 flex gap-2">
+                <Skeleton className="w-10 h-10 rounded-full" />
+                <Skeleton className="w-10 h-10 rounded-full" />
+              </div>
+              {/* Discount badge skeleton */}
+              <div className="absolute top-4 left-4">
+                <Skeleton className="h-8 w-24 rounded-md" />
+              </div>
+            </div>
+
+            {/* Right Column - Details Skeleton */}
+            <div>
+              {/* Category Tags */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Skeleton className="h-6 w-20 rounded-md" />
+                <Skeleton className="h-6 w-24 rounded-md" />
+              </div>
+
+              {/* Title */}
+              <Skeleton className="h-10 w-full mb-3" />
+
+              {/* Location + Rating */}
+              <div className="space-y-2 mb-6">
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-5 w-64" />
+              </div>
+
+              {/* Availability Selector Skeleton */}
+              <div className="bg-card rounded-xl border border-border/50 mb-6 overflow-hidden">
+                <div className="px-4 py-3 border-b border-border/50 bg-muted/30">
+                  <Skeleton className="h-5 w-40" />
+                </div>
+                <div className="p-2 space-y-2">
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                </div>
+              </div>
+
+              {/* Book Now Card Skeleton */}
+              <div className="bg-card rounded-xl p-5 border border-border/50">
+                <div className="space-y-4">
+                  <div className="space-y-2 mb-4">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-8 w-32" />
+                    <Skeleton className="h-4 w-40" />
+                  </div>
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Bottom Section Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* About Section */}
+            <div>
+              <Skeleton className="h-7 w-48 mb-4" />
+              <div className="bg-card rounded-xl p-5 border border-border/50">
+                <div className="space-y-4">
+                  <Skeleton className="h-6 w-32" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                  <div className="flex flex-wrap gap-3">
+                    <Skeleton className="h-8 w-24 rounded-lg" />
+                    <Skeleton className="h-8 w-24 rounded-lg" />
+                    <Skeleton className="h-8 w-24 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Location Section */}
+            <div>
+              <Skeleton className="h-7 w-48 mb-4" />
+              <Skeleton className="h-60 w-full rounded-xl" />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
 
   if (!deal) {
     return (
-      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
-        <h1 className="text-2xl font-bold">Deal not found</h1>
-        <Link href="/deals">
-          <Button>Back to Deals</Button>
-        </Link>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Navigation />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center space-y-6 max-w-md mx-auto px-4">
+            <div>
+              <h1 className="text-4xl font-bold text-foreground mb-2">Deal not found</h1>
+              <p className="text-muted-foreground">
+                Sorry, we couldn't find the deal you're looking for. It may have expired or been removed.
+              </p>
+            </div>
+            <Link href="/deals">
+              <Button size="lg" className="w-full" data-testid="button-back-to-deals">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Deals
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -206,7 +300,7 @@ export default function DealDetail() {
                       <button
                         key={option.id}
                         onClick={() => setSelectedOption(option.id)}
-                        className={`w-full flex items-center justify-between p-3 rounded-lg transition-all mb-1 last:mb-0 ${
+                        className={`w-full flex items-center justify-between p-3 rounded-lg transition-all mb-1 last:mb-0 hover-elevate ${
                           isSelected 
                             ? 'bg-primary/10 border-2 border-primary' 
                             : 'bg-background border-2 border-transparent'

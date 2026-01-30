@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useDeals } from "@/hooks/use-deals";
 import { Navigation } from "@/components/Navigation";
-import { Search, MapPin, ArrowRight, Sparkles, Star, Clock, Hotel, CheckCircle2, Building2 } from "lucide-react";
+import { Search, MapPin, ArrowRight, Sparkles, Star, Clock, Hotel, CheckCircle2, Building2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -131,12 +131,12 @@ export default function Landing() {
                 
                 {/* Search Bar - Mobile optimized */}
                 <div 
-                  className="bg-muted rounded-2xl md:rounded-full border border-border/50 p-2 md:p-1.5 mt-6 md:mt-8"
+                  className="bg-muted rounded-2xl md:rounded-full border border-border/50 p-2 md:p-1.5 mt-6 md:mt-8 focus-within:ring-2 focus-within:ring-primary transition-all"
                   ref={searchRef}
                 >
                   <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                     <div className="flex-1 relative">
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary pointer-events-none" />
                       <input
                         type="text"
                         placeholder="Where do you want to stay?"
@@ -147,9 +147,22 @@ export default function Landing() {
                         }}
                         onFocus={() => setShowSuggestions(true)}
                         onKeyDown={handleKeyDown}
-                        className="w-full pl-12 pr-4 py-3.5 md:py-4 text-base bg-transparent border-0 focus:outline-none focus:ring-0 placeholder:text-muted-foreground rounded-xl md:rounded-full"
+                        className="w-full pl-12 pr-10 py-3.5 md:py-4 text-base bg-transparent border-0 outline-none placeholder:text-muted-foreground rounded-xl md:rounded-full"
                         data-testid="input-hero-search"
                       />
+                      {search && (
+                        <button
+                          onClick={() => {
+                            setSearch("");
+                            setShowSuggestions(false);
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label="Clear search"
+                          data-testid="button-clear-search"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
                       
                       {showSuggestions && (
                         <div className="absolute top-full left-0 right-0 mt-3 bg-popover rounded-2xl shadow-2xl border border-border/50 overflow-hidden z-50 max-h-[320px] overflow-y-auto">
@@ -251,20 +264,49 @@ export default function Landing() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {dealsLoading && Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-card rounded-2xl border border-border/50 p-4">
-                <div className="flex gap-4">
-                  <Skeleton className="w-28 h-28 rounded-xl" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-16" />
+              <div key={i} className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+                <div className="flex gap-4 p-4">
+                  <Skeleton className="w-28 h-28 rounded-xl shrink-0" />
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-1">
+                      <Skeleton className="h-4 w-4 rounded-full" />
+                      <Skeleton className="h-4 w-12" />
+                      <Skeleton className="h-3 w-10" />
+                    </div>
                     <Skeleton className="h-5 w-full" />
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-6 w-28" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-full" />
+                    <div className="flex items-center gap-2 pt-1">
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
-            {!dealsLoading && deals?.slice(0, 6).map((deal) => {
+            {!dealsLoading && (!deals || deals.length === 0) && (
+              <div className="col-span-full flex flex-col items-center justify-center py-16">
+                <div className="text-center max-w-md">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+                    <Search className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground mb-2">No deals found</h3>
+                  <p className="text-muted-foreground mb-6">
+                    No gap night deals available right now. Check back soon or try searching for a different location.
+                  </p>
+                  <Button 
+                    onClick={() => setLocation("/deals")}
+                    className="rounded-full"
+                    data-testid="button-browse-empty-deals"
+                  >
+                    Browse All Locations
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            {!dealsLoading && deals && deals.length > 0 && deals.slice(0, 6).map((deal) => {
               const discountPercent = Math.round(
                 ((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100
               );
@@ -275,7 +317,7 @@ export default function Landing() {
                 <div 
                   key={deal.id}
                   onClick={() => setLocation(`/deal/${deal.id}`)}
-                  className="bg-card rounded-2xl border border-border/50 overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
+                  className="bg-card rounded-2xl border border-border/50 overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group hover-elevate"
                   data-testid={`preview-deal-${deal.id}`}
                 >
                   <div className="flex gap-4 p-4">
