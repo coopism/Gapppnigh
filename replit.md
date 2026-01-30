@@ -122,6 +122,17 @@ Database tables:
   - Removed duplicate not-found.tsx file
   - Added more amenity icons: Bar, Beach Access, Room Service, Concierge
   - Standardized navigation link text ("For Hotels" on both desktop and mobile)
+- **Quality of Life & Stability Improvements (January 2026)**:
+  - **Formatting Helpers**: Added centralized `formatPrice()`, `formatDate()`, `formatShortDate()`, `formatDiscount()`, `formatRating()` utilities
+  - **Input Helpers**: Added `sanitizeInput()`, `isValidEmail()`, `debounce()` utilities
+  - **Loading States**: Skeleton loaders for deals list, deal detail, booking page, and landing page
+  - **Empty States**: Friendly "No deals found" message with clear filters button on deals page
+  - **Search Polish**: Debounced search (300ms), clear button (X), proper focus styles, Enter key submission
+  - **Error States**: Improved deal-not-found and booking error pages with navigation buttons
+  - **Backend Security**: Try/catch on all API routes, consistent error responses, input sanitization, rate limiting TODOs
+  - **Image Stability**: Fixed dimensions/aspect ratios on images to prevent layout shift
+  - **Hover States**: Added hover-elevate to deal cards and interactive elements
+  - **Form Improvements**: Added autocomplete attributes, loading spinners on submit buttons
 
 ## Test Accounts
 
