@@ -94,13 +94,17 @@ Database tables:
 - **Dark Mode CSS Variables**: Complete dark palette with proper contrast ratios
 - **Coming Soon Page**: Dictionary-style definition hero with waitlist signup and hidden partner access
 - **Partner Access Gating**: Password-protected access to full platform (stored in PARTNER_ACCESS_PASSWORD secret)
-- **Hotel Dashboard**: Front-end mockup at `/hotel/dashboard/orphan-nights` for hotels to review and price orphan nights
+- **Hotel Dashboard**: Front-end mockup at `/hotel/dashboard/orphan-nights` for hotels to review and price gap nights
   - Simulated ARI (Availability/Rates/Inventory) fetch for next 7/14/30 days
-  - Automatic orphan night detection (true gaps, restriction-created, closed-to-arrival)
+  - **Gap Duration Detection**: Identifies consecutive gap nights (1-night, 2-night, 3+ night gaps) bounded by unavailable dates on both sides
+  - **Gap Statistics Dashboard**: Visual cards showing counts by gap duration (red=1-night, amber=2-night, green=3+)
+  - **Quantity Control**: Hotels can select how many rooms to sell (e.g., 1 out of 3 available) using +/- buttons
+  - **Duration-Based Pricing**: Separate discount sliders for 1-night (35% default), 2-night (30%), and 3+ night (25%) gaps
+  - **Minimum Availability Calculation**: Multi-night gaps show the minimum available rooms across all dates in the gap
   - Pricing controls: % off BAR, floor price, or fixed price
   - Per-night price overrides
   - Approve and publish workflow with localStorage persistence
-  - Clean admin UI with filters, sorting, and status tracking
+  - Clean admin UI with filters, sorting by duration, and status tracking
 - **SEO Optimization**: Comprehensive meta tags, Open Graph, Twitter cards for social sharing
 - **Public Legal Pages**: Terms and Privacy pages accessible without partner access
 - **Functional Booking System**: Real database-backed bookings with guest details, email confirmations via Resend
