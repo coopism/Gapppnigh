@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
 import { ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
+
+export function ScrollToTopOnNavigation() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location]);
+
+  return null;
+}
 
 export function ScrollToTop() {
   const [isVisible, setIsVisible] = useState(false);

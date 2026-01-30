@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { ScrollToTop } from "@/components/ScrollToTop";
+import { ScrollToTop, ScrollToTopOnNavigation } from "@/components/ScrollToTop";
 
 import ComingSoon from "@/pages/ComingSoon";
 import Landing from "@/pages/Landing";
@@ -97,6 +97,7 @@ function App() {
       <ThemeProvider>
         <TooltipProvider>
           <Toaster />
+          <ScrollToTopOnNavigation />
           {hasPartnerAccess ? (
             <>
               <MainRouter />
