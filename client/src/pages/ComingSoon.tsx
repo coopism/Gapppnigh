@@ -4,12 +4,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertWaitlistSchema, type InsertWaitlist } from "@shared/schema";
 import { useAddToWaitlist } from "@/hooks/use-waitlist";
 import { Footer } from "@/components/Footer";
-import { Mail, MapPin, Sparkles, Lock, Eye, EyeOff } from "lucide-react";
+import { Mail, MapPin, Sparkles, Lock, Eye, EyeOff, Moon, Sun } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/components/ThemeProvider";
-import { Moon, Sun } from "lucide-react";
+import { GapNightLogo } from "@/components/GapNightLogo";
 import {
   Form,
   FormControl,
@@ -114,9 +114,7 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
       <header className="relative z-20 px-4 py-4">
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">G</span>
-            </div>
+            <GapNightLogo size={32} />
             <span className="font-display text-xl font-bold text-foreground">GapNight</span>
           </div>
           <Button

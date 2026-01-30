@@ -7,13 +7,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { formatPrice } from "@/lib/utils";
+import { GapNightLogoLoader } from "@/components/GapNightLogo";
 
 const markerIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -59,100 +59,11 @@ export default function DealDetail() {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          {/* Back Link Skeleton */}
-          <Skeleton className="h-6 w-32 mb-6" />
-          
-          {/* Main Content - Two Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-            {/* Left Column - Hero Image Skeleton */}
-            <div className="relative">
-              <Skeleton className="aspect-[4/3] rounded-2xl" />
-              {/* Action buttons skeleton */}
-              <div className="absolute top-4 right-4 flex gap-2">
-                <Skeleton className="w-10 h-10 rounded-full" />
-                <Skeleton className="w-10 h-10 rounded-full" />
-              </div>
-              {/* Discount badge skeleton */}
-              <div className="absolute top-4 left-4">
-                <Skeleton className="h-8 w-24 rounded-md" />
-              </div>
-            </div>
-
-            {/* Right Column - Details Skeleton */}
-            <div>
-              {/* Category Tags */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                <Skeleton className="h-6 w-20 rounded-md" />
-                <Skeleton className="h-6 w-24 rounded-md" />
-              </div>
-
-              {/* Title */}
-              <Skeleton className="h-10 w-full mb-3" />
-
-              {/* Location + Rating */}
-              <div className="space-y-2 mb-6">
-                <Skeleton className="h-5 w-48" />
-                <Skeleton className="h-5 w-64" />
-              </div>
-
-              {/* Availability Selector Skeleton */}
-              <div className="bg-card rounded-xl border border-border/50 mb-6 overflow-hidden">
-                <div className="px-4 py-3 border-b border-border/50 bg-muted/30">
-                  <Skeleton className="h-5 w-40" />
-                </div>
-                <div className="p-2 space-y-2">
-                  <Skeleton className="h-16 w-full rounded-lg" />
-                  <Skeleton className="h-16 w-full rounded-lg" />
-                  <Skeleton className="h-16 w-full rounded-lg" />
-                </div>
-              </div>
-
-              {/* Book Now Card Skeleton */}
-              <div className="bg-card rounded-xl p-5 border border-border/50">
-                <div className="space-y-4">
-                  <div className="space-y-2 mb-4">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-8 w-32" />
-                    <Skeleton className="h-4 w-40" />
-                  </div>
-                  <Skeleton className="h-12 w-full rounded-xl" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Section Skeleton */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* About Section */}
-            <div>
-              <Skeleton className="h-7 w-48 mb-4" />
-              <div className="bg-card rounded-xl p-5 border border-border/50">
-                <div className="space-y-4">
-                  <Skeleton className="h-6 w-32" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                  </div>
-                  <Skeleton className="h-10 w-full rounded-lg" />
-                  <div className="flex flex-wrap gap-3">
-                    <Skeleton className="h-8 w-24 rounded-lg" />
-                    <Skeleton className="h-8 w-24 rounded-lg" />
-                    <Skeleton className="h-8 w-24 rounded-lg" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Location Section */}
-            <div>
-              <Skeleton className="h-7 w-48 mb-4" />
-              <Skeleton className="h-60 w-full rounded-xl" />
-            </div>
-          </div>
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col items-center justify-center min-h-[60vh]">
+          <GapNightLogoLoader size={64} className="mb-4" />
+          <p className="text-muted-foreground text-sm animate-pulse">Loading deal...</p>
         </main>
+        <Footer />
       </div>
     );
   }

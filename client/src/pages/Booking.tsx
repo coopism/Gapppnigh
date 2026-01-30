@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import {
   Form,
   FormControl,
@@ -153,122 +153,11 @@ export default function Booking() {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          <Skeleton className="h-6 w-32 mb-6" />
-          
-          {/* Progress indicator skeleton */}
-          <div className="flex items-center gap-3 mb-8">
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-px w-8" />
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-px w-8" />
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-4 w-24" />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              {/* Badges skeleton */}
-              <div className="bg-card rounded-xl p-6 border border-border/50">
-                <div className="flex gap-2">
-                  <Skeleton className="h-7 w-40" />
-                  <Skeleton className="h-7 w-40" />
-                </div>
-              </div>
-
-              {/* Guest info section skeleton */}
-              <div className="bg-card rounded-xl p-6 border border-border/50">
-                <div className="flex items-center gap-3 mb-6">
-                  <Skeleton className="h-5 w-5" />
-                  <Skeleton className="h-6 w-48" />
-                </div>
-                <Skeleton className="h-4 w-80 mb-6" />
-                <div className="space-y-4">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Special requests skeleton */}
-              <div className="bg-card rounded-xl p-6 border border-border/50">
-                <Skeleton className="h-6 w-full mb-4" />
-              </div>
-
-              {/* Payment skeleton */}
-              <div className="bg-card rounded-xl p-6 border border-border/50">
-                <div className="flex items-center gap-3 mb-6">
-                  <Skeleton className="h-5 w-5" />
-                  <Skeleton className="h-6 w-48" />
-                </div>
-                <div className="space-y-4">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Submit button skeleton */}
-              <Skeleton className="h-12 w-full rounded-lg" />
-            </div>
-
-            {/* Booking summary skeleton */}
-            <div className="lg:col-span-1">
-              <div className="bg-card rounded-xl border border-border/50 overflow-hidden sticky top-6">
-                {/* Hotel image and info */}
-                <div className="flex gap-4 p-4 border-b border-border/50">
-                  <Skeleton className="h-20 w-24 rounded-lg shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-3 w-40" />
-                  </div>
-                </div>
-
-                {/* Room type */}
-                <div className="p-4 border-b border-border/50">
-                  <Skeleton className="h-5 w-32 mb-2" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-
-                {/* Dates */}
-                <div className="p-4 border-b border-border/50 space-y-3">
-                  <Skeleton className="h-5 w-64" />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                  </div>
-                  <Skeleton className="h-4 w-32" />
-                </div>
-
-                {/* Price details */}
-                <div className="p-4 border-b border-border/50 space-y-2">
-                  <Skeleton className="h-5 w-32 mb-3" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <div className="border-t border-border/50 mt-4 pt-4">
-                    <Skeleton className="h-6 w-48" />
-                  </div>
-                </div>
-
-                {/* Cancellation policy */}
-                <div className="p-4">
-                  <Skeleton className="h-5 w-40 mb-2" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              </div>
-            </div>
-          </div>
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col items-center justify-center min-h-[60vh]">
+          <GapNightLogoLoader size={64} className="mb-4" />
+          <p className="text-muted-foreground text-sm animate-pulse">Preparing your booking...</p>
         </main>
+        <Footer />
       </div>
     );
   }

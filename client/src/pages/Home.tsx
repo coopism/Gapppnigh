@@ -7,6 +7,7 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map, X, Loader2 } from "lucide-react";
 import { debounce } from "@/lib/utils";
+import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -679,30 +680,9 @@ export default function Home() {
 
         {/* Deals Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-card rounded-2xl overflow-hidden border border-border/50">
-                <Skeleton className="aspect-[4/3] w-full" />
-                <div className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-5 w-12" />
-                  </div>
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <div className="flex items-center gap-2 pt-1">
-                    <Skeleton className="h-4 w-4 rounded" />
-                    <Skeleton className="h-4 w-4 rounded" />
-                    <Skeleton className="h-4 w-4 rounded" />
-                  </div>
-                  <div className="flex items-center justify-between pt-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-5 w-16" />
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="flex flex-col items-center justify-center py-20">
+            <GapNightLogoLoader size={64} className="mb-4" />
+            <p className="text-muted-foreground text-sm animate-pulse">Finding gap nights...</p>
           </div>
         ) : error ? (
           <div className="text-center py-20 bg-card rounded-3xl border border-dashed border-border">

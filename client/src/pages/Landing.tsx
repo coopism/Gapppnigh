@@ -5,9 +5,9 @@ import { Navigation } from "@/components/Navigation";
 import { Search, MapPin, ArrowRight, Sparkles, Star, Clock, Hotel, CheckCircle2, Building2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { format, parseISO } from "date-fns";
 import { formatPrice } from "@/lib/utils";
+import { GapNightLogoLoader } from "@/components/GapNightLogo";
 
 const LOCATION_SUGGESTIONS = [
   { city: "Melbourne", state: "VIC" },
@@ -259,28 +259,12 @@ export default function Landing() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dealsLoading && Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-card rounded-2xl border border-border/50 overflow-hidden">
-                <div className="flex gap-4 p-4">
-                  <Skeleton className="w-28 h-28 rounded-xl shrink-0" />
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-1">
-                      <Skeleton className="h-4 w-4 rounded-full" />
-                      <Skeleton className="h-4 w-12" />
-                      <Skeleton className="h-3 w-10" />
-                    </div>
-                    <Skeleton className="h-5 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-full" />
-                    <div className="flex items-center gap-2 pt-1">
-                      <Skeleton className="h-4 w-16" />
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-5 w-16 rounded-full" />
-                    </div>
-                  </div>
-                </div>
+            {dealsLoading && (
+              <div className="col-span-full flex flex-col items-center justify-center py-16">
+                <GapNightLogoLoader size={64} className="mb-4" />
+                <p className="text-muted-foreground text-sm animate-pulse">Finding gap nights...</p>
               </div>
-            ))}
+            )}
             {!dealsLoading && (!deals || deals.length === 0) && (
               <div className="col-span-full flex flex-col items-center justify-center py-16">
                 <div className="text-center max-w-md">
