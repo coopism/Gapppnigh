@@ -353,7 +353,7 @@ export default function DealDetail() {
           <div>
             <h2 className="text-xl font-bold text-foreground mb-4">Location</h2>
             {deal.latitude && deal.longitude ? (
-              <div className="bg-card rounded-xl overflow-hidden border border-border/50 h-[250px]">
+              <div className="bg-card rounded-xl overflow-hidden border border-border/50 h-[250px] gapnight-map">
                 <MapContainer
                   center={[parseFloat(deal.latitude), parseFloat(deal.longitude)]}
                   zoom={14}
@@ -362,7 +362,7 @@ export default function DealDetail() {
                 >
                   <TileLayer
                     attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                   />
                   <Marker
                     position={[parseFloat(deal.latitude), parseFloat(deal.longitude)]}

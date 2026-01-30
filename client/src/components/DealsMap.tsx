@@ -64,13 +64,13 @@ export function DealsMap({ deals, selectedDealId, onDealSelect }: DealsMapProps)
     <MapContainer
       center={center}
       zoom={5}
-      className="w-full h-full rounded-xl z-0"
+      className="w-full h-full rounded-xl z-0 gapnight-map"
       ref={mapRef}
       data-testid="deals-map"
     >
       <TileLayer
         attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
       />
       <FitBounds deals={validDeals} />
       {validDeals.map((deal) => {

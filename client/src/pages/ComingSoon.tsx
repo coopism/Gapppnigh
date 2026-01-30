@@ -4,11 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertWaitlistSchema, type InsertWaitlist } from "@shared/schema";
 import { useAddToWaitlist } from "@/hooks/use-waitlist";
 import { Footer } from "@/components/Footer";
-import { Mail, MapPin, Sparkles, Lock, Eye, EyeOff, Moon, Sun } from "lucide-react";
+import { Mail, MapPin, Sparkles, Lock, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useTheme } from "@/components/ThemeProvider";
 import { GapNightLogo } from "@/components/GapNightLogo";
 import {
   Form,
@@ -34,7 +33,6 @@ interface ComingSoonProps {
 export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
   const mutation = useAddToWaitlist();
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
   const [partnerPassword, setPartnerPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -117,14 +115,6 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
             <GapNightLogo size={32} />
             <span className="font-display text-xl font-bold text-foreground">GapNight</span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            data-testid="button-theme-toggle"
-          >
-            {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </Button>
         </div>
       </header>
 

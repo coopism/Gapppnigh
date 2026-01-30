@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Hotel, Menu, Home, UserPlus, Moon, Sun } from "lucide-react";
+import { Hotel, Menu, Home, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -8,13 +8,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ThemeToggle } from "./ThemeToggle";
-import { useTheme } from "./ThemeProvider";
 import { GapNightLogo } from "./GapNightLogo";
 
 export function Navigation() {
   const [location] = useLocation();
-  const { theme, toggleTheme } = useTheme();
 
   const isActive = (path: string) => location === path;
 
@@ -37,7 +34,6 @@ export function Navigation() {
             <Link href="/list-your-hotel" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/list-your-hotel") ? "text-primary" : "text-muted-foreground"}`}>
               For Hotels
             </Link>
-            <ThemeToggle />
             <Link href="/waitlist">
                <Button variant={isActive("/waitlist") ? "secondary" : "default"} size="sm" className="rounded-full px-5 font-bold shadow-md hover:shadow-lg transition-all">
                 Join Waitlist
@@ -76,21 +72,6 @@ export function Navigation() {
                       <UserPlus className="w-5 h-5 mr-3" /> Join Waitlist
                     </Button>
                   </Link>
-                  <div className="border-t border-border/50 mt-4 pt-4">
-                    <Button
-                      variant="ghost"
-                      onClick={toggleTheme}
-                      className="w-full justify-start text-lg font-medium h-12"
-                      data-testid="button-theme-toggle-mobile"
-                    >
-                      {theme === "light" ? (
-                        <Moon className="w-5 h-5 mr-3" />
-                      ) : (
-                        <Sun className="w-5 h-5 mr-3" />
-                      )}
-                      {theme === "light" ? "Dark Mode" : "Light Mode"}
-                    </Button>
-                  </div>
                 </div>
               </SheetContent>
             </Sheet>

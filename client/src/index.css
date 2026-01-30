@@ -110,3 +110,8 @@
 .glass-card {
   @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
 }
+
+/* GapNight branded map with subtle teal tint */
+.gapnight-map .leaflet-tile-pane {
+  filter: sepia(10%) saturate(120%) hue-rotate(160deg);
+}
