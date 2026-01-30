@@ -241,6 +241,7 @@ export interface PricingRule {
   value: number;
   applyTo: 'all' | 'selected_room_type' | 'checked_only';
   selectedRoomTypeId?: string;
+  gapDurationDiscounts?: { [key: number]: number };
 }
 
 // ========================================

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { format, addDays, parseISO, differenceInDays } from "date-fns";
+import { format, addDays, parseISO } from "date-fns";
 import { Link } from "wouter";
 import { 
   RefreshCw, 
@@ -150,7 +150,8 @@ function detectOrphanNights(ari: ARIEntry[], hotel: Hotel): OrphanNightCandidate
       let gapDuration = 1;
       let gapEndDate = entry.date;
       let totalBarRate = entry.barRate;
-      const gapDates: string[] = [entry.date];
+      let minAvailable = entry.available;
+      const gapEntries: ARIEntry[] = [entry];
 
       for (let j = i + 1; j < roomAri.length; j++) {
         const nextEntry = roomAri[j];
@@ -159,25 +160,19 @@ function detectOrphanNights(ari: ARIEntry[], hotel: Hotel): OrphanNightCandidate
         if (nextEntry.date !== expectedNextDate) break;
         if (nextEntry.available === 0) break;
 
-        const afterNextDate = format(addDays(parseISO(nextEntry.date), 1), "yyyy-MM-dd");
-        const afterNextEntry = getEntry(nextEntry.roomTypeId, afterNextDate);
-        
         gapDuration++;
         gapEndDate = nextEntry.date;
         totalBarRate += nextEntry.barRate;
-        gapDates.push(nextEntry.date);
+        minAvailable = Math.min(minAvailable, nextEntry.available);
+        gapEntries.push(nextEntry);
         processedDates.add(`${nextEntry.roomTypeId}_${nextEntry.date}`);
-
-        if (!afterNextEntry || afterNextEntry.available === 0) {
-          break;
-        }
       }
 
       const nextDateAfterGap = format(addDays(parseISO(gapEndDate), 1), "yyyy-MM-dd");
       const nextEntryAfterGap = getEntry(entry.roomTypeId, nextDateAfterGap);
       const nextUnavailable = !nextEntryAfterGap || nextEntryAfterGap.available === 0;
 
-      if (!nextUnavailable && gapDuration === 1) {
+      if (!nextUnavailable) {
         continue;
       }
 
@@ -191,7 +186,7 @@ function detectOrphanNights(ari: ARIEntry[], hotel: Hotel): OrphanNightCandidate
         reason = "2-night gap: short window between bookings";
         suggestedDiscount = 30;
       } else {
-        reason = `${gapDuration}-night gap: available window before next booking`;
+        reason = `${gapDuration}-night gap: window between bookings`;
         suggestedDiscount = 25;
       }
 
@@ -204,7 +199,7 @@ function detectOrphanNights(ari: ARIEntry[], hotel: Hotel): OrphanNightCandidate
         roomTypeName: roomTypeMap.get(entry.roomTypeId) || "Unknown",
         date: entry.date,
         barRate: avgBarRate,
-        available: entry.available,
+        available: minAvailable,
         reason,
         suggestedDiscountPercent: suggestedDiscount,
         status: 'draft',
@@ -251,10 +246,6 @@ function calculateDealPrice(barRate: number, rule: PricingRule, gapDuration: num
 type SortOption = 'soonest' | 'cheapest' | 'biggest_discount' | 'gap_duration';
 type FilterOption = 'all' | '1_night' | '2_night' | '3_plus_night';
 
-interface ExtendedPricingRule extends PricingRule {
-  gapDurationDiscounts?: { [key: number]: number };
-}
-
 export default function OrphanNightsDashboard() {
   const { theme, setTheme } = useTheme();
   const [selectedHotelId, setSelectedHotelId] = useState<string>(MOCK_HOTELS[0].id);
@@ -265,7 +256,7 @@ export default function OrphanNightsDashboard() {
   const [ariData, setAriData] = useState<ARIEntry[]>([]);
   const [orphanCandidates, setOrphanCandidates] = useState<OrphanNightCandidate[]>([]);
   
-  const [pricingRule, setPricingRule] = useState<ExtendedPricingRule>({
+  const [pricingRule, setPricingRule] = useState<PricingRule>({
     mode: 'percent_off',
     value: 25,
     applyTo: 'all',
