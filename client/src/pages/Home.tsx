@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useSearch } from "wouter";
 import { useDeals, type SortOption } from "@/hooks/use-deals";
 import { DealCard } from "@/components/DealCard";
 import { DealsMap } from "@/components/DealsMap";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
-import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map } from "lucide-react";
+import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map, X, Loader2 } from "lucide-react";
+import { debounce } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -74,15 +75,28 @@ export default function Home() {
   const searchParams = useSearch();
   const urlSearch = new URLSearchParams(searchParams).get("search") || "";
   
-  const [search, setSearch] = useState(urlSearch);
+  const [searchInput, setSearchInput] = useState(urlSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
   const [activeCategory, setActiveCategory] = useState("All Deals");
   const [sortBy, setSortBy] = useState<SortOption>("best");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
   
+  const debouncedSetSearch = useMemo(
+    () => debounce(setDebouncedSearch, 300),
+    []
+  );
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchInput(value);
+    setShowSuggestions(true);
+    debouncedSetSearch(value);
+  }, [debouncedSetSearch]);
+
   useEffect(() => {
-    setSearch(urlSearch);
+    setSearchInput(urlSearch);
+    setDebouncedSearch(urlSearch);
   }, [urlSearch]);
 
   // Date selection state
@@ -104,7 +118,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
   const { data: deals, isLoading, error } = useDeals({
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     category: activeCategory,
     sort: sortBy,
   });
@@ -113,7 +127,7 @@ export default function Home() {
 
   // Filter suggestions based on input
   const filteredSuggestions = LOCATION_SUGGESTIONS.filter(loc => {
-    const searchLower = search.toLowerCase();
+    const searchLower = searchInput.toLowerCase();
     return (
       loc.city.toLowerCase().includes(searchLower) ||
       loc.state.toLowerCase().includes(searchLower) ||
@@ -140,7 +154,8 @@ export default function Home() {
 
   const handleSelectSuggestion = (location: typeof LOCATION_SUGGESTIONS[0]) => {
     const locationString = `${location.city}, ${location.state}`;
-    setSearch(locationString);
+    setSearchInput(locationString);
+    setDebouncedSearch(locationString);
     setShowSuggestions(false);
     setRecentSearches(prev => {
       const filtered = prev.filter(s => s !== locationString);
@@ -149,8 +164,16 @@ export default function Home() {
   };
 
   const handleClearSearch = () => {
-    setSearch("");
+    setSearchInput("");
+    setDebouncedSearch("");
     setShowSuggestions(true);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      setDebouncedSearch(searchInput);
+      setShowSuggestions(false);
+    }
   };
 
   // Get display text for date selection
@@ -246,34 +269,32 @@ export default function Home() {
                 <MapPin className="w-4 h-4 text-primary shrink-0" />
                 <input
                   type="text"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setShowSuggestions(true);
-                  }}
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   onFocus={() => setShowSuggestions(true)}
+                  onKeyDown={handleSearchKeyDown}
                   placeholder="Search destinations..."
                   className="bg-transparent border-none outline-none text-sm font-semibold text-foreground placeholder:text-muted-foreground w-full"
                   data-testid="input-search"
                 />
-                {search && (
+                {searchInput && (
                   <button
                     onClick={handleClearSearch}
-                    className="text-muted-foreground hover:text-foreground text-xs"
+                    className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     data-testid="button-clear-search"
                   >
-                    Clear
+                    <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
-                {search ? `Searching: ${search}` : "↔ Anywhere"}
+                {searchInput ? `Searching: ${searchInput}` : "↔ Anywhere"}
               </div>
 
               {/* Autocomplete Dropdown */}
               {showSuggestions && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-popover rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 min-w-[300px]">
-                  {recentSearches.length > 0 && !search && (
+                  {recentSearches.length > 0 && !searchInput && (
                     <div className="p-3 border-b border-border/50">
                       <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <Clock className="w-3 h-3" />
@@ -283,7 +304,8 @@ export default function Home() {
                         <button
                           key={i}
                           onClick={() => {
-                            setSearch(recent);
+                            setSearchInput(recent);
+                            setDebouncedSearch(recent);
                             setShowSuggestions(false);
                           }}
                           className="w-full text-left px-3 py-2 hover-elevate rounded-lg text-sm font-medium flex items-center gap-2"
@@ -297,13 +319,13 @@ export default function Home() {
                   )}
                   <div className="p-3">
                     <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                      {search ? "Matching Destinations" : "Popular Destinations"}
+                      {searchInput ? "Matching Destinations" : "Popular Destinations"}
                     </div>
                     {filteredSuggestions.length > 0 ? (
                       <div className="space-y-1">
-                        {filteredSuggestions.slice(0, 6).map((loc, i) => (
+                        {filteredSuggestions.slice(0, 6).map((loc) => (
                           <button
-                            key={i}
+                            key={`${loc.city}-${loc.state}`}
                             onClick={() => handleSelectSuggestion(loc)}
                             className="w-full text-left px-3 py-2.5 hover:bg-primary/5 rounded-lg flex items-center gap-3 group transition-colors"
                             data-testid={`suggestion-${loc.city.toLowerCase().replace(/\s+/g, '-')}`}
@@ -320,7 +342,7 @@ export default function Home() {
                       </div>
                     ) : (
                       <div className="text-center py-4 text-muted-foreground text-sm">
-                        No destinations found for "{search}"
+                        No destinations found for "{searchInput}"
                       </div>
                     )}
                   </div>
@@ -564,13 +586,19 @@ export default function Home() {
               size="icon" 
               className="h-12 w-12 rounded-full shadow-lg shrink-0"
               data-testid="button-search"
+              disabled={isLoading}
               onClick={() => {
+                setDebouncedSearch(searchInput);
                 setShowSuggestions(false);
                 setShowDatePicker(false);
                 setShowGuestPicker(false);
               }}
             >
-              <Search className="w-5 h-5" />
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Search className="w-5 h-5" />
+              )}
             </Button>
           </div>
         </div>
@@ -651,15 +679,27 @@ export default function Home() {
 
         {/* Deals Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 4 }).map((_, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="bg-card rounded-2xl overflow-hidden border border-border/50">
                 <Skeleton className="aspect-[4/3] w-full" />
-                <div className="p-4 space-y-2">
-                  <Skeleton className="h-5 w-3/4" />
+                <div className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-5 w-12" />
+                  </div>
                   <Skeleton className="h-4 w-1/2" />
                   <Skeleton className="h-4 w-2/3" />
                   <Skeleton className="h-4 w-1/2" />
+                  <div className="flex items-center gap-2 pt-1">
+                    <Skeleton className="h-4 w-4 rounded" />
+                    <Skeleton className="h-4 w-4 rounded" />
+                    <Skeleton className="h-4 w-4 rounded" />
+                  </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-5 w-16" />
+                  </div>
                 </div>
               </div>
             ))}
@@ -676,24 +716,23 @@ export default function Home() {
             <Button onClick={() => window.location.reload()} data-testid="button-retry">Retry</Button>
           </div>
         ) : deals?.length === 0 ? (
-          <div className="text-center py-20 bg-card rounded-3xl border border-dashed border-border">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
-              <Search className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-bold mb-2">No deals found</h3>
-            <p className="text-muted-foreground max-w-xs mx-auto">
-              Try adjusting your search or filters to find what you're looking for.
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Search className="w-12 h-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No deals found</h3>
+            <p className="text-muted-foreground max-w-md">
+              Try adjusting your search or filters to find more gap night deals.
             </p>
             <Button 
-              variant="ghost" 
+              variant="outline" 
+              className="mt-4"
               onClick={() => {
-                setSearch("");
+                setSearchInput("");
+                setDebouncedSearch("");
                 setActiveCategory("All Deals");
               }}
-              className="mt-2 text-primary"
               data-testid="button-clear-filters"
             >
-              Clear all filters
+              Clear filters
             </Button>
           </div>
         ) : viewMode === "map" ? (

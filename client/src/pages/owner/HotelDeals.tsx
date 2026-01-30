@@ -20,9 +20,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { 
   Building2, ArrowLeft, RefreshCw, Loader2, Calendar, 
-  DollarSign, Percent, AlertTriangle, Zap, Info, Edit2, X, Trash2, Check
+  DollarSign, Percent, AlertTriangle, Zap, Info, Edit2, X, Trash2, Check,
+  Minus, Plus, HelpCircle
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
@@ -35,14 +41,23 @@ interface OrphanCandidate {
   roomTypeId: string;
   roomTypeName: string;
   date: string;
+  gapStartDate?: string;
+  gapEndDate?: string;
+  gapDuration: number;
   barRate: number;
   available: number;
+  qtyToSell: number;
   suggestedDiscountPercent: number;
   overridePrice?: number;
 }
 
-type SortOption = 'soonest' | 'cheapest' | 'biggest_discount';
+type SortOption = 'soonest' | 'cheapest' | 'biggest_discount' | 'gap_duration';
+type FilterOption = 'all' | '1_night' | '2_night' | '3_plus_night';
 type PricingMode = 'percent_off' | 'floor_price' | 'fixed_price';
+
+interface GapDurationDiscounts {
+  [key: number]: number;
+}
 
 interface RoomTypePricing {
   mode: PricingMode;
@@ -78,7 +93,14 @@ export default function HotelDeals() {
   const [roomTypeBarRates, setRoomTypeBarRates] = useState<Record<string, number>>({});
   const [selectedRoomTypeForPricing, setSelectedRoomTypeForPricing] = useState<string>('default');
   
+  const [gapDurationDiscounts, setGapDurationDiscounts] = useState<GapDurationDiscounts>({
+    1: 35,
+    2: 30,
+    3: 25,
+  });
+  
   const [roomTypeFilter, setRoomTypeFilter] = useState<string>('all');
+  const [gapFilter, setGapFilter] = useState<FilterOption>('all');
   const [sortBy, setSortBy] = useState<SortOption>('soonest');
   
   const [editingCandidateId, setEditingCandidateId] = useState<string | null>(null);
@@ -210,7 +232,7 @@ export default function HotelDeals() {
     });
   };
 
-  const calculateDealPrice = (barRate: number, roomTypeId: string, overridePrice?: number): number => {
+  const calculateDealPrice = (barRate: number, roomTypeId: string, gapDuration: number = 1, overridePrice?: number): number => {
     if (overridePrice !== undefined) {
       return overridePrice;
     }
@@ -219,7 +241,8 @@ export default function HotelDeals() {
     
     switch (pricing.mode) {
       case 'percent_off':
-        return Math.round(barRate * (1 - pricing.discountPercent / 100));
+        const discount = gapDurationDiscounts[gapDuration] ?? gapDurationDiscounts[3] ?? pricing.discountPercent;
+        return Math.round(barRate * (1 - discount / 100));
       case 'floor_price':
         return pricing.floorPrice;
       case 'fixed_price':
@@ -241,30 +264,68 @@ export default function HotelDeals() {
       filtered = filtered.filter(c => c.roomTypeId === roomTypeFilter);
     }
     
+    if (gapFilter === '1_night') {
+      filtered = filtered.filter(c => c.gapDuration === 1);
+    } else if (gapFilter === '2_night') {
+      filtered = filtered.filter(c => c.gapDuration === 2);
+    } else if (gapFilter === '3_plus_night') {
+      filtered = filtered.filter(c => c.gapDuration >= 3);
+    }
+    
     switch (sortBy) {
       case 'cheapest':
         filtered.sort((a, b) => {
           const barA = getEffectiveBarRate(a);
           const barB = getEffectiveBarRate(b);
-          return calculateDealPrice(barA, a.roomTypeId, a.overridePrice) - 
-                 calculateDealPrice(barB, b.roomTypeId, b.overridePrice);
+          return calculateDealPrice(barA, a.roomTypeId, a.gapDuration, a.overridePrice) - 
+                 calculateDealPrice(barB, b.roomTypeId, b.gapDuration, b.overridePrice);
         });
         break;
       case 'biggest_discount':
         filtered.sort((a, b) => {
           const barA = getEffectiveBarRate(a);
           const barB = getEffectiveBarRate(b);
-          const discountA = getDiscountPercent(barA, calculateDealPrice(barA, a.roomTypeId, a.overridePrice));
-          const discountB = getDiscountPercent(barB, calculateDealPrice(barB, b.roomTypeId, b.overridePrice));
+          const discountA = getDiscountPercent(barA, calculateDealPrice(barA, a.roomTypeId, a.gapDuration, a.overridePrice));
+          const discountB = getDiscountPercent(barB, calculateDealPrice(barB, b.roomTypeId, b.gapDuration, b.overridePrice));
           return discountB - discountA;
         });
+        break;
+      case 'gap_duration':
+        filtered.sort((a, b) => b.gapDuration - a.gapDuration);
         break;
       default:
         filtered.sort((a, b) => a.date.localeCompare(b.date));
     }
     
     return filtered;
-  }, [candidates, roomTypeFilter, sortBy, defaultPricing, roomTypePricing, roomTypeBarRates]);
+  }, [candidates, roomTypeFilter, gapFilter, sortBy, defaultPricing, roomTypePricing, roomTypeBarRates, gapDurationDiscounts]);
+
+  const updateQtyToSell = (id: string, delta: number) => {
+    setCandidates(prev => 
+      prev.map(c => {
+        if (c.id !== id) return c;
+        const newQty = Math.max(1, Math.min(c.available, c.qtyToSell + delta));
+        return { ...c, qtyToSell: newQty };
+      })
+    );
+  };
+
+  const updateGapDurationDiscount = (duration: number, value: number) => {
+    setGapDurationDiscounts(prev => ({
+      ...prev,
+      [duration]: value,
+    }));
+  };
+
+  const gapStats = useMemo(() => {
+    const stats = { oneNight: 0, twoNight: 0, threePlus: 0 };
+    candidates.forEach(c => {
+      if (c.gapDuration === 1) stats.oneNight++;
+      else if (c.gapDuration === 2) stats.twoNight++;
+      else if (c.gapDuration >= 3) stats.threePlus++;
+    });
+    return stats;
+  }, [candidates]);
 
   if (!isAuthenticated) {
     setLocation("/owner/login");
@@ -324,7 +385,7 @@ export default function HotelDeals() {
   const handleStartEdit = (candidate: OrphanCandidate) => {
     setEditingCandidateId(candidate.id);
     const effectiveBar = getEffectiveBarRate(candidate);
-    const currentPrice = calculateDealPrice(effectiveBar, candidate.roomTypeId, candidate.overridePrice);
+    const currentPrice = calculateDealPrice(effectiveBar, candidate.roomTypeId, candidate.gapDuration, candidate.overridePrice);
     setEditingPrice(currentPrice.toString());
   };
 
@@ -376,7 +437,7 @@ export default function HotelDeals() {
       .filter(c => selectedIds.has(c.id))
       .map(c => {
         const effectiveBar = getEffectiveBarRate(c);
-        const dealPrice = calculateDealPrice(effectiveBar, c.roomTypeId, c.overridePrice);
+        const dealPrice = calculateDealPrice(effectiveBar, c.roomTypeId, c.gapDuration, c.overridePrice);
         return {
           roomTypeId: c.roomTypeId,
           date: c.date,
@@ -490,6 +551,44 @@ export default function HotelDeals() {
           </Card>
         </div>
 
+        {candidates.length > 0 && (
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <span className="text-xl font-bold text-red-600 dark:text-red-400">1</span>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{gapStats.oneNight}</div>
+                  <div className="text-sm text-muted-foreground">1-Night Gaps</div>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <span className="text-xl font-bold text-amber-600 dark:text-amber-400">2</span>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{gapStats.twoNight}</div>
+                  <div className="text-sm text-muted-foreground">2-Night Gaps</div>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <span className="text-xl font-bold text-green-600 dark:text-green-400">3+</span>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{gapStats.threePlus}</div>
+                  <div className="text-sm text-muted-foreground">3+ Night Gaps</div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
         {!roomTypes || roomTypes.length === 0 ? (
           <Card>
             <CardHeader>
@@ -523,6 +622,18 @@ export default function HotelDeals() {
                           ))}
                         </SelectContent>
                       </Select>
+
+                      <Select value={gapFilter} onValueChange={(v) => setGapFilter(v as FilterOption)}>
+                        <SelectTrigger className="w-[160px]" data-testid="filter-gap-type">
+                          <SelectValue placeholder="Gap duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All durations</SelectItem>
+                          <SelectItem value="1_night">1-night gaps</SelectItem>
+                          <SelectItem value="2_night">2-night gaps</SelectItem>
+                          <SelectItem value="3_plus_night">3+ night gaps</SelectItem>
+                        </SelectContent>
+                      </Select>
                       
                       <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
                         <SelectTrigger className="w-[150px]" data-testid="sort-by">
@@ -532,6 +643,7 @@ export default function HotelDeals() {
                           <SelectItem value="soonest">Soonest</SelectItem>
                           <SelectItem value="cheapest">Cheapest</SelectItem>
                           <SelectItem value="biggest_discount">Biggest discount</SelectItem>
+                          <SelectItem value="gap_duration">Gap duration</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -562,9 +674,41 @@ export default function HotelDeals() {
                                 data-testid="checkbox-select-all"
                               />
                             </TableHead>
-                            <TableHead>Date</TableHead>
+                            <TableHead>Dates</TableHead>
+                            <TableHead>
+                              <Tooltip>
+                                <TooltipTrigger className="flex items-center gap-1 cursor-help">
+                                  Gap
+                                  <HelpCircle className="w-3 h-3" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Number of consecutive nights in this gap</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TableHead>
                             <TableHead>Room Type</TableHead>
-                            <TableHead>Avail.</TableHead>
+                            <TableHead>
+                              <Tooltip>
+                                <TooltipTrigger className="flex items-center gap-1 cursor-help">
+                                  Rooms
+                                  <HelpCircle className="w-3 h-3" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Minimum rooms available across all gap dates</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TableHead>
+                            <TableHead>
+                              <Tooltip>
+                                <TooltipTrigger className="flex items-center gap-1 cursor-help">
+                                  Qty to Sell
+                                  <HelpCircle className="w-3 h-3" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>How many rooms to list on GapNight</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TableHead>
                             <TableHead>BAR Rate</TableHead>
                             <TableHead>Deal Price</TableHead>
                             <TableHead className="w-24">Actions</TableHead>
@@ -573,7 +717,7 @@ export default function HotelDeals() {
                         <TableBody>
                           {filteredCandidates.map(candidate => {
                             const effectiveBar = getEffectiveBarRate(candidate);
-                            const dealPrice = calculateDealPrice(effectiveBar, candidate.roomTypeId, candidate.overridePrice);
+                            const dealPrice = calculateDealPrice(effectiveBar, candidate.roomTypeId, candidate.gapDuration, candidate.overridePrice);
                             const discount = getDiscountPercent(effectiveBar, dealPrice);
                             const isEditing = editingCandidateId === candidate.id;
                             const isEditingBar = editingBarRoomTypeId === candidate.roomTypeId;
@@ -589,11 +733,53 @@ export default function HotelDeals() {
                                     data-testid={`checkbox-candidate-${candidate.id}`}
                                   />
                                 </TableCell>
-                                <TableCell className="font-medium">
-                                  {format(parseISO(candidate.date), "EEE, MMM d")}
+                                <TableCell className="font-medium whitespace-nowrap">
+                                  {candidate.gapDuration === 1 ? (
+                                    format(parseISO(candidate.date), "EEE, MMM d")
+                                  ) : (
+                                    <span>
+                                      {format(parseISO(candidate.gapStartDate || candidate.date), "MMM d")} - {format(parseISO(candidate.gapEndDate || candidate.date), "MMM d")}
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={`${
+                                    candidate.gapDuration === 1 
+                                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                      : candidate.gapDuration === 2 
+                                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                        : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                  } border-0`}>
+                                    {candidate.gapDuration} {candidate.gapDuration === 1 ? 'night' : 'nights'}
+                                  </Badge>
                                 </TableCell>
                                 <TableCell>{candidate.roomTypeName}</TableCell>
-                                <TableCell>{candidate.available}</TableCell>
+                                <TableCell className="text-center font-medium">{candidate.available}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Button 
+                                      variant="outline" 
+                                      size="icon" 
+                                      className="h-7 w-7"
+                                      onClick={() => updateQtyToSell(candidate.id, -1)}
+                                      disabled={candidate.qtyToSell <= 1}
+                                      data-testid={`btn-qty-minus-${candidate.id}`}
+                                    >
+                                      <Minus className="w-3 h-3" />
+                                    </Button>
+                                    <span className="w-8 text-center font-medium">{candidate.qtyToSell}</span>
+                                    <Button 
+                                      variant="outline" 
+                                      size="icon" 
+                                      className="h-7 w-7"
+                                      onClick={() => updateQtyToSell(candidate.id, 1)}
+                                      disabled={candidate.qtyToSell >= candidate.available}
+                                      data-testid={`btn-qty-plus-${candidate.id}`}
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
                                 <TableCell>
                                   {isEditingBar ? (
                                     <div className="flex items-center gap-1">
@@ -942,21 +1128,66 @@ export default function HotelDeals() {
                   </div>
 
                   {currentPricing.mode === 'percent_off' && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label>Discount</Label>
-                        <span className="text-lg font-semibold text-primary">{currentPricing.discountPercent}%</span>
+                    <div className="space-y-5">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                            <span className="text-xs font-bold text-red-600 dark:text-red-400">1</span>
+                          </div>
+                          <Label className="flex-1">1-Night Gap Discount</Label>
+                          <span className="text-sm font-semibold text-red-600 dark:text-red-400">{gapDurationDiscounts[1]}%</span>
+                        </div>
+                        <Slider
+                          value={[gapDurationDiscounts[1]]}
+                          onValueChange={([val]) => updateGapDurationDiscount(1, val)}
+                          min={10}
+                          max={70}
+                          step={5}
+                          className="[&_[role=slider]]:bg-red-500"
+                          data-testid="slider-discount-1-night"
+                        />
                       </div>
-                      <Slider
-                        value={[currentPricing.discountPercent]}
-                        onValueChange={([val]) => updateCurrentPricing({ discountPercent: val })}
-                        min={10}
-                        max={70}
-                        step={5}
-                        data-testid="slider-discount"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Discount percentage applied to the BAR
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">2</span>
+                          </div>
+                          <Label className="flex-1">2-Night Gap Discount</Label>
+                          <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{gapDurationDiscounts[2]}%</span>
+                        </div>
+                        <Slider
+                          value={[gapDurationDiscounts[2]]}
+                          onValueChange={([val]) => updateGapDurationDiscount(2, val)}
+                          min={10}
+                          max={70}
+                          step={5}
+                          className="[&_[role=slider]]:bg-amber-500"
+                          data-testid="slider-discount-2-night"
+                        />
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                            <span className="text-xs font-bold text-green-600 dark:text-green-400">3+</span>
+                          </div>
+                          <Label className="flex-1">3+ Night Gap Discount</Label>
+                          <span className="text-sm font-semibold text-green-600 dark:text-green-400">{gapDurationDiscounts[3]}%</span>
+                        </div>
+                        <Slider
+                          value={[gapDurationDiscounts[3]]}
+                          onValueChange={([val]) => updateGapDurationDiscount(3, val)}
+                          min={10}
+                          max={70}
+                          step={5}
+                          className="[&_[role=slider]]:bg-green-500"
+                          data-testid="slider-discount-3-night"
+                        />
+                      </div>
+                      
+                      <p className="text-xs text-muted-foreground pt-2 border-t">
+                        Shorter gaps need bigger discounts to sell. 1-night gaps are hardest, 3+ nights are easiest.
                       </p>
                     </div>
                   )}
@@ -1017,7 +1248,7 @@ export default function HotelDeals() {
                               .filter(c => selectedIds.has(c.id))
                               .reduce((sum, c) => {
                                 const bar = getEffectiveBarRate(c);
-                                return sum + calculateDealPrice(bar, c.roomTypeId, c.overridePrice);
+                                return sum + calculateDealPrice(bar, c.roomTypeId, c.gapDuration, c.overridePrice);
                               }, 0) / selectedIds.size
                           )}
                         </span>
@@ -1030,7 +1261,7 @@ export default function HotelDeals() {
                               .filter(c => selectedIds.has(c.id))
                               .reduce((sum, c) => {
                                 const bar = getEffectiveBarRate(c);
-                                const dealPrice = calculateDealPrice(bar, c.roomTypeId, c.overridePrice);
+                                const dealPrice = calculateDealPrice(bar, c.roomTypeId, c.gapDuration, c.overridePrice);
                                 return sum + getDiscountPercent(bar, dealPrice);
                               }, 0) / selectedIds.size
                           )}%

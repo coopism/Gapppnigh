@@ -28,7 +28,7 @@ export function DealCard({ deal }: DealCardProps) {
 
   return (
     <Link href={`/deal/${deal.id}`} className="block group" data-testid={`deal-card-${deal.id}`}>
-      <div className="bg-card rounded-2xl overflow-hidden border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all duration-300">
+      <div className="bg-card rounded-2xl overflow-visible border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all duration-300 hover-elevate">
         {/* Image Section */}
         <div className="relative aspect-[4/3] overflow-hidden">
           <img

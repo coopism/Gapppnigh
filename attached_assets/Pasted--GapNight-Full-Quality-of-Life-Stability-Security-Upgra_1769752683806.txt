@@ -1,0 +1,178 @@
+# GapNight — Full Quality-of-Life, Stability & Security Upgrade (Deep Work Task)
+
+You are a senior full-stack engineer performing a **comprehensive improvement pass** on the GapNight codebase.
+
+This is **not** a quick refactor. Treat this as **1–2 hours of focused engineering work** aimed at making the product feel stable, trustworthy, and production-ready.
+
+---
+
+## OBJECTIVES (IN ORDER OF IMPORTANCE)
+
+1) **Fix all existing bugs** (functional, UI, data, routing, state).
+2) **Add crucial Quality-of-Life features** that improve usability, clarity, and trust.
+3) **Harden security and data handling** where appropriate.
+4) **Improve reliability, edge-case handling, and polish**.
+5) Leave the codebase cleaner than you found it.
+
+Do NOT change the product concept. Improve execution only.
+
+---
+
+## PART 1 — FULL APPLICATION AUDIT
+
+### Perform a complete audit of:
+- Navigation & routing
+- Landing page hero & search
+- Deals browsing flow
+- Hotel detail pages
+- Any owner / admin pages
+- Forms, inputs, buttons, modals
+- API routes (if present)
+- State management
+- Error handling
+- Responsive layout (mobile/tablet/desktop)
+
+### Explicitly look for:
+- Broken links or routes
+- Console errors or warnings
+- Hydration mismatches
+- Missing loading / empty states
+- Incorrect price/date formatting
+- Inconsistent spacing, colors, typography
+- Components re-rendering unnecessarily
+- Unhandled promise rejections
+- Any UI that feels “prototype-ish” rather than production
+
+---
+
+## PART 2 — BUG FIXING (MANDATORY)
+
+Identify and fix:
+- All runtime errors
+- All UI breakage on mobile (overflow, clipping, misalignment)
+- Any broken interactions (search, filters, buttons)
+- Any data mismatch between UI and state
+- Incorrect assumptions (null/undefined handling)
+
+If a bug is fixed:
+- Fix it **properly**, not with a hack.
+- Remove dead code related to it.
+- Add guards or validation so it cannot regress easily.
+
+---
+
+## PART 3 — QUALITY OF LIFE FEATURES (ADD THESE)
+
+### User-facing QoL
+Add the following **if missing**:
+
+1) **Clear loading states**
+   - Skeletons or spinners for:
+     - deals list
+     - hotel page
+     - search results
+2) **Empty states**
+   - “No deals found” with friendly copy + suggestion
+3) **Search input polish**
+   - Debounce typing
+   - Clear button (✕)
+   - Enter key submits
+4) **Visual feedback**
+   - Hover states
+   - Disabled states
+   - Active states
+5) **Consistent formatting helpers**
+   - Centralised `formatPrice()`
+   - Centralised `formatDate()`
+   - Centralised `formatDiscount()`
+
+### Navigation & usability
+- Ensure header behaves correctly on scroll
+- Prevent layout shift when content loads
+- Make clickable areas obvious
+- Ensure hotel cards feel tappable on mobile
+
+---
+
+## PART 4 — SECURITY & DATA SAFETY (IMPORTANT)
+
+Even if this is an MVP, add **baseline protections**:
+
+### Auth / forms
+- Sanitize all user inputs
+- Validate email formats
+- Prevent empty or malformed submissions
+- Ensure password handling (if present) is hashed and never logged
+
+### API / backend (if applicable)
+- Validate all incoming payloads
+- Add try/catch around async routes
+- Do not trust client input
+- Return consistent error responses
+
+### General
+- Remove any secrets or keys from client code
+- Ensure nothing sensitive is exposed via console logs
+- Add basic rate-limit placeholders or TODOs where relevant
+
+---
+
+## PART 5 — UI CONSISTENCY & BRAND POLISH
+
+Align everything to the GapNight design system:
+
+- Deep navy for primary text
+- Teal for brand actions
+- Soft shadows
+- Rounded cards/buttons
+- Consistent spacing scale
+- Consistent border radii
+- No random greys or mismatched blues
+
+Fix:
+- Inconsistent font sizes
+- Misaligned icons
+- Uneven card heights
+- Visual clutter
+
+Make it feel like a **real product**, not a demo.
+
+---
+
+## PART 6 — PERFORMANCE & STABILITY
+
+- Remove unnecessary re-renders
+- Memoize where appropriate
+- Avoid inline object/array creation in JSX when possible
+- Ensure images have fixed dimensions to prevent layout shift
+- Avoid blocking operations in render paths
+
+---
+
+## PART 7 — CODE CLEANUP & STRUCTURE
+
+- Remove unused files, imports, and components
+- Rename confusing variables
+- Extract repeated logic into helpers
+- Add comments only where logic is non-obvious
+- Keep files readable and modular
+
+Do **not** over-engineer.
+
+---
+
+## PART 8 — DELIVERABLES
+
+After completing all work, provide:
+
+1) A **summary of fixes and improvements** (bullet list)
+2) A **list of files changed**
+3) A **quick verification checklist**, e.g.:
+   - Search works on mobile
+   - No console errors
+   - Deals load correctly
+   - Empty states display properly
+
+Do NOT ask follow-up questions unless something is genuinely blocking.
+
+Start now and treat this as a serious production hardening pass.

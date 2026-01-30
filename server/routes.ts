@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Response } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
@@ -6,6 +6,33 @@ import { z } from "zod";
 import { authMiddleware, SESSION_COOKIE_NAME } from "./auth";
 import { v4 as uuidv4 } from "uuid";
 import { sendBookingConfirmationEmail } from "./email";
+
+// ========================================
+// ERROR HANDLING UTILITIES
+// ========================================
+
+const MAX_STRING_LENGTH = 1000;
+const MAX_NAME_LENGTH = 100;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PHONE_LENGTH = 20;
+
+function sendError(res: Response, status: number, message: string, field?: string) {
+  res.status(status).json({ error: true, message, field });
+}
+
+function sanitizeString(input: string | undefined | null, maxLength: number = MAX_STRING_LENGTH): string {
+  if (!input) return "";
+  return String(input).trim().slice(0, maxLength);
+}
+
+function logError(context: string, error: unknown): void {
+  const timestamp = new Date().toISOString();
+  if (error instanceof Error) {
+    console.error(`[${timestamp}] ${context}:`, error.message);
+  } else {
+    console.error(`[${timestamp}] ${context}:`, error);
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -17,63 +44,94 @@ export async function registerRoutes(
   // ========================================
   
   app.get(api.deals.list.path, async (req, res) => {
-    const search = req.query.search as string | undefined;
-    const category = req.query.category as string | undefined;
-    const sort = req.query.sort as string | undefined;
-    const deals = await storage.getDeals(search, category, sort);
-    res.json(deals);
+    try {
+      const search = sanitizeString(req.query.search as string | undefined, MAX_NAME_LENGTH);
+      const category = sanitizeString(req.query.category as string | undefined, MAX_NAME_LENGTH);
+      const sort = sanitizeString(req.query.sort as string | undefined, 20);
+      const deals = await storage.getDeals(search || undefined, category || undefined, sort || undefined);
+      res.json(deals);
+    } catch (err) {
+      logError("GET /api/deals", err);
+      sendError(res, 500, "Failed to fetch deals");
+    }
   });
 
   app.get(api.deals.get.path, async (req, res) => {
-    const deal = await storage.getDeal(req.params.id as string);
-    if (!deal) {
-      return res.status(404).json({ message: "Deal not found" });
+    try {
+      const id = sanitizeString(req.params.id, 100);
+      if (!id) {
+        return sendError(res, 400, "Deal ID is required", "id");
+      }
+      const deal = await storage.getDeal(id);
+      if (!deal) {
+        return sendError(res, 404, "Deal not found");
+      }
+      res.json(deal);
+    } catch (err) {
+      logError("GET /api/deals/:id", err);
+      sendError(res, 500, "Failed to fetch deal");
     }
-    res.json(deal);
   });
 
   app.post(api.waitlist.submit.path, async (req, res) => {
     try {
       const input = api.waitlist.submit.input.parse(req.body);
-      await storage.createWaitlistEntry(input);
+      const sanitizedInput = {
+        ...input,
+        email: sanitizeString(input.email, MAX_EMAIL_LENGTH).toLowerCase(),
+        name: input.name ? sanitizeString(input.name, MAX_NAME_LENGTH) : undefined,
+      };
+      await storage.createWaitlistEntry(sanitizedInput);
       res.status(201).json({ success: true, message: "Joined waitlist successfully" });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("POST /api/waitlist", err);
+      sendError(res, 500, "Failed to join waitlist");
     }
   });
 
   app.post(api.hotelInquiries.submit.path, async (req, res) => {
     try {
       const input = api.hotelInquiries.submit.input.parse(req.body);
-      await storage.createHotelInquiry(input);
+      const sanitizedInput = {
+        ...input,
+        email: sanitizeString(input.email, MAX_EMAIL_LENGTH).toLowerCase(),
+        hotelName: sanitizeString(input.hotelName, MAX_NAME_LENGTH),
+        contactName: sanitizeString(input.contactName, MAX_NAME_LENGTH),
+        message: input.message ? sanitizeString(input.message, MAX_STRING_LENGTH) : undefined,
+      };
+      await storage.createHotelInquiry(sanitizedInput);
       res.status(201).json({ success: true, message: "Inquiry submitted successfully" });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("POST /api/hotel-inquiries", err);
+      sendError(res, 500, "Failed to submit inquiry");
     }
   });
 
   app.post("/api/verify-partner", (req, res) => {
-    const { password } = req.body;
-    const partnerPassword = process.env.PARTNER_ACCESS_PASSWORD;
-    
-    if (!partnerPassword) {
-      return res.status(500).json({ valid: false, message: "Partner access not configured" });
+    try {
+      const { password } = req.body;
+      const partnerPassword = process.env.PARTNER_ACCESS_PASSWORD;
+      
+      if (!partnerPassword) {
+        return sendError(res, 500, "Partner access not configured");
+      }
+      
+      if (!password || typeof password !== "string") {
+        return sendError(res, 400, "Password is required", "password");
+      }
+      
+      const valid = password === partnerPassword;
+      res.json({ valid });
+    } catch (err) {
+      logError("POST /api/verify-partner", err);
+      sendError(res, 500, "Failed to verify partner access");
     }
-    
-    const valid = password === partnerPassword;
-    res.json({ valid });
   });
 
   // ========================================
@@ -81,24 +139,32 @@ export async function registerRoutes(
   // ========================================
   
   const loginSchema = z.object({
-    email: z.string().email("Invalid email address"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
+    email: z.string().email("Invalid email address").max(MAX_EMAIL_LENGTH),
+    password: z.string().min(6, "Password must be at least 6 characters").max(128),
   });
 
   const registerSchema = loginSchema.extend({
-    name: z.string().optional(),
+    name: z.string().max(MAX_NAME_LENGTH).optional(),
   });
 
+  // TODO: Add rate limiting - max 5 attempts per IP per 15 minutes
   app.post("/api/auth/register", async (req, res) => {
     try {
       const { email, password, name } = registerSchema.parse(req.body);
       
-      const existingOwner = await storage.getOwnerByEmail(email);
+      const sanitizedEmail = sanitizeString(email, MAX_EMAIL_LENGTH).toLowerCase();
+      const sanitizedName = name ? sanitizeString(name, MAX_NAME_LENGTH) : undefined;
+      
+      const existingOwner = await storage.getOwnerByEmail(sanitizedEmail);
       if (existingOwner) {
-        return res.status(400).json({ message: "Email already registered" });
+        return sendError(res, 400, "Email already registered", "email");
       }
       
-      const owner = await storage.createOwner(email, password, name);
+      const owner = await storage.createOwner(sanitizedEmail, password, sanitizedName);
+      if (!owner) {
+        return sendError(res, 500, "Failed to create account");
+      }
+      
       const sessionId = await storage.createSession(owner.id);
       
       res.cookie(SESSION_COOKIE_NAME, sessionId, {
@@ -114,19 +180,23 @@ export async function registerRoutes(
       });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("POST /api/auth/register", err);
+      sendError(res, 500, "Failed to register");
     }
   });
 
+  // TODO: Add rate limiting - max 5 attempts per IP per 15 minutes
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = loginSchema.parse(req.body);
       
-      const owner = await storage.verifyPassword(email, password);
+      const sanitizedEmail = sanitizeString(email, MAX_EMAIL_LENGTH).toLowerCase();
+      
+      const owner = await storage.verifyPassword(sanitizedEmail, password);
       if (!owner) {
-        return res.status(401).json({ message: "Invalid email or password" });
+        return sendError(res, 401, "Invalid email or password");
       }
       
       const sessionId = await storage.createSession(owner.id);
@@ -144,28 +214,43 @@ export async function registerRoutes(
       });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("POST /api/auth/login", err);
+      sendError(res, 500, "Failed to login");
     }
   });
 
   app.post("/api/auth/logout", async (req, res) => {
-    const sessionId = req.cookies?.[SESSION_COOKIE_NAME];
-    if (sessionId) {
-      await storage.deleteSession(sessionId);
+    try {
+      const sessionId = req.cookies?.[SESSION_COOKIE_NAME];
+      if (sessionId) {
+        await storage.deleteSession(sessionId);
+      }
+      res.clearCookie(SESSION_COOKIE_NAME);
+      res.json({ success: true });
+    } catch (err) {
+      logError("POST /api/auth/logout", err);
+      res.clearCookie(SESSION_COOKIE_NAME);
+      res.json({ success: true });
     }
-    res.clearCookie(SESSION_COOKIE_NAME);
-    res.json({ success: true });
   });
 
   app.get("/api/auth/me", authMiddleware, async (req, res) => {
-    const owner = req.owner!;
-    res.json({ 
-      id: owner.id, 
-      email: owner.email, 
-      name: owner.name 
-    });
+    try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      res.json({ 
+        id: owner.id, 
+        email: owner.email, 
+        name: owner.name 
+      });
+    } catch (err) {
+      logError("GET /api/auth/me", err);
+      sendError(res, 500, "Failed to fetch user info");
+    }
   });
 
   // ========================================
@@ -173,78 +258,165 @@ export async function registerRoutes(
   // ========================================
   
   const hotelSchema = z.object({
-    chainName: z.string().optional(),
-    name: z.string().min(1, "Hotel name is required"),
-    description: z.string().optional(),
-    address: z.string().optional(),
-    city: z.string().min(1, "City is required"),
-    state: z.string().optional(),
-    country: z.string().default("Australia"),
-    latitude: z.string().optional(),
-    longitude: z.string().optional(),
+    chainName: z.string().max(MAX_NAME_LENGTH).optional(),
+    name: z.string().min(1, "Hotel name is required").max(MAX_NAME_LENGTH),
+    description: z.string().max(MAX_STRING_LENGTH).optional(),
+    address: z.string().max(500).optional(),
+    city: z.string().min(1, "City is required").max(MAX_NAME_LENGTH),
+    state: z.string().max(MAX_NAME_LENGTH).optional(),
+    country: z.string().max(MAX_NAME_LENGTH).default("Australia"),
+    latitude: z.string().max(50).optional(),
+    longitude: z.string().max(50).optional(),
     starRating: z.number().min(1).max(5).default(3),
-    amenities: z.array(z.string()).optional(),
-    images: z.array(z.string()).optional(),
-    contactEmail: z.string().email().optional(),
+    amenities: z.array(z.string().max(100)).max(50).optional(),
+    images: z.array(z.string().max(500)).max(20).optional(),
+    contactEmail: z.string().email().max(MAX_EMAIL_LENGTH).optional(),
   });
 
   app.get("/api/owner/hotels", authMiddleware, async (req, res) => {
-    const hotels = await storage.getOwnerHotels(req.owner!.id);
-    res.json(hotels);
+    try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      const hotels = await storage.getOwnerHotels(owner.id);
+      res.json(hotels);
+    } catch (err) {
+      logError("GET /api/owner/hotels", err);
+      sendError(res, 500, "Failed to fetch hotels");
+    }
   });
 
   app.post("/api/owner/hotels", authMiddleware, async (req, res) => {
     try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
       const data = hotelSchema.parse(req.body);
+      const sanitizedData = {
+        ...data,
+        name: sanitizeString(data.name, MAX_NAME_LENGTH),
+        chainName: data.chainName ? sanitizeString(data.chainName, MAX_NAME_LENGTH) : undefined,
+        description: data.description ? sanitizeString(data.description, MAX_STRING_LENGTH) : undefined,
+        address: data.address ? sanitizeString(data.address, 500) : undefined,
+        city: sanitizeString(data.city, MAX_NAME_LENGTH),
+        state: data.state ? sanitizeString(data.state, MAX_NAME_LENGTH) : undefined,
+        country: sanitizeString(data.country, MAX_NAME_LENGTH),
+        contactEmail: data.contactEmail ? sanitizeString(data.contactEmail, MAX_EMAIL_LENGTH).toLowerCase() : undefined,
+      };
+      
       const hotel = await storage.createHotel({
         id: uuidv4(),
-        ownerId: req.owner!.id,
-        ...data,
+        ownerId: owner.id,
+        ...sanitizedData,
         isActive: true,
       });
       res.status(201).json(hotel);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("POST /api/owner/hotels", err);
+      sendError(res, 500, "Failed to create hotel");
     }
   });
 
   app.get("/api/owner/hotels/:hotelId", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId as string);
-    if (!hotel || hotel.ownerId !== req.owner!.id) {
-      return res.status(404).json({ message: "Hotel not found" });
+    try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      
+      const hotel = await storage.getHotel(hotelId);
+      if (!hotel || hotel.ownerId !== owner.id) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      res.json(hotel);
+    } catch (err) {
+      logError("GET /api/owner/hotels/:hotelId", err);
+      sendError(res, 500, "Failed to fetch hotel");
     }
-    res.json(hotel);
   });
 
   app.put("/api/owner/hotels/:hotelId", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId as string);
-    if (!hotel || hotel.ownerId !== req.owner!.id) {
-      return res.status(404).json({ message: "Hotel not found" });
-    }
-    
     try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      
+      const hotel = await storage.getHotel(hotelId);
+      if (!hotel || hotel.ownerId !== owner.id) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      
       const data = hotelSchema.partial().parse(req.body);
-      const updated = await storage.updateHotel(req.params.hotelId as string, data);
+      const sanitizedData: Record<string, unknown> = {};
+      
+      if (data.name !== undefined) sanitizedData.name = sanitizeString(data.name, MAX_NAME_LENGTH);
+      if (data.chainName !== undefined) sanitizedData.chainName = sanitizeString(data.chainName, MAX_NAME_LENGTH);
+      if (data.description !== undefined) sanitizedData.description = sanitizeString(data.description, MAX_STRING_LENGTH);
+      if (data.address !== undefined) sanitizedData.address = sanitizeString(data.address, 500);
+      if (data.city !== undefined) sanitizedData.city = sanitizeString(data.city, MAX_NAME_LENGTH);
+      if (data.state !== undefined) sanitizedData.state = sanitizeString(data.state, MAX_NAME_LENGTH);
+      if (data.country !== undefined) sanitizedData.country = sanitizeString(data.country, MAX_NAME_LENGTH);
+      if (data.contactEmail !== undefined) sanitizedData.contactEmail = sanitizeString(data.contactEmail, MAX_EMAIL_LENGTH).toLowerCase();
+      if (data.latitude !== undefined) sanitizedData.latitude = data.latitude;
+      if (data.longitude !== undefined) sanitizedData.longitude = data.longitude;
+      if (data.starRating !== undefined) sanitizedData.starRating = data.starRating;
+      if (data.amenities !== undefined) sanitizedData.amenities = data.amenities;
+      if (data.images !== undefined) sanitizedData.images = data.images;
+      
+      const updated = await storage.updateHotel(hotelId, sanitizedData);
+      if (!updated) {
+        return sendError(res, 404, "Hotel not found");
+      }
       res.json(updated);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("PUT /api/owner/hotels/:hotelId", err);
+      sendError(res, 500, "Failed to update hotel");
     }
   });
 
   app.delete("/api/owner/hotels/:hotelId", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId as string);
-    if (!hotel || hotel.ownerId !== req.owner!.id) {
-      return res.status(404).json({ message: "Hotel not found" });
+    try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      
+      const hotel = await storage.getHotel(hotelId);
+      if (!hotel || hotel.ownerId !== owner.id) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      
+      await storage.deactivateHotel(hotelId);
+      res.json({ success: true, message: "Hotel deactivated" });
+    } catch (err) {
+      logError("DELETE /api/owner/hotels/:hotelId", err);
+      sendError(res, 500, "Failed to deactivate hotel");
     }
-    
-    await storage.deactivateHotel(req.params.hotelId as string);
-    res.json({ success: true, message: "Hotel deactivated" });
   });
 
   // ========================================
@@ -252,81 +424,142 @@ export async function registerRoutes(
   // ========================================
   
   const roomTypeSchema = z.object({
-    name: z.string().min(1, "Room type name is required"),
-    inventory: z.number().min(1).default(1),
+    name: z.string().min(1, "Room type name is required").max(MAX_NAME_LENGTH),
+    inventory: z.number().min(1).max(10000).default(1),
   });
 
   app.get("/api/owner/hotels/:hotelId/room-types", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId as string);
-    if (!hotel || hotel.ownerId !== req.owner!.id) {
-      return res.status(404).json({ message: "Hotel not found" });
+    try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      
+      const hotel = await storage.getHotel(hotelId);
+      if (!hotel || hotel.ownerId !== owner.id) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      
+      const roomTypes = await storage.getHotelRoomTypes(hotelId);
+      res.json(roomTypes);
+    } catch (err) {
+      logError("GET /api/owner/hotels/:hotelId/room-types", err);
+      sendError(res, 500, "Failed to fetch room types");
     }
-    
-    const roomTypes = await storage.getHotelRoomTypes(req.params.hotelId as string);
-    res.json(roomTypes);
   });
 
   app.post("/api/owner/hotels/:hotelId/room-types", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId as string);
-    if (!hotel || hotel.ownerId !== req.owner!.id) {
-      return res.status(404).json({ message: "Hotel not found" });
-    }
-    
     try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      
+      const hotel = await storage.getHotel(hotelId);
+      if (!hotel || hotel.ownerId !== owner.id) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      
       const data = roomTypeSchema.parse(req.body);
+      const sanitizedData = {
+        ...data,
+        name: sanitizeString(data.name, MAX_NAME_LENGTH),
+      };
+      
       const roomType = await storage.createRoomType({
         id: uuidv4(),
-        hotelId: req.params.hotelId as string,
-        ...data,
+        hotelId: hotelId,
+        ...sanitizedData,
       });
       res.status(201).json(roomType);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("POST /api/owner/hotels/:hotelId/room-types", err);
+      sendError(res, 500, "Failed to create room type");
     }
   });
 
   app.put("/api/owner/room-types/:roomTypeId", authMiddleware, async (req, res) => {
-    // Verify ownership through hotel
-    const roomTypes = await storage.getHotelRoomTypes(req.params.roomTypeId as string);
-    // Get the room type first
-    const allRoomTypes = await Promise.all(
-      (await storage.getOwnerHotels(req.owner!.id)).map(h => storage.getHotelRoomTypes(h.id))
-    );
-    const ownerRoomTypes = allRoomTypes.flat();
-    const roomType = ownerRoomTypes.find(rt => rt.id === req.params.roomTypeId as string);
-    
-    if (!roomType) {
-      return res.status(404).json({ message: "Room type not found" });
-    }
-    
     try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const roomTypeId = sanitizeString(req.params.roomTypeId, 100);
+      if (!roomTypeId) {
+        return sendError(res, 400, "Room type ID is required", "roomTypeId");
+      }
+      
+      const allRoomTypes = await Promise.all(
+        (await storage.getOwnerHotels(owner.id)).map(h => storage.getHotelRoomTypes(h.id))
+      );
+      const ownerRoomTypes = allRoomTypes.flat();
+      const roomType = ownerRoomTypes.find(rt => rt.id === roomTypeId);
+      
+      if (!roomType) {
+        return sendError(res, 404, "Room type not found");
+      }
+      
       const data = roomTypeSchema.partial().parse(req.body);
-      const updated = await storage.updateRoomType(req.params.roomTypeId as string, data);
+      const sanitizedData: Record<string, unknown> = {};
+      if (data.name !== undefined) sanitizedData.name = sanitizeString(data.name, MAX_NAME_LENGTH);
+      if (data.inventory !== undefined) sanitizedData.inventory = data.inventory;
+      
+      const updated = await storage.updateRoomType(roomTypeId, sanitizedData);
+      if (!updated) {
+        return sendError(res, 404, "Room type not found");
+      }
       res.json(updated);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("PUT /api/owner/room-types/:roomTypeId", err);
+      sendError(res, 500, "Failed to update room type");
     }
   });
 
   app.delete("/api/owner/room-types/:roomTypeId", authMiddleware, async (req, res) => {
-    const allRoomTypes = await Promise.all(
-      (await storage.getOwnerHotels(req.owner!.id)).map(h => storage.getHotelRoomTypes(h.id))
-    );
-    const ownerRoomTypes = allRoomTypes.flat();
-    const roomType = ownerRoomTypes.find(rt => rt.id === req.params.roomTypeId as string);
-    
-    if (!roomType) {
-      return res.status(404).json({ message: "Room type not found" });
+    try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const roomTypeId = sanitizeString(req.params.roomTypeId, 100);
+      if (!roomTypeId) {
+        return sendError(res, 400, "Room type ID is required", "roomTypeId");
+      }
+      
+      const allRoomTypes = await Promise.all(
+        (await storage.getOwnerHotels(owner.id)).map(h => storage.getHotelRoomTypes(h.id))
+      );
+      const ownerRoomTypes = allRoomTypes.flat();
+      const roomType = ownerRoomTypes.find(rt => rt.id === roomTypeId);
+      
+      if (!roomType) {
+        return sendError(res, 404, "Room type not found");
+      }
+      
+      await storage.deleteRoomType(roomTypeId);
+      res.json({ success: true });
+    } catch (err) {
+      logError("DELETE /api/owner/room-types/:roomTypeId", err);
+      sendError(res, 500, "Failed to delete room type");
     }
-    
-    await storage.deleteRoomType(req.params.roomTypeId as string);
-    res.json({ success: true });
   });
 
   // ========================================
@@ -334,60 +567,95 @@ export async function registerRoutes(
   // ========================================
   
   const availabilitySchema = z.object({
-    available: z.number().min(0),
-    barRate: z.number().min(0),
-    minStay: z.number().min(1).default(1),
+    available: z.number().min(0).max(10000),
+    barRate: z.number().min(0).max(100000),
+    minStay: z.number().min(1).max(365).default(1),
     closedToArrival: z.boolean().default(false),
   });
 
   const bulkAvailabilitySchema = availabilitySchema.extend({
-    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
   });
 
   app.get("/api/owner/room-types/:roomTypeId/availability", authMiddleware, async (req, res) => {
-    const { start, end } = req.query;
-    
-    if (!start || !end) {
-      return res.status(400).json({ message: "start and end query params required" });
+    try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const roomTypeId = sanitizeString(req.params.roomTypeId, 100);
+      const start = sanitizeString(req.query.start as string, 10);
+      const end = sanitizeString(req.query.end as string, 10);
+      
+      if (!start || !end) {
+        return sendError(res, 400, "start and end query params required");
+      }
+      
+      const availability = await storage.getAvailability(roomTypeId, start, end);
+      res.json(availability);
+    } catch (err) {
+      logError("GET /api/owner/room-types/:roomTypeId/availability", err);
+      sendError(res, 500, "Failed to fetch availability");
     }
-    
-    const availability = await storage.getAvailability(
-      req.params.roomTypeId as string,
-      start as string,
-      end as string
-    );
-    res.json(availability);
   });
 
   app.put("/api/owner/room-types/:roomTypeId/availability/bulk", authMiddleware, async (req, res) => {
     try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const roomTypeId = sanitizeString(req.params.roomTypeId, 100);
+      if (!roomTypeId) {
+        return sendError(res, 400, "Room type ID is required", "roomTypeId");
+      }
+      
       const { startDate, endDate, ...data } = bulkAvailabilitySchema.parse(req.body);
-      await storage.bulkUpdateAvailability(req.params.roomTypeId as string, startDate, endDate, data);
+      await storage.bulkUpdateAvailability(roomTypeId, startDate, endDate, data);
       res.json({ success: true });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("PUT /api/owner/room-types/:roomTypeId/availability/bulk", err);
+      sendError(res, 500, "Failed to update availability");
     }
   });
 
   app.put("/api/owner/room-types/:roomTypeId/availability/:date", authMiddleware, async (req, res) => {
     try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const roomTypeId = sanitizeString(req.params.roomTypeId, 100);
+      const date = sanitizeString(req.params.date, 10);
+      
+      if (!roomTypeId) {
+        return sendError(res, 400, "Room type ID is required", "roomTypeId");
+      }
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return sendError(res, 400, "Invalid date format", "date");
+      }
+      
       const data = availabilitySchema.parse(req.body);
       const availability = await storage.upsertAvailability({
         id: uuidv4(),
-        roomTypeId: req.params.roomTypeId as string,
-        date: req.params.date as string,
+        roomTypeId: roomTypeId,
+        date: date,
         ...data,
       });
       res.json(availability);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("PUT /api/owner/room-types/:roomTypeId/availability/:date", err);
+      sendError(res, 500, "Failed to update availability");
     }
   });
 
@@ -396,119 +664,175 @@ export async function registerRoutes(
   // ========================================
   
   app.post("/api/owner/hotels/:hotelId/deals/generate-orphans", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId as string);
-    if (!hotel || hotel.ownerId !== req.owner!.id) {
-      return res.status(404).json({ message: "Hotel not found" });
-    }
-    
-    const roomTypes = await storage.getHotelRoomTypes(req.params.hotelId as string);
-    const candidates: any[] = [];
-    
-    // Get the days parameter from query string (default 30)
-    const days = parseInt(req.query.days as string) || 30;
-    
-    // Generate date range
-    const today = new Date();
-    const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + days);
-    
-    const startStr = today.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
-    
-    // Get existing published deals to exclude them from candidates
-    const existingDeals = await storage.getHotelDeals(req.params.hotelId as string);
-    const publishedDealKeys = new Set(
-      existingDeals.map(d => `${d.roomTypeId}_${d.date}`)
-    );
-    
-    for (const roomType of roomTypes) {
-      const availability = await storage.getAvailability(roomType.id, startStr, endStr);
+    try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
       
-      // Sort by date
-      availability.sort((a, b) => a.date.localeCompare(b.date));
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
       
-      for (let i = 0; i < availability.length; i++) {
-        const day = availability[i];
-        if (day.available <= 0) continue;
+      const hotel = await storage.getHotel(hotelId);
+      if (!hotel || hotel.ownerId !== owner.id) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      
+      const roomTypes = await storage.getHotelRoomTypes(hotelId);
+      const candidates: any[] = [];
+      
+      const days = Math.min(Math.max(parseInt(req.query.days as string) || 30, 1), 365);
+      
+      const today = new Date();
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + days);
+      
+      const startStr = today.toISOString().split('T')[0];
+      const endStr = endDate.toISOString().split('T')[0];
+      
+      const existingDeals = await storage.getHotelDeals(hotelId);
+      const publishedDealKeys = new Set(
+        existingDeals.map(d => `${d.roomTypeId}_${d.date}`)
+      );
+      
+      for (const roomType of roomTypes) {
+        const availability = await storage.getAvailability(roomType.id, startStr, endStr);
         
-        // Skip if this room type + date already has a published deal
-        const dealKey = `${roomType.id}_${day.date}`;
-        if (publishedDealKeys.has(dealKey)) continue;
+        availability.sort((a, b) => a.date.localeCompare(b.date));
         
-        const prev = availability[i - 1];
-        const next = availability[i + 1];
+        const processedIndices = new Set<number>();
         
-        let isOrphan = false;
-        let reason = "";
-        let suggestedDiscount = 25;
-        
-        // True 1-night gap: blocked on both sides
-        if (prev && next && prev.available <= 0 && next.available <= 0) {
-          isOrphan = true;
-          reason = "1-night gap between bookings";
-          suggestedDiscount = 35;
-        }
-        // Min stay restriction creates orphan
-        else if (day.minStay > 1) {
-          isOrphan = true;
-          reason = `Min stay restriction (${day.minStay} nights) blocks short stays`;
-          suggestedDiscount = 30;
-        }
-        // Closed to arrival
-        else if (day.closedToArrival) {
-          isOrphan = true;
-          reason = "Closed to arrival restriction";
-          suggestedDiscount = 25;
-        }
-        
-        if (isOrphan) {
-          candidates.push({
-            id: uuidv4(),
-            hotelId: hotel.id,
-            roomTypeId: roomType.id,
-            roomTypeName: roomType.name,
-            date: day.date,
-            barRate: day.barRate,
-            available: day.available,
-            reason,
-            suggestedDiscountPercent: suggestedDiscount,
-          });
+        for (let i = 0; i < availability.length; i++) {
+          if (processedIndices.has(i)) continue;
+          
+          const day = availability[i];
+          if (!day || day.available <= 0) continue;
+          
+          const prev = i > 0 ? availability[i - 1] : null;
+          const prevUnavailable = !prev || prev.available <= 0;
+          
+          if (!prevUnavailable) continue;
+          
+          let gapDuration = 1;
+          let gapEndIndex = i;
+          let totalBarRate = day.barRate;
+          let minAvailable = day.available;
+          
+          for (let j = i + 1; j < availability.length; j++) {
+            const nextDay = availability[j];
+            if (!nextDay || nextDay.available <= 0) break;
+            
+            gapDuration++;
+            gapEndIndex = j;
+            totalBarRate += nextDay.barRate;
+            minAvailable = Math.min(minAvailable, nextDay.available);
+            processedIndices.add(j);
+          }
+          
+          const afterGap = gapEndIndex + 1 < availability.length ? availability[gapEndIndex + 1] : null;
+          const afterGapUnavailable = !afterGap || afterGap.available <= 0;
+          
+          if (!afterGapUnavailable) continue;
+          
+          let hasExistingDeal = false;
+          for (let k = i; k <= gapEndIndex; k++) {
+            const avail = availability[k];
+            if (avail) {
+              const dealKey = `${roomType.id}_${avail.date}`;
+              if (publishedDealKeys.has(dealKey)) {
+                hasExistingDeal = true;
+                break;
+              }
+            }
+          }
+          if (hasExistingDeal) continue;
+          
+          let reason = "";
+          let suggestedDiscount = 25;
+          
+          if (gapDuration === 1) {
+            reason = "1-night gap: isolated night between bookings";
+            suggestedDiscount = 35;
+          } else if (gapDuration === 2) {
+            reason = "2-night gap: short window between bookings";
+            suggestedDiscount = 30;
+          } else {
+            reason = `${gapDuration}-night gap: window between bookings`;
+            suggestedDiscount = 25;
+          }
+          
+          const avgBarRate = Math.round(totalBarRate / gapDuration);
+          const gapStartDate = availability[i]?.date;
+          const gapEndDateStr = availability[gapEndIndex]?.date;
+          
+          if (gapStartDate && gapEndDateStr) {
+            candidates.push({
+              id: uuidv4(),
+              hotelId: hotel.id,
+              roomTypeId: roomType.id,
+              roomTypeName: roomType.name,
+              date: gapStartDate,
+              gapStartDate,
+              gapEndDate: gapEndDateStr,
+              gapDuration,
+              barRate: avgBarRate,
+              available: minAvailable,
+              qtyToSell: 1,
+              reason,
+              suggestedDiscountPercent: suggestedDiscount,
+            });
+          }
+          
+          processedIndices.add(i);
         }
       }
+      
+      res.json(candidates);
+    } catch (err) {
+      logError("POST /api/owner/hotels/:hotelId/deals/generate-orphans", err);
+      sendError(res, 500, "Failed to generate orphan nights");
     }
-    
-    res.json(candidates);
   });
 
   const publishDealSchema = z.object({
     deals: z.array(z.object({
-      roomTypeId: z.string(),
-      date: z.string(),
-      barRate: z.number(),
-      dealPrice: z.number(),
-      discountPercent: z.number(),
-      reason: z.string().optional(),
-    })),
+      roomTypeId: z.string().max(100),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      barRate: z.number().min(0).max(100000),
+      dealPrice: z.number().min(0).max(100000),
+      discountPercent: z.number().min(0).max(100),
+      reason: z.string().max(500).optional(),
+    })).max(100),
   });
 
   app.post("/api/owner/hotels/:hotelId/deals/publish", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId as string);
-    if (!hotel || hotel.ownerId !== req.owner!.id) {
-      return res.status(404).json({ message: "Hotel not found" });
-    }
-    
-    // Get room types for this hotel to lookup room type names
-    const hotelRoomTypes = await storage.getHotelRoomTypes(hotel.id);
-    const roomTypeMap = new Map(hotelRoomTypes.map(rt => [rt.id, rt]));
-    
     try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      
+      const hotel = await storage.getHotel(hotelId);
+      if (!hotel || hotel.ownerId !== owner.id) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      
+      const hotelRoomTypes = await storage.getHotelRoomTypes(hotel.id);
+      const roomTypeMap = new Map(hotelRoomTypes.map(rt => [rt.id, rt]));
+      
       const { deals: dealsToPublish } = publishDealSchema.parse(req.body);
       const createdDeals: any[] = [];
       
       for (const deal of dealsToPublish) {
         const publishedDealId = uuidv4();
         
-        // Create the published deal record
         const created = await storage.createPublishedDeal({
           id: publishedDealId,
           hotelId: hotel.id,
@@ -517,12 +841,11 @@ export async function registerRoutes(
           barRate: deal.barRate,
           dealPrice: deal.dealPrice,
           discountPercent: deal.discountPercent,
-          reason: deal.reason,
+          reason: deal.reason ? sanitizeString(deal.reason, 500) : undefined,
           status: "PUBLISHED",
         });
         createdDeals.push(created);
         
-        // Also create a consumer-facing deal so it shows on the main deals page
         const roomType = roomTypeMap.get(deal.roomTypeId);
         const checkInDate = deal.date;
         const checkOutDate = new Date(deal.date);
@@ -535,7 +858,7 @@ export async function registerRoutes(
           hotelName: hotel.name,
           location: `${hotel.city}, ${hotel.country}`,
           stars: hotel.starRating,
-          rating: "4.5", // Default rating for new hotels
+          rating: "4.5",
           reviewCount: 0,
           checkInDate: checkInDate,
           checkOutDate: checkOutDate.toISOString().split('T')[0],
@@ -544,8 +867,8 @@ export async function registerRoutes(
           imageUrl: hotel.images?.[0] || "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800",
           normalPrice: deal.barRate,
           dealPrice: deal.dealPrice,
-          currency: "AUD", // Use ISO currency code
-          dealScore: Math.round(deal.discountPercent * 2.5), // Approximate deal score from discount
+          currency: "AUD",
+          dealScore: Math.round(deal.discountPercent * 2.5),
           categoryTags: ["All Deals", "Gap Night"],
           cancellation: "Non-refundable",
           whyCheap: deal.reason || "Gap night: 1-night orphan slot between longer bookings.",
@@ -559,86 +882,152 @@ export async function registerRoutes(
       res.status(201).json({ success: true, deals: createdDeals });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("POST /api/owner/hotels/:hotelId/deals/publish", err);
+      sendError(res, 500, "Failed to publish deals");
     }
   });
 
   app.get("/api/owner/hotels/:hotelId/deals", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId as string);
-    if (!hotel || hotel.ownerId !== req.owner!.id) {
-      return res.status(404).json({ message: "Hotel not found" });
+    try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      
+      const hotel = await storage.getHotel(hotelId);
+      if (!hotel || hotel.ownerId !== owner.id) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      
+      const deals = await storage.getHotelDeals(hotelId);
+      res.json(deals);
+    } catch (err) {
+      logError("GET /api/owner/hotels/:hotelId/deals", err);
+      sendError(res, 500, "Failed to fetch deals");
     }
-    
-    const deals = await storage.getHotelDeals(req.params.hotelId as string);
-    res.json(deals);
   });
 
   app.post("/api/owner/hotels/:hotelId/deals/unpublish", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId as string);
-    if (!hotel || hotel.ownerId !== req.owner!.id) {
-      return res.status(404).json({ message: "Hotel not found" });
+    try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      
+      const hotel = await storage.getHotel(hotelId);
+      if (!hotel || hotel.ownerId !== owner.id) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      
+      const { dealIds } = req.body;
+      if (!Array.isArray(dealIds)) {
+        return sendError(res, 400, "dealIds array required", "dealIds");
+      }
+      
+      if (dealIds.length > 100) {
+        return sendError(res, 400, "Maximum 100 deals can be unpublished at once");
+      }
+      
+      const sanitizedIds = dealIds.map(id => sanitizeString(String(id), 100)).filter(Boolean);
+      await storage.unpublishDeals(sanitizedIds);
+      res.json({ success: true });
+    } catch (err) {
+      logError("POST /api/owner/hotels/:hotelId/deals/unpublish", err);
+      sendError(res, 500, "Failed to unpublish deals");
     }
-    
-    const { dealIds } = req.body;
-    if (!Array.isArray(dealIds)) {
-      return res.status(400).json({ message: "dealIds array required" });
-    }
-    
-    await storage.unpublishDeals(dealIds);
-    res.json({ success: true });
   });
 
-  // Update a single published deal (edit pricing)
   const updateDealSchema = z.object({
-    dealPrice: z.number().optional(),
-    discountPercent: z.number().optional(),
+    dealPrice: z.number().min(0).max(100000).optional(),
+    discountPercent: z.number().min(0).max(100).optional(),
     status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
   });
 
   app.patch("/api/owner/hotels/:hotelId/deals/:dealId", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId as string);
-    if (!hotel || hotel.ownerId !== req.owner!.id) {
-      return res.status(404).json({ message: "Hotel not found" });
-    }
-    
     try {
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      const dealId = sanitizeString(req.params.dealId, 100);
+      
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      if (!dealId) {
+        return sendError(res, 400, "Deal ID is required", "dealId");
+      }
+      
+      const hotel = await storage.getHotel(hotelId);
+      if (!hotel || hotel.ownerId !== owner.id) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      
       const updates = updateDealSchema.parse(req.body);
-      const updated = await storage.updatePublishedDeal(req.params.dealId as string, updates);
+      const updated = await storage.updatePublishedDeal(dealId, updates);
       if (!updated) {
-        return res.status(404).json({ message: "Deal not found" });
+        return sendError(res, 404, "Deal not found");
       }
       res.json(updated);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid data", errors: err.errors });
+        return sendError(res, 400, "Invalid data", err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("PATCH /api/owner/hotels/:hotelId/deals/:dealId", err);
+      sendError(res, 500, "Failed to update deal");
     }
   });
 
-  // Delete a single published deal
   app.delete("/api/owner/hotels/:hotelId/deals/:dealId", authMiddleware, async (req, res) => {
-    const hotel = await storage.getHotel(req.params.hotelId as string);
-    if (!hotel || hotel.ownerId !== req.owner!.id) {
-      return res.status(404).json({ message: "Hotel not found" });
-    }
-    
-    const dealId = req.params.dealId as string;
-    
-    // Delete the published deal
-    await storage.deletePublishedDeal(dealId);
-    
-    // Also try to delete the consumer-facing deal (uses portal_ prefix)
-    const consumerDealId = `portal_${dealId.substring(0, 8)}`;
     try {
-      await storage.deleteDeal(consumerDealId);
-    } catch (e) {
-      // Consumer deal may not exist, ignore error
+      const owner = req.owner;
+      if (!owner) {
+        return sendError(res, 401, "Not authenticated");
+      }
+      
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      const dealId = sanitizeString(req.params.dealId, 100);
+      
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      if (!dealId) {
+        return sendError(res, 400, "Deal ID is required", "dealId");
+      }
+      
+      const hotel = await storage.getHotel(hotelId);
+      if (!hotel || hotel.ownerId !== owner.id) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      
+      await storage.deletePublishedDeal(dealId);
+      
+      const consumerDealId = `portal_${dealId.substring(0, 8)}`;
+      try {
+        await storage.deleteDeal(consumerDealId);
+      } catch (e) {
+        // Consumer deal may not exist, ignore error
+      }
+      
+      res.json({ success: true });
+    } catch (err) {
+      logError("DELETE /api/owner/hotels/:hotelId/deals/:dealId", err);
+      sendError(res, 500, "Failed to delete deal");
     }
-    
-    res.json({ success: true });
   });
 
   // ========================================
@@ -646,33 +1035,61 @@ export async function registerRoutes(
   // ========================================
   
   app.get("/api/public/hotels", async (req, res) => {
-    const hotels = await storage.getPublicHotels();
-    res.json(hotels);
+    try {
+      const hotels = await storage.getPublicHotels();
+      res.json(hotels);
+    } catch (err) {
+      logError("GET /api/public/hotels", err);
+      sendError(res, 500, "Failed to fetch hotels");
+    }
   });
 
   app.get("/api/public/hotels/:hotelId", async (req, res) => {
-    const hotel = await storage.getPublicHotel(req.params.hotelId as string);
-    if (!hotel) {
-      return res.status(404).json({ message: "Hotel not found" });
+    try {
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      
+      const hotel = await storage.getPublicHotel(hotelId);
+      if (!hotel) {
+        return sendError(res, 404, "Hotel not found");
+      }
+      
+      const roomTypes = await storage.getHotelRoomTypes(hotel.id);
+      res.json({ ...hotel, roomTypes });
+    } catch (err) {
+      logError("GET /api/public/hotels/:hotelId", err);
+      sendError(res, 500, "Failed to fetch hotel");
     }
-    
-    const roomTypes = await storage.getHotelRoomTypes(hotel.id);
-    res.json({ ...hotel, roomTypes });
   });
 
   app.get("/api/public/hotels/:hotelId/deal-dates", async (req, res) => {
-    const { start, end } = req.query;
-    const deals = await storage.getPublicDealsByHotel(
-      req.params.hotelId as string,
-      start as string,
-      end as string
-    );
-    res.json(deals);
+    try {
+      const hotelId = sanitizeString(req.params.hotelId, 100);
+      const start = sanitizeString(req.query.start as string, 10);
+      const end = sanitizeString(req.query.end as string, 10);
+      
+      if (!hotelId) {
+        return sendError(res, 400, "Hotel ID is required", "hotelId");
+      }
+      
+      const deals = await storage.getPublicDealsByHotel(hotelId, start || undefined, end || undefined);
+      res.json(deals);
+    } catch (err) {
+      logError("GET /api/public/hotels/:hotelId/deal-dates", err);
+      sendError(res, 500, "Failed to fetch deal dates");
+    }
   });
 
   app.get("/api/public/deals", async (req, res) => {
-    const groupedDeals = await storage.getPublicDealsGrouped();
-    res.json(groupedDeals);
+    try {
+      const groupedDeals = await storage.getPublicDealsGrouped();
+      res.json(groupedDeals);
+    } catch (err) {
+      logError("GET /api/public/deals", err);
+      sendError(res, 500, "Failed to fetch deals");
+    }
   });
 
   // ========================================
@@ -680,43 +1097,55 @@ export async function registerRoutes(
   // ========================================
   
   const bookingSchema = z.object({
-    dealId: z.string(),
-    hotelName: z.string(),
-    roomType: z.string(),
-    checkInDate: z.string(),
-    checkOutDate: z.string(),
-    nights: z.number(),
-    guestFirstName: z.string().min(1),
-    guestLastName: z.string().min(1),
-    guestEmail: z.string().email(),
-    guestPhone: z.string().min(8),
-    guestCountryCode: z.string().default("+61"),
-    specialRequests: z.string().optional(),
-    totalPrice: z.number(),
-    currency: z.string().default("$"),
+    dealId: z.string().max(100),
+    hotelName: z.string().max(MAX_NAME_LENGTH),
+    roomType: z.string().max(MAX_NAME_LENGTH),
+    checkInDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    checkOutDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    nights: z.number().min(1).max(365),
+    guestFirstName: z.string().min(1).max(MAX_NAME_LENGTH),
+    guestLastName: z.string().min(1).max(MAX_NAME_LENGTH),
+    guestEmail: z.string().email().max(MAX_EMAIL_LENGTH),
+    guestPhone: z.string().min(8).max(MAX_PHONE_LENGTH),
+    guestCountryCode: z.string().max(10).default("+61"),
+    specialRequests: z.string().max(MAX_STRING_LENGTH).optional(),
+    totalPrice: z.number().min(0).max(1000000),
+    currency: z.string().max(10).default("$"),
   });
 
+  // TODO: Add rate limiting - max 10 bookings per IP per hour
   app.post("/api/bookings", async (req, res) => {
     try {
       const data = bookingSchema.parse(req.body);
       
-      // Check if deal is already booked
-      const isBooked = await storage.isDealBooked(data.dealId);
+      const sanitizedData = {
+        ...data,
+        dealId: sanitizeString(data.dealId, 100),
+        hotelName: sanitizeString(data.hotelName, MAX_NAME_LENGTH),
+        roomType: sanitizeString(data.roomType, MAX_NAME_LENGTH),
+        guestFirstName: sanitizeString(data.guestFirstName, MAX_NAME_LENGTH),
+        guestLastName: sanitizeString(data.guestLastName, MAX_NAME_LENGTH),
+        guestEmail: sanitizeString(data.guestEmail, MAX_EMAIL_LENGTH).toLowerCase(),
+        guestPhone: sanitizeString(data.guestPhone, MAX_PHONE_LENGTH),
+        guestCountryCode: sanitizeString(data.guestCountryCode, 10),
+        specialRequests: data.specialRequests ? sanitizeString(data.specialRequests, MAX_STRING_LENGTH) : undefined,
+        currency: sanitizeString(data.currency, 10),
+      };
+      
+      const isBooked = await storage.isDealBooked(sanitizedData.dealId);
       if (isBooked) {
-        return res.status(400).json({ message: "This deal has already been booked" });
+        return sendError(res, 400, "This deal has already been booked", "dealId");
       }
       
-      // Generate booking reference
       const bookingId = `GN${Date.now()}`;
       
       const booking = await storage.createBooking({
         id: bookingId,
-        ...data,
+        ...sanitizedData,
         status: "CONFIRMED",
         emailSent: false,
       });
       
-      // Send confirmation email asynchronously
       sendBookingConfirmationEmail(booking)
         .then(async (sent) => {
           if (sent) {
@@ -725,7 +1154,7 @@ export async function registerRoutes(
           }
         })
         .catch((err) => {
-          console.error(`Failed to send email for booking ${bookingId}:`, err);
+          logError(`Email send failed for booking ${bookingId}`, err);
         });
       
       res.status(201).json({ 
@@ -735,23 +1164,44 @@ export async function registerRoutes(
       });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
       }
-      throw err;
+      logError("POST /api/bookings", err);
+      sendError(res, 500, "Failed to create booking");
     }
   });
 
   app.get("/api/bookings/:id", async (req, res) => {
-    const booking = await storage.getBooking(req.params.id);
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
+    try {
+      const id = sanitizeString(req.params.id, 100);
+      if (!id) {
+        return sendError(res, 400, "Booking ID is required", "id");
+      }
+      
+      const booking = await storage.getBooking(id);
+      if (!booking) {
+        return sendError(res, 404, "Booking not found");
+      }
+      res.json(booking);
+    } catch (err) {
+      logError("GET /api/bookings/:id", err);
+      sendError(res, 500, "Failed to fetch booking");
     }
-    res.json(booking);
   });
 
   app.get("/api/deals/:dealId/booked", async (req, res) => {
-    const isBooked = await storage.isDealBooked(req.params.dealId);
-    res.json({ booked: isBooked });
+    try {
+      const dealId = sanitizeString(req.params.dealId, 100);
+      if (!dealId) {
+        return sendError(res, 400, "Deal ID is required", "dealId");
+      }
+      
+      const isBooked = await storage.isDealBooked(dealId);
+      res.json({ booked: isBooked });
+    } catch (err) {
+      logError("GET /api/deals/:dealId/booked", err);
+      sendError(res, 500, "Failed to check booking status");
+    }
   });
 
   return httpServer;
