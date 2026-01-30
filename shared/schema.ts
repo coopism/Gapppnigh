@@ -228,6 +228,10 @@ export interface OrphanNightCandidate {
   included: boolean;
   overridePrice?: number;
   overrideDiscountPercent?: number;
+  gapDuration: number;
+  qtyToSell: number;
+  gapStartDate?: string;
+  gapEndDate?: string;
 }
 
 export type PricingMode = 'percent_off' | 'floor_price' | 'fixed_price';

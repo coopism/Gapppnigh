@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { format, addDays, parseISO } from "date-fns";
+import { format, addDays, parseISO, differenceInDays } from "date-fns";
 import { Link } from "wouter";
 import { 
   RefreshCw, 
@@ -13,7 +13,9 @@ import {
   ArrowLeft,
   Calendar,
   DollarSign,
-  HelpCircle
+  HelpCircle,
+  Minus,
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -124,66 +126,103 @@ function detectOrphanNights(ari: ARIEntry[], hotel: Hotel): OrphanNightCandidate
   const getEntry = (roomTypeId: string, date: string): ARIEntry | undefined => {
     return ariByRoomAndDate.get(`${roomTypeId}_${date}`);
   };
-  
-  ari.forEach(entry => {
-    if (entry.available === 0) return;
-    
-    const currentDate = parseISO(entry.date);
-    const prevDate = format(addDays(currentDate, -1), "yyyy-MM-dd");
-    const nextDate = format(addDays(currentDate, 1), "yyyy-MM-dd");
-    
-    const prevEntry = getEntry(entry.roomTypeId, prevDate);
-    const nextEntry = getEntry(entry.roomTypeId, nextDate);
-    
-    const prevUnavailable = !prevEntry || prevEntry.available === 0;
-    const nextUnavailable = !nextEntry || nextEntry.available === 0;
-    
-    let isOrphan = false;
-    let reason = "";
-    let suggestedDiscount = 20;
-    
-    if (prevUnavailable && nextUnavailable) {
-      isOrphan = true;
-      reason = "True 1-night gap: sold/blocked on both sides";
-      suggestedDiscount = 35;
-    }
-    else if (prevUnavailable && nextEntry && nextEntry.available > 0 && nextEntry.minStay >= 2) {
-      isOrphan = true;
-      reason = "Gap created by min-stay on following night";
-      suggestedDiscount = 30;
-    }
-    else if (nextUnavailable && prevEntry && prevEntry.available > 0 && entry.closedToArrival) {
-      isOrphan = true;
-      reason = "Closed to arrival before blocked period";
-      suggestedDiscount = 25;
-    }
-    else if (entry.minStay >= 2 && (prevUnavailable || nextUnavailable)) {
-      isOrphan = true;
-      reason = "Restriction-created orphan (min stay + adjacent block)";
-      suggestedDiscount = 30;
-    }
-    
-    if (isOrphan) {
+
+  const processedDates = new Set<string>();
+
+  hotel.roomTypes.forEach(roomType => {
+    const roomAri = ari
+      .filter(e => e.roomTypeId === roomType.id)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    for (let i = 0; i < roomAri.length; i++) {
+      const entry = roomAri[i];
+      const key = `${entry.roomTypeId}_${entry.date}`;
+      
+      if (processedDates.has(key) || entry.available === 0) continue;
+
+      const currentDate = parseISO(entry.date);
+      const prevDate = format(addDays(currentDate, -1), "yyyy-MM-dd");
+      const prevEntry = getEntry(entry.roomTypeId, prevDate);
+      const prevUnavailable = !prevEntry || prevEntry.available === 0;
+
+      if (!prevUnavailable) continue;
+
+      let gapDuration = 1;
+      let gapEndDate = entry.date;
+      let totalBarRate = entry.barRate;
+      const gapDates: string[] = [entry.date];
+
+      for (let j = i + 1; j < roomAri.length; j++) {
+        const nextEntry = roomAri[j];
+        const expectedNextDate = format(addDays(parseISO(gapEndDate), 1), "yyyy-MM-dd");
+        
+        if (nextEntry.date !== expectedNextDate) break;
+        if (nextEntry.available === 0) break;
+
+        const afterNextDate = format(addDays(parseISO(nextEntry.date), 1), "yyyy-MM-dd");
+        const afterNextEntry = getEntry(nextEntry.roomTypeId, afterNextDate);
+        
+        gapDuration++;
+        gapEndDate = nextEntry.date;
+        totalBarRate += nextEntry.barRate;
+        gapDates.push(nextEntry.date);
+        processedDates.add(`${nextEntry.roomTypeId}_${nextEntry.date}`);
+
+        if (!afterNextEntry || afterNextEntry.available === 0) {
+          break;
+        }
+      }
+
+      const nextDateAfterGap = format(addDays(parseISO(gapEndDate), 1), "yyyy-MM-dd");
+      const nextEntryAfterGap = getEntry(entry.roomTypeId, nextDateAfterGap);
+      const nextUnavailable = !nextEntryAfterGap || nextEntryAfterGap.available === 0;
+
+      if (!nextUnavailable && gapDuration === 1) {
+        continue;
+      }
+
+      let reason = "";
+      let suggestedDiscount = 20;
+
+      if (gapDuration === 1) {
+        reason = "1-night gap: isolated night between bookings";
+        suggestedDiscount = 35;
+      } else if (gapDuration === 2) {
+        reason = "2-night gap: short window between bookings";
+        suggestedDiscount = 30;
+      } else {
+        reason = `${gapDuration}-night gap: available window before next booking`;
+        suggestedDiscount = 25;
+      }
+
+      const avgBarRate = Math.round(totalBarRate / gapDuration);
+
       candidates.push({
-        id: `on_${entry.hotelId}_${entry.roomTypeId}_${entry.date}`,
+        id: `on_${entry.hotelId}_${entry.roomTypeId}_${entry.date}_${gapDuration}`,
         hotelId: entry.hotelId,
         roomTypeId: entry.roomTypeId,
         roomTypeName: roomTypeMap.get(entry.roomTypeId) || "Unknown",
         date: entry.date,
-        barRate: entry.barRate,
+        barRate: avgBarRate,
         available: entry.available,
         reason,
         suggestedDiscountPercent: suggestedDiscount,
         status: 'draft',
         included: true,
+        gapDuration,
+        qtyToSell: 1,
+        gapStartDate: entry.date,
+        gapEndDate: gapEndDate,
       });
+
+      processedDates.add(key);
     }
   });
   
   return candidates.sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function calculateDealPrice(barRate: number, rule: PricingRule, override?: { price?: number; discountPercent?: number }): number {
+function calculateDealPrice(barRate: number, rule: PricingRule, gapDuration: number, override?: { price?: number; discountPercent?: number }): number {
   if (override?.price !== undefined) {
     return override.price;
   }
@@ -191,10 +230,15 @@ function calculateDealPrice(barRate: number, rule: PricingRule, override?: { pri
   if (override?.discountPercent !== undefined) {
     return Math.round(barRate * (1 - override.discountPercent / 100));
   }
+
+  let discountValue = rule.value;
+  if (rule.mode === 'percent_off' && rule.gapDurationDiscounts) {
+    discountValue = rule.gapDurationDiscounts[gapDuration] ?? rule.value;
+  }
   
   switch (rule.mode) {
     case 'percent_off':
-      return Math.round(barRate * (1 - rule.value / 100));
+      return Math.round(barRate * (1 - discountValue / 100));
     case 'floor_price':
       return rule.value;
     case 'fixed_price':
@@ -204,8 +248,12 @@ function calculateDealPrice(barRate: number, rule: PricingRule, override?: { pri
   }
 }
 
-type SortOption = 'soonest' | 'cheapest' | 'biggest_discount';
-type FilterOption = 'all' | 'gap_only' | 'restriction_only';
+type SortOption = 'soonest' | 'cheapest' | 'biggest_discount' | 'gap_duration';
+type FilterOption = 'all' | '1_night' | '2_night' | '3_plus_night';
+
+interface ExtendedPricingRule extends PricingRule {
+  gapDurationDiscounts?: { [key: number]: number };
+}
 
 export default function OrphanNightsDashboard() {
   const { theme, setTheme } = useTheme();
@@ -217,10 +265,15 @@ export default function OrphanNightsDashboard() {
   const [ariData, setAriData] = useState<ARIEntry[]>([]);
   const [orphanCandidates, setOrphanCandidates] = useState<OrphanNightCandidate[]>([]);
   
-  const [pricingRule, setPricingRule] = useState<PricingRule>({
+  const [pricingRule, setPricingRule] = useState<ExtendedPricingRule>({
     mode: 'percent_off',
     value: 25,
     applyTo: 'all',
+    gapDurationDiscounts: {
+      1: 35,
+      2: 30,
+      3: 25,
+    },
   });
   
   const [roomTypeFilter, setRoomTypeFilter] = useState<string>('all');
@@ -239,7 +292,12 @@ export default function OrphanNightsDashboard() {
     if (savedRule) {
       setPricingRule(JSON.parse(savedRule));
     } else {
-      setPricingRule({ mode: 'percent_off', value: 25, applyTo: 'all' });
+      setPricingRule({ 
+        mode: 'percent_off', 
+        value: 25, 
+        applyTo: 'all',
+        gapDurationDiscounts: { 1: 35, 2: 30, 3: 25 },
+      });
     }
   }, [selectedHotelId]);
   
@@ -268,26 +326,31 @@ export default function OrphanNightsDashboard() {
       filtered = filtered.filter(c => c.roomTypeId === roomTypeFilter);
     }
     
-    if (gapFilter === 'gap_only') {
-      filtered = filtered.filter(c => c.reason.includes('gap') || c.reason.includes('Edge'));
-    } else if (gapFilter === 'restriction_only') {
-      filtered = filtered.filter(c => c.reason.includes('Restriction') || c.reason.includes('Closed'));
+    if (gapFilter === '1_night') {
+      filtered = filtered.filter(c => c.gapDuration === 1);
+    } else if (gapFilter === '2_night') {
+      filtered = filtered.filter(c => c.gapDuration === 2);
+    } else if (gapFilter === '3_plus_night') {
+      filtered = filtered.filter(c => c.gapDuration >= 3);
     }
     
     switch (sortBy) {
       case 'cheapest':
         filtered.sort((a, b) => {
-          const priceA = calculateDealPrice(a.barRate, pricingRule, { price: a.overridePrice, discountPercent: a.overrideDiscountPercent });
-          const priceB = calculateDealPrice(b.barRate, pricingRule, { price: b.overridePrice, discountPercent: b.overrideDiscountPercent });
+          const priceA = calculateDealPrice(a.barRate, pricingRule, a.gapDuration, { price: a.overridePrice, discountPercent: a.overrideDiscountPercent });
+          const priceB = calculateDealPrice(b.barRate, pricingRule, b.gapDuration, { price: b.overridePrice, discountPercent: b.overrideDiscountPercent });
           return priceA - priceB;
         });
         break;
       case 'biggest_discount':
         filtered.sort((a, b) => {
-          const discountA = a.overrideDiscountPercent ?? (pricingRule.mode === 'percent_off' ? pricingRule.value : a.suggestedDiscountPercent);
-          const discountB = b.overrideDiscountPercent ?? (pricingRule.mode === 'percent_off' ? pricingRule.value : b.suggestedDiscountPercent);
+          const discountA = a.overrideDiscountPercent ?? (pricingRule.gapDurationDiscounts?.[a.gapDuration] ?? pricingRule.value);
+          const discountB = b.overrideDiscountPercent ?? (pricingRule.gapDurationDiscounts?.[b.gapDuration] ?? pricingRule.value);
           return discountB - discountA;
         });
+        break;
+      case 'gap_duration':
+        filtered.sort((a, b) => a.gapDuration - b.gapDuration);
         break;
       default:
         filtered.sort((a, b) => a.date.localeCompare(b.date));
@@ -299,6 +362,16 @@ export default function OrphanNightsDashboard() {
   const updateCandidate = (id: string, updates: Partial<OrphanNightCandidate>) => {
     setOrphanCandidates(prev => 
       prev.map(c => c.id === id ? { ...c, ...updates } : c)
+    );
+  };
+
+  const updateQtyToSell = (id: string, delta: number) => {
+    setOrphanCandidates(prev => 
+      prev.map(c => {
+        if (c.id !== id) return c;
+        const newQty = Math.max(1, Math.min(c.available, c.qtyToSell + delta));
+        return { ...c, qtyToSell: newQty };
+      })
     );
   };
   
@@ -317,7 +390,7 @@ export default function OrphanNightsDashboard() {
     
     const publishedDeals = toPublish.map(c => ({
       ...c,
-      dealPrice: calculateDealPrice(c.barRate, pricingRule, { price: c.overridePrice, discountPercent: c.overrideDiscountPercent }),
+      dealPrice: calculateDealPrice(c.barRate, pricingRule, c.gapDuration, { price: c.overridePrice, discountPercent: c.overrideDiscountPercent }),
       publishedAt: new Date().toISOString(),
     }));
     
@@ -341,10 +414,30 @@ export default function OrphanNightsDashboard() {
       })
     );
   };
+
+  const updateGapDurationDiscount = (duration: number, value: number) => {
+    setPricingRule(prev => ({
+      ...prev,
+      gapDurationDiscounts: {
+        ...prev.gapDurationDiscounts,
+        [duration]: value,
+      },
+    }));
+  };
   
   const approvedCount = orphanCandidates.filter(c => c.status === 'approved' && c.included).length;
   const publishedCount = orphanCandidates.filter(c => c.status === 'published').length;
   const draftCount = orphanCandidates.filter(c => c.status === 'draft' && c.included).length;
+
+  const gapStats = useMemo(() => {
+    const stats = { oneNight: 0, twoNight: 0, threePlus: 0 };
+    orphanCandidates.forEach(c => {
+      if (c.gapDuration === 1) stats.oneNight++;
+      else if (c.gapDuration === 2) stats.twoNight++;
+      else if (c.gapDuration >= 3) stats.threePlus++;
+    });
+    return stats;
+  }, [orphanCandidates]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -396,7 +489,7 @@ export default function OrphanNightsDashboard() {
       <main className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Orphan Nights Review</h1>
+            <h1 className="text-2xl font-bold">Gap Nights Review</h1>
             <p className="text-muted-foreground">{selectedHotel.name} - {selectedHotel.location}</p>
           </div>
           
@@ -423,16 +516,54 @@ export default function OrphanNightsDashboard() {
         <div className="mb-4 p-3 bg-muted/50 rounded-lg flex items-start gap-2">
           <Info className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
           <p className="text-sm text-muted-foreground">
-            We only use availability + rates data, no guest information is accessed or stored.
+            ARI = Availability, Rates &amp; Inventory. We fetch your room availability and rates to detect gap nights. No guest data is accessed.
           </p>
         </div>
+
+        {orphanCandidates.length > 0 && (
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <span className="text-xl font-bold text-red-600 dark:text-red-400">1</span>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{gapStats.oneNight}</div>
+                  <div className="text-sm text-muted-foreground">1-Night Gaps</div>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <span className="text-xl font-bold text-amber-600 dark:text-amber-400">2</span>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{gapStats.twoNight}</div>
+                  <div className="text-sm text-muted-foreground">2-Night Gaps</div>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <span className="text-xl font-bold text-green-600 dark:text-green-400">3+</span>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{gapStats.threePlus}</div>
+                  <div className="text-sm text-muted-foreground">3+ Night Gaps</div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <CardTitle className="text-lg">Detected Orphan Nights</CardTitle>
+                  <CardTitle className="text-lg">Detected Gap Nights</CardTitle>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Select value={roomTypeFilter} onValueChange={setRoomTypeFilter}>
                       <SelectTrigger className="w-[160px]" data-testid="filter-room-type">
@@ -448,12 +579,13 @@ export default function OrphanNightsDashboard() {
                     
                     <Select value={gapFilter} onValueChange={(v) => setGapFilter(v as FilterOption)}>
                       <SelectTrigger className="w-[160px]" data-testid="filter-gap-type">
-                        <SelectValue placeholder="Gap type" />
+                        <SelectValue placeholder="Gap duration" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All types</SelectItem>
-                        <SelectItem value="gap_only">1-night gaps only</SelectItem>
-                        <SelectItem value="restriction_only">Restriction-created</SelectItem>
+                        <SelectItem value="all">All durations</SelectItem>
+                        <SelectItem value="1_night">1-night gaps</SelectItem>
+                        <SelectItem value="2_night">2-night gaps</SelectItem>
+                        <SelectItem value="3_plus_night">3+ night gaps</SelectItem>
                       </SelectContent>
                     </Select>
                     
@@ -465,6 +597,7 @@ export default function OrphanNightsDashboard() {
                         <SelectItem value="soonest">Soonest</SelectItem>
                         <SelectItem value="cheapest">Cheapest</SelectItem>
                         <SelectItem value="biggest_discount">Biggest discount</SelectItem>
+                        <SelectItem value="gap_duration">Gap duration</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -480,7 +613,7 @@ export default function OrphanNightsDashboard() {
                 ) : filteredCandidates.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
                     <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>No orphan nights detected.</p>
+                    <p>No gap nights detected.</p>
                     <p className="text-sm">Click "Refresh ARI" to fetch availability data.</p>
                   </div>
                 ) : (
@@ -499,25 +632,64 @@ export default function OrphanNightsDashboard() {
                               data-testid="checkbox-select-all"
                             />
                           </TableHead>
-                          <TableHead>Date</TableHead>
+                          <TableHead>Dates</TableHead>
+                          <TableHead>
+                            <Tooltip>
+                              <TooltipTrigger className="flex items-center gap-1 cursor-help">
+                                Gap
+                                <HelpCircle className="w-3 h-3" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Number of consecutive nights in this gap</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableHead>
                           <TableHead>Room Type</TableHead>
-                          <TableHead className="text-center">Avail</TableHead>
-                          <TableHead className="text-right">BAR</TableHead>
+                          <TableHead>
+                            <Tooltip>
+                              <TooltipTrigger className="flex items-center gap-1 cursor-help">
+                                Rooms
+                                <HelpCircle className="w-3 h-3" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Number of rooms available for this gap period</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableHead>
+                          <TableHead>
+                            <Tooltip>
+                              <TooltipTrigger className="flex items-center gap-1 cursor-help">
+                                Qty to Sell
+                                <HelpCircle className="w-3 h-3" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>How many rooms to list on GapNight</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TableHead>
+                          <TableHead className="text-right">BAR/Night</TableHead>
                           <TableHead className="text-right">Deal Price</TableHead>
-                          <TableHead>Reason</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead className="text-right">Override</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredCandidates.map(candidate => {
+                          const totalBarRate = candidate.barRate * candidate.gapDuration;
                           const dealPrice = calculateDealPrice(
-                            candidate.barRate, 
-                            pricingRule, 
+                            totalBarRate, 
+                            pricingRule,
+                            candidate.gapDuration,
                             { price: candidate.overridePrice, discountPercent: candidate.overrideDiscountPercent }
                           );
-                          const discountPercent = Math.round((1 - dealPrice / candidate.barRate) * 100);
+                          const discountPercent = Math.round((1 - dealPrice / totalBarRate) * 100);
                           const hasOverride = candidate.overridePrice !== undefined || candidate.overrideDiscountPercent !== undefined;
+                          
+                          const gapBadgeColor = candidate.gapDuration === 1 
+                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                            : candidate.gapDuration === 2 
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                              : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
                           
                           return (
                             <TableRow key={candidate.id} className={!candidate.included ? 'opacity-50' : ''}>
@@ -529,16 +701,59 @@ export default function OrphanNightsDashboard() {
                                 />
                               </TableCell>
                               <TableCell className="font-medium whitespace-nowrap">
-                                {format(parseISO(candidate.date), "EEE, MMM d")}
+                                {candidate.gapDuration === 1 ? (
+                                  format(parseISO(candidate.date), "EEE, MMM d")
+                                ) : (
+                                  <span>
+                                    {format(parseISO(candidate.gapStartDate || candidate.date), "MMM d")} - {format(parseISO(candidate.gapEndDate || candidate.date), "MMM d")}
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={`${gapBadgeColor} border-0`}>
+                                  {candidate.gapDuration} {candidate.gapDuration === 1 ? 'night' : 'nights'}
+                                </Badge>
                               </TableCell>
                               <TableCell>{candidate.roomTypeName}</TableCell>
-                              <TableCell className="text-center">{candidate.available}</TableCell>
+                              <TableCell className="text-center font-medium">{candidate.available}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    className="h-7 w-7"
+                                    onClick={() => updateQtyToSell(candidate.id, -1)}
+                                    disabled={candidate.qtyToSell <= 1}
+                                    data-testid={`btn-qty-minus-${candidate.id}`}
+                                  >
+                                    <Minus className="w-3 h-3" />
+                                  </Button>
+                                  <span className="w-8 text-center font-medium">{candidate.qtyToSell}</span>
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    className="h-7 w-7"
+                                    onClick={() => updateQtyToSell(candidate.id, 1)}
+                                    disabled={candidate.qtyToSell >= candidate.available}
+                                    data-testid={`btn-qty-plus-${candidate.id}`}
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
                               <TableCell className="text-right">
                                 <span className="line-through text-muted-foreground">${candidate.barRate}</span>
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-2">
-                                  <span className="font-bold text-primary">${dealPrice}</span>
+                                  <div className="text-right">
+                                    <div className="font-bold text-primary">${dealPrice}</div>
+                                    {candidate.gapDuration > 1 && (
+                                      <div className="text-xs text-muted-foreground">
+                                        ${Math.round(dealPrice / candidate.gapDuration)}/night
+                                      </div>
+                                    )}
+                                  </div>
                                   <Badge variant="secondary" className="text-xs">
                                     -{discountPercent}%
                                   </Badge>
@@ -546,18 +761,6 @@ export default function OrphanNightsDashboard() {
                                     <Badge variant="outline" className="text-xs">Override</Badge>
                                   )}
                                 </div>
-                              </TableCell>
-                              <TableCell>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="text-sm text-muted-foreground cursor-help truncate max-w-[150px] block">
-                                      {candidate.reason.split(' ').slice(0, 3).join(' ')}...
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>{candidate.reason}</p>
-                                  </TooltipContent>
-                                </Tooltip>
                               </TableCell>
                               <TableCell>
                                 <Badge 
@@ -615,9 +818,9 @@ export default function OrphanNightsDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
-                  Pricing Rules
+                  Pricing by Gap Duration
                 </CardTitle>
-                <CardDescription>Set global pricing for orphan nights</CardDescription>
+                <CardDescription>Set different discounts based on gap length</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -638,22 +841,59 @@ export default function OrphanNightsDashboard() {
                 </div>
                 
                 {pricingRule.mode === 'percent_off' ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label>Discount</Label>
-                      <span className="text-lg font-bold text-primary">{pricingRule.value}%</span>
+                  <div className="space-y-4">
+                    <div className="p-3 rounded-lg border space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0">1 night</Badge>
+                          <span className="text-sm text-muted-foreground">Hardest to sell</span>
+                        </div>
+                        <span className="text-lg font-bold text-primary">{pricingRule.gapDurationDiscounts?.[1] ?? 35}%</span>
+                      </div>
+                      <Slider
+                        value={[pricingRule.gapDurationDiscounts?.[1] ?? 35]}
+                        onValueChange={([v]) => updateGapDurationDiscount(1, v)}
+                        min={10}
+                        max={70}
+                        step={5}
+                        data-testid="slider-discount-1night"
+                      />
                     </div>
-                    <Slider
-                      value={[pricingRule.value]}
-                      onValueChange={([v]) => setPricingRule(prev => ({ ...prev, value: v }))}
-                      min={10}
-                      max={70}
-                      step={5}
-                      data-testid="slider-discount"
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>10%</span>
-                      <span>70%</span>
+
+                    <div className="p-3 rounded-lg border space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0">2 nights</Badge>
+                          <span className="text-sm text-muted-foreground">Moderate demand</span>
+                        </div>
+                        <span className="text-lg font-bold text-primary">{pricingRule.gapDurationDiscounts?.[2] ?? 30}%</span>
+                      </div>
+                      <Slider
+                        value={[pricingRule.gapDurationDiscounts?.[2] ?? 30]}
+                        onValueChange={([v]) => updateGapDurationDiscount(2, v)}
+                        min={10}
+                        max={70}
+                        step={5}
+                        data-testid="slider-discount-2night"
+                      />
+                    </div>
+
+                    <div className="p-3 rounded-lg border space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0">3+ nights</Badge>
+                          <span className="text-sm text-muted-foreground">Easier to sell</span>
+                        </div>
+                        <span className="text-lg font-bold text-primary">{pricingRule.gapDurationDiscounts?.[3] ?? 25}%</span>
+                      </div>
+                      <Slider
+                        value={[pricingRule.gapDurationDiscounts?.[3] ?? 25]}
+                        onValueChange={([v]) => updateGapDurationDiscount(3, v)}
+                        min={10}
+                        max={70}
+                        step={5}
+                        data-testid="slider-discount-3night"
+                      />
                     </div>
                   </div>
                 ) : (
@@ -682,7 +922,7 @@ export default function OrphanNightsDashboard() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All detected orphan nights</SelectItem>
+                      <SelectItem value="all">All detected gap nights</SelectItem>
                       <SelectItem value="selected_room_type">Selected room type only</SelectItem>
                       <SelectItem value="checked_only">Checked nights only</SelectItem>
                     </SelectContent>
@@ -709,7 +949,7 @@ export default function OrphanNightsDashboard() {
                 )}
                 
                 <Button onClick={applyPricingRule} className="w-full" data-testid="button-apply-pricing">
-                  Apply Pricing Rule
+                  Apply Pricing Rules
                 </Button>
               </CardContent>
             </Card>
@@ -761,15 +1001,15 @@ export default function OrphanNightsDashboard() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <HelpCircle className="w-4 h-4" />
-                  Why do orphan nights exist?
+                  Understanding Gap Nights
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Orphan nights are single-night gaps in your booking calendar that are difficult to sell. 
-                  They occur when guests book around a date, leaving isolated nights. 
-                  Hotels often discount these to avoid losing revenue on otherwise empty rooms.
-                </p>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p><strong>1-night gaps</strong> are hardest to sell and typically need bigger discounts (30-40% off).</p>
+                  <p><strong>2-night gaps</strong> appeal to weekend travelers and need moderate discounts (25-35% off).</p>
+                  <p><strong>3+ night gaps</strong> are easier to fill and can have smaller discounts (20-30% off).</p>
+                </div>
               </CardContent>
             </Card>
           </div>
