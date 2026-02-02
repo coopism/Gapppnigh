@@ -146,8 +146,8 @@ export default function Privacy() {
               <h2 className="text-xl font-semibold mb-3">12. Contact Us</h2>
               <p className="text-muted-foreground leading-relaxed">
                 If you have any questions about this Privacy Policy or our data practices, please contact us at{" "}
-                <a href="mailto:hello@gapnight.com" className="text-primary hover:underline">
-                  hello@gapnight.com
+                <a href="mailto:info@gapnight.com" className="text-primary hover:underline">
+                  info@gapnight.com
                 </a>
               </p>
               <p className="text-muted-foreground leading-relaxed mt-4">

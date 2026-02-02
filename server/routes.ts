@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { authMiddleware, SESSION_COOKIE_NAME } from "./auth";
 import { v4 as uuidv4 } from "uuid";
-import { sendBookingConfirmationEmail } from "./email";
+import { sendBookingConfirmationEmail, sendHotelInquiryNotification, sendWaitlistNotification } from "./email";
 import { authRateLimit, bookingRateLimit, paymentRateLimit } from "./rate-limit";
 import { createPaymentIntent, confirmPaymentSuccess, isStripeConfigured } from "./stripe";
 
@@ -183,6 +183,12 @@ export async function registerRoutes(
         preferredCity: input.preferredCity ? sanitizeString(input.preferredCity, MAX_NAME_LENGTH) : undefined,
       };
       await storage.createWaitlistEntry(sanitizedInput);
+      
+      // Send notification email (don't await - fire and forget)
+      sendWaitlistNotification(sanitizedInput).catch(err => 
+        console.error('Failed to send waitlist notification:', err)
+      );
+      
       res.status(201).json({ success: true, message: "Joined waitlist successfully" });
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -204,6 +210,12 @@ export async function registerRoutes(
         gapNightsPerWeek: sanitizeString(input.gapNightsPerWeek, 50),
       };
       await storage.createHotelInquiry(sanitizedInput);
+      
+      // Send notification email (don't await - fire and forget)
+      sendHotelInquiryNotification(sanitizedInput).catch(err => 
+        console.error('Failed to send hotel inquiry notification:', err)
+      );
+      
       res.status(201).json({ success: true, message: "Inquiry submitted successfully" });
     } catch (err) {
       if (err instanceof z.ZodError) {

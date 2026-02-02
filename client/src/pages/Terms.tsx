@@ -106,8 +106,8 @@ export default function Terms() {
               <h2 className="text-xl font-semibold mb-3">11. Contact Us</h2>
               <p className="text-muted-foreground leading-relaxed">
                 If you have any questions about these Terms of Service, please contact us at{" "}
-                <a href="mailto:hello@gapnight.com" className="text-primary hover:underline">
-                  hello@gapnight.com
+                <a href="mailto:info@gapnight.com" className="text-primary hover:underline">
+                  info@gapnight.com
                 </a>
               </p>
             </section>

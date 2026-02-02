@@ -5,7 +5,7 @@ import { format, parseISO } from "date-fns";
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'GapNight <noreply@gapnight.com>';
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'GapNight <info@gapnight.com>';
   
   if (!apiKey) {
     throw new Error('RESEND_API_KEY environment variable is not set');
@@ -102,7 +102,7 @@ export async function sendBookingConfirmationEmail(booking: Booking): Promise<bo
   
   <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; border-top: 1px solid #e5e7eb;">
     <p style="margin: 0 0 10px 0;">Thank you for booking with GapNight!</p>
-    <p style="margin: 0;">Questions? Contact us at support@gapnight.com</p>
+    <p style="margin: 0;">Questions? Contact us at info@gapnight.com</p>
   </div>
 </body>
 </html>
@@ -119,6 +119,95 @@ export async function sendBookingConfirmationEmail(booking: Booking): Promise<bo
     return true;
   } catch (error) {
     console.error('Failed to send confirmation email:', error);
+    return false;
+  }
+}
+
+// Send notification to admin for hotel inquiry
+export async function sendHotelInquiryNotification(inquiry: {
+  hotelName: string;
+  city: string;
+  contactEmail: string;
+  gapNightsPerWeek: string;
+}): Promise<boolean> {
+  try {
+    const { client, fromEmail } = getResendClient();
+    
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>New Hotel Partnership Inquiry</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #1a1a1a;">New Hotel Partnership Inquiry</h2>
+  
+  <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <p><strong>Hotel Name:</strong> ${inquiry.hotelName}</p>
+    <p><strong>City:</strong> ${inquiry.city}</p>
+    <p><strong>Contact Email:</strong> <a href="mailto:${inquiry.contactEmail}">${inquiry.contactEmail}</a></p>
+    <p><strong>Estimated Gap Nights/Week:</strong> ${inquiry.gapNightsPerWeek}</p>
+  </div>
+  
+  <p style="color: #666; font-size: 14px;">Reply directly to this email to contact the hotel.</p>
+</body>
+</html>
+    `;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: 'info@gapnight.com',
+      replyTo: inquiry.contactEmail,
+      subject: `New Hotel Inquiry: ${inquiry.hotelName} (${inquiry.city})`,
+      html: emailHtml,
+    });
+
+    console.log('Hotel inquiry notification sent');
+    return true;
+  } catch (error) {
+    console.error('Failed to send hotel inquiry notification:', error);
+    return false;
+  }
+}
+
+// Send notification to admin for waitlist signup
+export async function sendWaitlistNotification(entry: {
+  email: string;
+  preferredCity?: string;
+}): Promise<boolean> {
+  try {
+    const { client, fromEmail } = getResendClient();
+    
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>New Waitlist Signup</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #1a1a1a;">New Waitlist Signup</h2>
+  
+  <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <p><strong>Email:</strong> <a href="mailto:${entry.email}">${entry.email}</a></p>
+    ${entry.preferredCity ? `<p><strong>Preferred City:</strong> ${entry.preferredCity}</p>` : ''}
+  </div>
+</body>
+</html>
+    `;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: 'info@gapnight.com',
+      subject: `New Waitlist Signup${entry.preferredCity ? ` - ${entry.preferredCity}` : ''}`,
+      html: emailHtml,
+    });
+
+    console.log('Waitlist notification sent');
+    return true;
+  } catch (error) {
+    console.error('Failed to send waitlist notification:', error);
     return false;
   }
 }

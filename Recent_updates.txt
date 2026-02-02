@@ -48,6 +48,13 @@ Add CNAME record at domain registrar:
 - Verified: No API keys or secrets committed
 - Verified: .env file properly gitignored
 
+### Email System - Feb 2, 2026 ✅
+- Updated all contact emails to info@gapnight.com
+- Booking confirmation emails sent via Resend API
+- Hotel inquiry forms forward to info@gapnight.com
+- Waitlist signups forward to info@gapnight.com
+- Requires RESEND_API_KEY environment variable in Railway
+
 ---
 
 ## Date & Guest Filters + Room Capacity - Feb 2, 2026
