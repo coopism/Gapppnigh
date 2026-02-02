@@ -48,9 +48,9 @@ export function Footer() {
             <h4 className="font-display font-bold text-white mb-4">Support</h4>
             <ul className="space-y-2">
               <li>
-                <a href="mailto:hello@gapnight.com" className="text-white/70 hover:text-white text-sm transition-colors flex items-center gap-2">
+                <a href="mailto:info@gapnight.com" className="text-white/70 hover:text-white text-sm transition-colors flex items-center gap-2">
                   <Mail className="w-4 h-4" />
-                  hello@gapnight.com
+                  info@gapnight.com
                 </a>
               </li>
               <li>
