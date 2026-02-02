@@ -1,6 +1,28 @@
 # Gap Night - Recent Updates Log
 # Last Updated: Feb 3, 2026
 
+## Comprehensive Site Polish - Feb 3, 2026 ✅
+
+### Bug Fixes
+- **Google Sign-In Timeout** - Added 5-second timeout with fallback state instead of infinite loading
+- **NotFound Page** - Redesigned with proper Navigation, Footer, GapNight branding
+
+### UI/UX Improvements
+- **NotFound (404) Page** - Complete redesign with:
+  - GapNight logo centered in large 404 text
+  - Proper Navigation and Footer
+  - "Go Home" and "Browse Deals" action buttons
+  - Consistent styling with rest of site
+- **Accessibility** - Added aria-labels to icon buttons
+- **OAuth UX** - Shows "Google Sign-In unavailable" after timeout instead of infinite spinner
+
+### Code Quality
+- Audited all main pages: Landing, Deals, DealDetail, Booking, Account
+- Verified auth pages: Login, Signup, ForgotPassword, ResetPassword, VerifyEmail
+- Confirmed Navigation and Footer consistency across all pages
+
+---
+
 ## Booking & OAuth Improvements - Feb 3, 2026 ✅
 
 ### Bug Fixes

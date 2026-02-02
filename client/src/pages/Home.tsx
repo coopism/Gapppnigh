@@ -620,6 +620,7 @@ export default function Home() {
               size="icon" 
               className="h-12 w-12 rounded-full shadow-lg shrink-0"
               data-testid="button-search"
+              aria-label="Search deals"
               disabled={isLoading}
               onClick={() => {
                 setDebouncedSearch(searchInput);
