@@ -1,6 +1,33 @@
 # Gap Night - Recent Updates Log
 # Last Updated: Feb 2, 2026
 
+## Railway Deployment - Feb 2, 2026
+
+### Deployed to Railway ✅
+- App URL: https://lavish-solace-production-5a00.up.railway.app
+- Custom domain: gapnight.com (CNAME → hn5y4yrs.up.railway.app)
+- GitHub repo: https://github.com/coopism/Gapppnigh
+
+### Deployment Fixes
+- File: `package.json` - Removed `cross-env` from start script (not available in production)
+- File: `server/index.ts` - Changed host from `localhost` to `0.0.0.0` for Railway
+
+### Environment Variables (Railway)
+- DATABASE_URL - References Railway Postgres
+- NODE_ENV=production
+- SESSION_SECRET
+- STRIPE_PUBLISHABLE_KEY
+- STRIPE_SECRET_KEY
+- VITE_STRIPE_PUBLISHABLE_KEY
+
+### DNS Setup Required
+Add CNAME record at domain registrar:
+- Type: CNAME
+- Name: @
+- Value: hn5y4yrs.up.railway.app
+
+---
+
 ## Date & Guest Filters + Room Capacity - Feb 2, 2026
 
 ### Date Filters - FIXED
