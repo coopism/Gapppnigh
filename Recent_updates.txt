@@ -26,6 +26,11 @@ Add CNAME record at domain registrar:
 - Name: @
 - Value: hn5y4yrs.up.railway.app
 
+### Database Fix - Feb 2, 2026
+- Removed drizzle-kit migrate() - was causing bundled code output crash
+- Now using raw SQL `CREATE TABLE IF NOT EXISTS` in bootstrap.ts
+- Tables created programmatically on app startup
+
 ---
 
 ## Date & Guest Filters + Room Capacity - Feb 2, 2026
