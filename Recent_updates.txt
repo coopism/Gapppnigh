@@ -31,6 +31,23 @@ Add CNAME record at domain registrar:
 - Now using raw SQL `CREATE TABLE IF NOT EXISTS` in bootstrap.ts
 - Tables created programmatically on app startup
 
+### Crash Prevention - Feb 2, 2026
+- File: `server/index.ts` - Wrapped bootstrapDatabase() in try-catch
+- File: `server/bootstrap.ts` - Added try-catch around all DB operations
+- App now starts even if database connection fails
+- Graceful error logging instead of crashes
+
+### DNS Configured - Feb 2, 2026 ✅
+- CNAME record added at domain registrar
+- Type: CNAME | Name: www | Value: hn5y4yrs.up.railway.app
+- Root domain forwarding to www.gapnight.com
+
+### Security Audit - Feb 2, 2026 ✅
+- Removed 70+ Replit agent state files from repo
+- Updated .gitignore to exclude: .local/, .replit, IDE files, logs
+- Verified: No API keys or secrets committed
+- Verified: .env file properly gitignored
+
 ---
 
 ## Date & Guest Filters + Room Capacity - Feb 2, 2026
