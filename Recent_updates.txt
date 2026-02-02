@@ -24,6 +24,7 @@
   - Catches JavaScript errors anywhere in child component tree
   - Shows user-friendly error page with "Refresh" and "Go Home" options
   - Shows error details in development mode
+- **Theme Color** - Updated meta theme-color to match GapNight teal (#0ea5a5)
 
 ---
 
