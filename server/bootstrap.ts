@@ -3,18 +3,182 @@ import { hotelOwners, hotels, roomTypes, availability, publishedDeals, deals } f
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import { sql } from "drizzle-orm";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
-import path from "path";
 
 const SALT_ROUNDS = 12;
 
+async function createTables() {
+  console.log("Creating tables if not exist...");
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "hotel_owners" (
+      "id" text PRIMARY KEY NOT NULL,
+      "email" text NOT NULL UNIQUE,
+      "password_hash" text NOT NULL,
+      "name" text,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "hotels" (
+      "id" text PRIMARY KEY NOT NULL,
+      "owner_id" text NOT NULL,
+      "chain_name" text,
+      "name" text NOT NULL,
+      "description" text,
+      "address" text,
+      "city" text NOT NULL,
+      "state" text,
+      "country" text DEFAULT 'Australia' NOT NULL,
+      "latitude" numeric,
+      "longitude" numeric,
+      "star_rating" integer DEFAULT 3 NOT NULL,
+      "amenities" text[],
+      "images" text[],
+      "contact_email" text,
+      "is_active" boolean DEFAULT true NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "room_types" (
+      "id" text PRIMARY KEY NOT NULL,
+      "hotel_id" text NOT NULL,
+      "name" text NOT NULL,
+      "inventory" integer DEFAULT 1 NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "availability" (
+      "id" text PRIMARY KEY NOT NULL,
+      "room_type_id" text NOT NULL,
+      "date" text NOT NULL,
+      "available" integer DEFAULT 0 NOT NULL,
+      "bar_rate" integer NOT NULL,
+      "min_stay" integer DEFAULT 1 NOT NULL,
+      "closed_to_arrival" boolean DEFAULT false NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "published_deals" (
+      "id" text PRIMARY KEY NOT NULL,
+      "hotel_id" text NOT NULL,
+      "room_type_id" text NOT NULL,
+      "date" text NOT NULL,
+      "bar_rate" integer NOT NULL,
+      "deal_price" integer NOT NULL,
+      "discount_percent" integer NOT NULL,
+      "reason" text,
+      "status" text DEFAULT 'DRAFT' NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "deals" (
+      "id" text PRIMARY KEY NOT NULL,
+      "hotel_name" text NOT NULL,
+      "location" text NOT NULL,
+      "stars" integer NOT NULL,
+      "rating" numeric NOT NULL,
+      "review_count" integer NOT NULL,
+      "check_in_date" text NOT NULL,
+      "check_out_date" text NOT NULL,
+      "nights" integer NOT NULL,
+      "room_type" text NOT NULL,
+      "image_url" text NOT NULL,
+      "normal_price" integer NOT NULL,
+      "deal_price" integer NOT NULL,
+      "currency" text NOT NULL,
+      "deal_score" integer NOT NULL,
+      "category_tags" text[] NOT NULL,
+      "cancellation" text NOT NULL,
+      "why_cheap" text NOT NULL,
+      "latitude" numeric,
+      "longitude" numeric,
+      "amenities" text[],
+      "nearby_highlight" text,
+      "max_guests" integer DEFAULT 2 NOT NULL
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "bookings" (
+      "id" text PRIMARY KEY NOT NULL,
+      "deal_id" text NOT NULL,
+      "hotel_name" text NOT NULL,
+      "room_type" text NOT NULL,
+      "check_in_date" text NOT NULL,
+      "check_out_date" text NOT NULL,
+      "nights" integer NOT NULL,
+      "guest_first_name" text NOT NULL,
+      "guest_last_name" text NOT NULL,
+      "guest_email" text NOT NULL,
+      "guest_phone" text NOT NULL,
+      "guest_country_code" text DEFAULT '+61' NOT NULL,
+      "special_requests" text,
+      "total_price" integer NOT NULL,
+      "currency" text DEFAULT '$' NOT NULL,
+      "status" text DEFAULT 'CONFIRMED' NOT NULL,
+      "email_sent" boolean DEFAULT false NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "deal_holds" (
+      "id" text PRIMARY KEY NOT NULL,
+      "deal_id" text NOT NULL,
+      "session_id" text NOT NULL,
+      "expires_at" timestamp NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "owner_sessions" (
+      "id" text PRIMARY KEY NOT NULL,
+      "owner_id" text NOT NULL,
+      "expires_at" timestamp NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "waitlist" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "email" text NOT NULL,
+      "preferred_city" text
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "hotel_inquiries" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "hotel_name" text NOT NULL,
+      "city" text NOT NULL,
+      "contact_email" text NOT NULL,
+      "gap_nights_per_week" text NOT NULL
+    )
+  `);
+  
+  console.log("Tables created!");
+}
+
 export async function bootstrapDatabase() {
-  console.log("Running database migrations...");
   try {
-    await migrate(db, { migrationsFolder: path.join(process.cwd(), "migrations") });
-    console.log("Migrations completed!");
+    await createTables();
   } catch (err) {
-    console.log("Migration error (tables may already exist):", err);
+    console.log("Table creation error:", err);
   }
   
   console.log("Checking if database needs seeding...");
