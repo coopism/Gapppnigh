@@ -20,6 +20,10 @@
 - Audited all main pages: Landing, Deals, DealDetail, Booking, Account
 - Verified auth pages: Login, Signup, ForgotPassword, ResetPassword, VerifyEmail
 - Confirmed Navigation and Footer consistency across all pages
+- **ErrorBoundary** - Added global error boundary component for graceful error handling
+  - Catches JavaScript errors anywhere in child component tree
+  - Shows user-friendly error page with "Refresh" and "Go Home" options
+  - Shows error details in development mode
 
 ---
 

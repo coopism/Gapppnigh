@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ScrollToTop, ScrollToTopOnNavigation } from "@/components/ScrollToTop";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 import ComingSoon from "@/pages/ComingSoon";
 import Landing from "@/pages/Landing";
@@ -118,22 +119,24 @@ function App() {
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <ScrollToTopOnNavigation />
-          {hasPartnerAccess ? (
-            <>
-              <MainRouter />
-              <ScrollToTop />
-            </>
-          ) : (
-            <PublicRouter onPartnerAccess={handlePartnerAccess} />
-          )}
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <ScrollToTopOnNavigation />
+            {hasPartnerAccess ? (
+              <>
+                <MainRouter />
+                <ScrollToTop />
+              </>
+            ) : (
+              <PublicRouter onPartnerAccess={handlePartnerAccess} />
+            )}
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
