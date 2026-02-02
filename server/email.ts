@@ -5,7 +5,7 @@ import { format, parseISO } from "date-fns";
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'GapNight <info@gapnight.com>';
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'GapNight <bookings@gapnight.com>';
   
   if (!apiKey) {
     throw new Error('RESEND_API_KEY environment variable is not set');
