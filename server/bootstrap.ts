@@ -3,10 +3,20 @@ import { hotelOwners, hotels, roomTypes, availability, publishedDeals, deals } f
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import { sql } from "drizzle-orm";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import path from "path";
 
 const SALT_ROUNDS = 12;
 
 export async function bootstrapDatabase() {
+  console.log("Running database migrations...");
+  try {
+    await migrate(db, { migrationsFolder: path.join(process.cwd(), "migrations") });
+    console.log("Migrations completed!");
+  } catch (err) {
+    console.log("Migration error (tables may already exist):", err);
+  }
+  
   console.log("Checking if database needs seeding...");
   
   const existingDeals = await db.select({ count: sql<number>`count(*)` }).from(deals);
