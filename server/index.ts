@@ -65,7 +65,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await bootstrapDatabase();
+  try {
+    await bootstrapDatabase();
+  } catch (err) {
+    console.error("Bootstrap failed:", err);
+  }
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

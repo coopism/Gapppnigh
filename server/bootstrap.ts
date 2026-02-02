@@ -179,12 +179,19 @@ export async function bootstrapDatabase() {
     await createTables();
   } catch (err) {
     console.log("Table creation error:", err);
+    return; // Don't seed if tables failed
   }
   
   console.log("Checking if database needs seeding...");
   
-  const existingDeals = await db.select({ count: sql<number>`count(*)` }).from(deals);
-  const dealCount = Number(existingDeals[0]?.count) || 0;
+  let dealCount = 0;
+  try {
+    const existingDeals = await db.select({ count: sql<number>`count(*)` }).from(deals);
+    dealCount = Number(existingDeals[0]?.count) || 0;
+  } catch (err) {
+    console.log("Error checking deals count:", err);
+    return; // Don't seed if we can't check
+  }
   
   if (dealCount > 0) {
     console.log(`Database already has ${dealCount} deals, skipping seed.`);
@@ -192,6 +199,8 @@ export async function bootstrapDatabase() {
   }
   
   console.log("Database is empty, seeding...");
+  
+  try {
 
   const owner1Id = uuidv4();
   const owner2Id = uuidv4();
@@ -682,4 +691,7 @@ export async function bootstrapDatabase() {
   console.log("Test accounts:");
   console.log("  - crown@example.com / password123");
   console.log("  - bayview@example.com / password123");
+  } catch (err) {
+    console.log("Seeding error:", err);
+  }
 }
