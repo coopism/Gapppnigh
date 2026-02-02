@@ -121,6 +121,74 @@ export async function softDeleteUser(userId: string): Promise<void> {
 }
 
 // ========================================
+// OAUTH SUPPORT
+// ========================================
+
+export async function findOrCreateOAuthUser(
+  provider: "google" | "apple",
+  providerId: string,
+  email: string,
+  name?: string
+): Promise<User> {
+  // First check if user exists by email
+  const existingUser = await getUserByEmail(email);
+  
+  if (existingUser) {
+    // Update OAuth provider info if not already set
+    if (provider === "google" && !existingUser.googleId) {
+      await db.update(users)
+        .set({ googleId: providerId, updatedAt: new Date() })
+        .where(eq(users.id, existingUser.id));
+    } else if (provider === "apple" && !existingUser.appleId) {
+      await db.update(users)
+        .set({ appleId: providerId, updatedAt: new Date() })
+        .where(eq(users.id, existingUser.id));
+    }
+    
+    // Mark email as verified since OAuth providers verify emails
+    if (!existingUser.emailVerifiedAt) {
+      await verifyUserEmail(existingUser.id);
+    }
+    
+    return existingUser;
+  }
+  
+  // Create new user with OAuth
+  const id = uuidv4();
+  const randomPassword = crypto.randomBytes(32).toString("hex");
+  const passwordHash = await bcrypt.hash(randomPassword, SALT_ROUNDS);
+  
+  const [user] = await db.insert(users).values({
+    id,
+    email: email.trim().toLowerCase(),
+    passwordHash,
+    name: name || null,
+    googleId: provider === "google" ? providerId : null,
+    appleId: provider === "apple" ? providerId : null,
+    emailVerifiedAt: new Date(), // OAuth emails are pre-verified
+  }).returning();
+  
+  return user;
+}
+
+export async function getUserByOAuthId(
+  provider: "google" | "apple",
+  providerId: string
+): Promise<User | null> {
+  const field = provider === "google" ? users.googleId : users.appleId;
+  
+  const [user] = await db.select()
+    .from(users)
+    .where(and(
+      eq(field, providerId),
+      isNull(users.deletedAt)
+    ))
+    .limit(1);
+  
+  return user || null;
+}
+
+// ========================================
 // SESSION MANAGEMENT
 // ========================================
 

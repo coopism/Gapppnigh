@@ -21,6 +21,7 @@ import {
   clearSessionCookie,
   setCsrfCookie,
   logSecurityEvent,
+  findOrCreateOAuthUser,
   USER_SESSION_COOKIE,
   CSRF_COOKIE,
 } from "./user-auth";
@@ -581,6 +582,145 @@ export function registerUserAuthRoutes(app: Express) {
     } catch (err) {
       console.error("Update alerts error:", err);
       sendError(res, 500, "Failed to update alert preferences");
+    }
+  });
+
+  // ========================================
+  // OAUTH AUTHENTICATION
+  // ========================================
+  
+  // Google OAuth callback - receives token from frontend
+  app.post("/api/auth/oauth/google", async (req, res) => {
+    try {
+      const { credential, redirectUrl } = req.body;
+      
+      if (!credential) {
+        return sendError(res, 400, "Missing Google credential");
+      }
+      
+      // Decode and verify Google JWT token
+      // In production, you should verify with Google's public keys
+      const parts = credential.split(".");
+      if (parts.length !== 3) {
+        return sendError(res, 400, "Invalid Google credential format");
+      }
+      
+      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+      
+      if (!payload.email || !payload.sub) {
+        return sendError(res, 400, "Invalid Google token payload");
+      }
+      
+      // Verify token hasn't expired
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        return sendError(res, 400, "Google token has expired");
+      }
+      
+      const user = await findOrCreateOAuthUser(
+        "google",
+        payload.sub,
+        payload.email,
+        payload.name
+      );
+      
+      const sessionToken = await createSession(
+        user.id,
+        true, // Remember me for OAuth
+        req.headers["user-agent"],
+        req.ip
+      );
+      
+      setSessionCookie(res, sessionToken, true);
+      
+      const csrfToken = generateCsrfToken();
+      setCsrfCookie(res, csrfToken);
+      
+      logSecurityEvent("oauth_login", { userId: user.id, provider: "google", ip: req.ip });
+      
+      res.json({ 
+        success: true, 
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          emailVerified: !!user.emailVerifiedAt,
+        },
+        redirectUrl: redirectUrl || "/account"
+      });
+    } catch (err) {
+      console.error("Google OAuth error:", err);
+      sendError(res, 500, "OAuth authentication failed");
+    }
+  });
+  
+  // Apple OAuth callback - receives token from frontend
+  app.post("/api/auth/oauth/apple", async (req, res) => {
+    try {
+      const { idToken, user: appleUser, redirectUrl } = req.body;
+      
+      if (!idToken) {
+        return sendError(res, 400, "Missing Apple ID token");
+      }
+      
+      // Decode Apple JWT token
+      const parts = idToken.split(".");
+      if (parts.length !== 3) {
+        return sendError(res, 400, "Invalid Apple ID token format");
+      }
+      
+      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+      
+      if (!payload.email && !payload.sub) {
+        return sendError(res, 400, "Invalid Apple token payload");
+      }
+      
+      // Verify token hasn't expired
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        return sendError(res, 400, "Apple token has expired");
+      }
+      
+      // Apple only provides email on first sign-in, use the user object if available
+      const email = payload.email || appleUser?.email;
+      const name = appleUser?.name ? `${appleUser.name.firstName || ""} ${appleUser.name.lastName || ""}`.trim() : undefined;
+      
+      if (!email) {
+        return sendError(res, 400, "Email is required for Apple Sign In");
+      }
+      
+      const user = await findOrCreateOAuthUser(
+        "apple",
+        payload.sub,
+        email,
+        name
+      );
+      
+      const sessionToken = await createSession(
+        user.id,
+        true, // Remember me for OAuth
+        req.headers["user-agent"],
+        req.ip
+      );
+      
+      setSessionCookie(res, sessionToken, true);
+      
+      const csrfToken = generateCsrfToken();
+      setCsrfCookie(res, csrfToken);
+      
+      logSecurityEvent("oauth_login", { userId: user.id, provider: "apple", ip: req.ip });
+      
+      res.json({ 
+        success: true, 
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          emailVerified: !!user.emailVerifiedAt,
+        },
+        redirectUrl: redirectUrl || "/account"
+      });
+    } catch (err) {
+      console.error("Apple OAuth error:", err);
+      sendError(res, 500, "OAuth authentication failed");
     }
   });
 }

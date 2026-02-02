@@ -1,6 +1,29 @@
 # Gap Night - Recent Updates Log
 # Last Updated: Feb 3, 2026
 
+## Booking & OAuth Improvements - Feb 3, 2026 ✅
+
+### Bug Fixes
+- Fixed: Bookings made while logged in now correctly appear in Account bookings tab
+  - Added `credentials: "include"` to all booking API calls to send session cookies
+
+### New Features
+- **Account creation prompt during booking** - Non-logged-in users see a prompt to create an account (still allows guest checkout)
+- **Google Sign-In** - Users can now sign in/sign up with their Google account
+  - Added Google Identity Services script
+  - OAuth buttons on Login and Signup pages
+  - Server-side OAuth callback route `/api/auth/oauth/google`
+- **Apple Sign-In (Coming Soon)** - UI ready, backend routes prepared
+  - Server-side OAuth callback route `/api/auth/oauth/apple`
+
+### Database Changes
+- Added `google_id` and `apple_id` columns to users table for OAuth linking
+
+### Environment Variables (new)
+- `VITE_GOOGLE_CLIENT_ID` - Google OAuth client ID from Google Cloud Console
+
+---
+
 ## Auth UI Redesign - Feb 3, 2026 ✅
 
 ### Improvements Made

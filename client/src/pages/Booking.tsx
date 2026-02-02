@@ -34,6 +34,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
 import { formatPrice } from "@/lib/utils";
+import { useAuthStore } from "@/hooks/useAuth";
 
 const bookingSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -52,6 +53,7 @@ export default function Booking() {
   const { toast } = useToast();
   const dealId = params?.dealId || "";
   const { data: deal, isLoading } = useDeal(dealId);
+  const { user } = useAuthStore();
   
   const [showSpecialRequests, setShowSpecialRequests] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -122,6 +124,7 @@ export default function Booking() {
         fetch("/api/bookings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             dealId: deal.id,
             hotelName: deal.hotelName,
@@ -219,6 +222,7 @@ export default function Booking() {
         const response = await fetch("/api/bookings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             dealId: deal.id,
             hotelName: deal.hotelName,
@@ -290,6 +294,7 @@ export default function Booking() {
       const response = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           dealId: deal.id,
           hotelName: deal.hotelName,
@@ -493,6 +498,34 @@ export default function Booking() {
                     </Badge>
                   </div>
                 </div>
+
+                {/* Account prompt for non-logged-in users */}
+                {!user && (
+                  <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-5 border border-primary/20 mb-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <User className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-foreground mb-1">Sign in to track your bookings</h3>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Create an account to view your booking history, manage reservations, and get exclusive deal alerts.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Link href={`/login?redirect=/booking/${dealId}`}>
+                            <Button size="sm" variant="default">Sign in</Button>
+                          </Link>
+                          <Link href={`/signup?redirect=/booking/${dealId}`}>
+                            <Button size="sm" variant="outline">Create account</Button>
+                          </Link>
+                          <span className="text-xs text-muted-foreground self-center ml-2">
+                            or continue as guest below
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="bg-card rounded-xl p-6 border border-border/50">
                   <h2 className="text-xl font-bold text-foreground mb-1 flex items-center gap-2">

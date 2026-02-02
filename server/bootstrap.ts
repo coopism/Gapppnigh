@@ -233,6 +233,19 @@ async function createTables() {
     END $$;
   `);
   
+  // Add OAuth columns to users if not exists
+  await db.execute(sql`
+    DO $$ 
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='google_id') THEN
+        ALTER TABLE "users" ADD COLUMN "google_id" text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='apple_id') THEN
+        ALTER TABLE "users" ADD COLUMN "apple_id" text;
+      END IF;
+    END $$;
+  `);
+  
   console.log("Tables created!");
 }
 
