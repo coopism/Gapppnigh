@@ -8,6 +8,8 @@ import { v4 as uuidv4 } from "uuid";
 import { sendBookingConfirmationEmail, sendHotelInquiryNotification, sendWaitlistNotification } from "./email";
 import { authRateLimit, bookingRateLimit, paymentRateLimit } from "./rate-limit";
 import { createPaymentIntent, confirmPaymentSuccess, isStripeConfigured } from "./stripe";
+import { registerUserAuthRoutes } from "./user-routes";
+import { optionalUserAuthMiddleware } from "./user-auth";
 
 // ========================================
 // IN-MEMORY DEAL HOLDS (5 minute reservation)
@@ -104,6 +106,11 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  
+  // ========================================
+  // USER AUTHENTICATION ROUTES
+  // ========================================
+  registerUserAuthRoutes(app);
   
   // ========================================
   // EXISTING PUBLIC ROUTES
@@ -1293,12 +1300,16 @@ export async function registerRoutes(
     paymentIntentId: z.string().max(100).optional(),
   });
 
-  app.post("/api/bookings", bookingRateLimit, async (req, res) => {
+  app.post("/api/bookings", bookingRateLimit, optionalUserAuthMiddleware, async (req, res) => {
     try {
       const data = bookingSchema.parse(req.body);
       
+      // Get user ID if logged in
+      const userId = req.user?.id || null;
+      
       const sanitizedData = {
         ...data,
+        userId,
         dealId: sanitizeString(data.dealId, 100),
         hotelName: sanitizeString(data.hotelName, MAX_NAME_LENGTH),
         roomType: sanitizeString(data.roomType, MAX_NAME_LENGTH),

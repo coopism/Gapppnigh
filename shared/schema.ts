@@ -251,6 +251,7 @@ export interface PricingRule {
 
 export const bookings = pgTable("bookings", {
   id: text("id").primaryKey(), // Booking reference like "GN1234567890"
+  userId: text("user_id"), // Optional - linked to user account if logged in
   dealId: text("deal_id").notNull(),
   hotelName: text("hotel_name").notNull(),
   roomType: text("room_type").notNull(),
@@ -289,3 +290,120 @@ export const dealHolds = pgTable("deal_holds", {
 export const insertDealHoldSchema = createInsertSchema(dealHolds).omit({ createdAt: true });
 export type DealHold = typeof dealHolds.$inferSelect;
 export type InsertDealHold = z.infer<typeof insertDealHoldSchema>;
+
+// ========================================
+// USER AUTHENTICATION TABLES
+// ========================================
+
+export const users = pgTable("users", {
+  id: text("id").primaryKey(), // UUID
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name"),
+  emailVerifiedAt: timestamp("email_verified_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+export const userSessions = pgTable("user_sessions", {
+  id: text("id").primaryKey(), // UUID
+  userId: text("user_id").notNull().references(() => users.id),
+  sessionHash: text("session_hash").notNull(), // Hashed session token
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const emailTokens = pgTable("email_tokens", {
+  id: text("id").primaryKey(), // UUID
+  userId: text("user_id").notNull().references(() => users.id),
+  tokenHash: text("token_hash").notNull(), // Hashed token
+  type: text("type").notNull(), // "verify_email" | "reset_password"
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userAlertPreferences = pgTable("user_alert_preferences", {
+  id: text("id").primaryKey(), // UUID
+  userId: text("user_id").notNull().references(() => users.id).unique(),
+  preferredCity: text("preferred_city"),
+  maxPrice: integer("max_price"),
+  alertFrequency: text("alert_frequency").default("daily"), // "daily" | "instant"
+  isEnabled: boolean("is_enabled").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// User relations
+export const usersRelations = relations(users, ({ many }) => ({
+  sessions: many(userSessions),
+  emailTokens: many(emailTokens),
+  alertPreferences: many(userAlertPreferences),
+}));
+
+export const userSessionsRelations = relations(userSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [userSessions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const emailTokensRelations = relations(emailTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [emailTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userAlertPreferencesRelations = relations(userAlertPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [userAlertPreferences.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schemas for user tables
+export const insertUserSchema = createInsertSchema(users).omit({ createdAt: true, updatedAt: true });
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({ createdAt: true });
+export const insertEmailTokenSchema = createInsertSchema(emailTokens).omit({ createdAt: true });
+export const insertUserAlertPreferencesSchema = createInsertSchema(userAlertPreferences).omit({ createdAt: true, updatedAt: true });
+
+// Types for user tables
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+export type EmailToken = typeof emailTokens.$inferSelect;
+export type InsertEmailToken = z.infer<typeof insertEmailTokenSchema>;
+export type UserAlertPreference = typeof userAlertPreferences.$inferSelect;
+export type InsertUserAlertPreference = z.infer<typeof insertUserAlertPreferencesSchema>;
+
+// Password validation schema
+export const passwordSchema = z.string()
+  .min(10, "Password must be at least 10 characters")
+  .refine((password) => {
+    let score = 0;
+    if (/[a-z]/.test(password)) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^a-zA-Z0-9]/.test(password)) score++;
+    return score >= 3;
+  }, "Password must include at least 3 of: uppercase, lowercase, number, symbol");
+
+// User signup schema
+export const signupSchema = z.object({
+  email: z.string().email("Invalid email address").transform(e => e.trim().toLowerCase()),
+  password: passwordSchema,
+  name: z.string().min(1).max(100).optional(),
+});
+
+// User login schema
+export const loginSchema = z.object({
+  email: z.string().email("Invalid email address").transform(e => e.trim().toLowerCase()),
+  password: z.string().min(1, "Password is required"),
+  rememberMe: z.boolean().optional().default(false),
+});

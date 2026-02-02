@@ -1,0 +1,586 @@
+import type { Express, Response, Request } from "express";
+import { z } from "zod";
+import {
+  createUser,
+  getUserByEmail,
+  verifyPassword,
+  createSession,
+  revokeSession,
+  revokeAllUserSessions,
+  createEmailToken,
+  verifyEmailToken,
+  markTokenUsed,
+  verifyUserEmail,
+  updateUserPassword,
+  updateUserName,
+  softDeleteUser,
+  generateCsrfToken,
+  userAuthMiddleware,
+  optionalUserAuthMiddleware,
+  setSessionCookie,
+  clearSessionCookie,
+  setCsrfCookie,
+  logSecurityEvent,
+  USER_SESSION_COOKIE,
+  CSRF_COOKIE,
+} from "./user-auth";
+import { signupSchema, loginSchema, passwordSchema, bookings, userAlertPreferences } from "@shared/schema";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./user-email";
+import { db } from "./db";
+import { eq, and, desc } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
+
+// Rate limiting stores (in-memory for MVP)
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const resetAttempts = new Map<string, { count: number; resetAt: number }>();
+const verifyResendAttempts = new Map<string, { count: number; resetAt: number }>();
+
+const LOGIN_RATE_LIMIT = { maxAttempts: 10, windowMs: 60 * 1000 }; // 10 per minute
+const RESET_RATE_LIMIT = { maxAttempts: 3, windowMs: 60 * 60 * 1000 }; // 3 per hour
+const VERIFY_RESEND_RATE_LIMIT = { maxAttempts: 3, windowMs: 60 * 60 * 1000 }; // 3 per hour
+
+function checkRateLimit(
+  store: Map<string, { count: number; resetAt: number }>,
+  key: string,
+  limit: { maxAttempts: number; windowMs: number }
+): boolean {
+  const now = Date.now();
+  const record = store.get(key);
+  
+  if (!record || now > record.resetAt) {
+    store.set(key, { count: 1, resetAt: now + limit.windowMs });
+    return true;
+  }
+  
+  if (record.count >= limit.maxAttempts) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
+}
+
+function getClientIP(req: Request): string {
+  return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() 
+    || req.socket.remoteAddress 
+    || "unknown";
+}
+
+function sendError(res: Response, status: number, message: string, field?: string) {
+  res.status(status).json({ message, field });
+}
+
+export function registerUserAuthRoutes(app: Express) {
+  
+  // ========================================
+  // CSRF TOKEN ENDPOINT
+  // ========================================
+  
+  app.get("/api/auth/csrf", (req, res) => {
+    const existingToken = req.cookies?.[CSRF_COOKIE];
+    const token = existingToken || generateCsrfToken();
+    
+    if (!existingToken) {
+      setCsrfCookie(res, token);
+    }
+    
+    res.json({ csrfToken: token });
+  });
+  
+  // ========================================
+  // USER SIGNUP
+  // ========================================
+  
+  app.post("/api/auth/signup", async (req, res) => {
+    try {
+      const input = signupSchema.parse(req.body);
+      const ip = getClientIP(req);
+      
+      // Check if email already exists
+      const existingUser = await getUserByEmail(input.email);
+      if (existingUser) {
+        logSecurityEvent("signup_duplicate_email", { email: input.email, ip });
+        return sendError(res, 400, "An account with this email already exists", "email");
+      }
+      
+      // Create user
+      const user = await createUser(input.email, input.password, input.name);
+      logSecurityEvent("signup_success", { userId: user.id, email: user.email, ip });
+      
+      // Create verification token and send email
+      const verifyToken = await createEmailToken(user.id, "verify_email");
+      await sendVerificationEmail(user.email, verifyToken, user.name);
+      
+      // Create session
+      const sessionToken = await createSession(
+        user.id, 
+        false, 
+        req.headers["user-agent"],
+        ip
+      );
+      setSessionCookie(res, sessionToken, false);
+      
+      // Set CSRF token
+      const csrfToken = generateCsrfToken();
+      setCsrfCookie(res, csrfToken);
+      
+      res.status(201).json({
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          emailVerified: !!user.emailVerifiedAt,
+        },
+        csrfToken,
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join("."));
+      }
+      console.error("Signup error:", err);
+      sendError(res, 500, "Failed to create account");
+    }
+  });
+  
+  // ========================================
+  // USER LOGIN
+  // ========================================
+  
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const input = loginSchema.parse(req.body);
+      const ip = getClientIP(req);
+      
+      // Rate limiting
+      if (!checkRateLimit(loginAttempts, ip, LOGIN_RATE_LIMIT)) {
+        logSecurityEvent("login_rate_limited", { email: input.email, ip });
+        return sendError(res, 429, "Too many login attempts. Please try again later.");
+      }
+      
+      // Verify credentials
+      const user = await verifyPassword(input.email, input.password);
+      
+      if (!user) {
+        logSecurityEvent("login_failed", { email: input.email, ip });
+        return sendError(res, 401, "Invalid email or password");
+      }
+      
+      logSecurityEvent("login_success", { userId: user.id, email: user.email, ip });
+      
+      // Revoke old session if exists
+      const oldSession = req.cookies?.[USER_SESSION_COOKIE];
+      if (oldSession) {
+        await revokeSession(oldSession);
+      }
+      
+      // Create new session
+      const sessionToken = await createSession(
+        user.id,
+        input.rememberMe,
+        req.headers["user-agent"],
+        ip
+      );
+      setSessionCookie(res, sessionToken, input.rememberMe);
+      
+      // Set CSRF token
+      const csrfToken = generateCsrfToken();
+      setCsrfCookie(res, csrfToken);
+      
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          emailVerified: !!user.emailVerifiedAt,
+        },
+        csrfToken,
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join("."));
+      }
+      console.error("Login error:", err);
+      sendError(res, 500, "Failed to log in");
+    }
+  });
+  
+  // ========================================
+  // USER LOGOUT
+  // ========================================
+  
+  app.post("/api/auth/logout", async (req, res) => {
+    const sessionToken = req.cookies?.[USER_SESSION_COOKIE];
+    
+    if (sessionToken) {
+      await revokeSession(sessionToken);
+      logSecurityEvent("logout", { ip: getClientIP(req) });
+    }
+    
+    clearSessionCookie(res);
+    res.json({ success: true });
+  });
+  
+  // ========================================
+  // GET CURRENT USER
+  // ========================================
+  
+  app.get("/api/auth/me", optionalUserAuthMiddleware, (req, res) => {
+    if (!req.user) {
+      return res.json({ user: null });
+    }
+    
+    res.json({
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        name: req.user.name,
+        emailVerified: !!req.user.emailVerifiedAt,
+      },
+    });
+  });
+  
+  // ========================================
+  // EMAIL VERIFICATION
+  // ========================================
+  
+  app.post("/api/auth/verify-email", async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token || typeof token !== "string") {
+        return sendError(res, 400, "Invalid verification token");
+      }
+      
+      const user = await verifyEmailToken(token, "verify_email");
+      
+      if (!user) {
+        return sendError(res, 400, "Invalid or expired verification token");
+      }
+      
+      await verifyUserEmail(user.id);
+      await markTokenUsed(token);
+      
+      logSecurityEvent("email_verified", { userId: user.id, email: user.email });
+      
+      res.json({ success: true, message: "Email verified successfully" });
+    } catch (err) {
+      console.error("Email verification error:", err);
+      sendError(res, 500, "Failed to verify email");
+    }
+  });
+  
+  app.post("/api/auth/resend-verification", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const ip = getClientIP(req);
+      
+      if (user.emailVerifiedAt) {
+        return sendError(res, 400, "Email is already verified");
+      }
+      
+      // Rate limiting
+      const key = `${user.id}:${ip}`;
+      if (!checkRateLimit(verifyResendAttempts, key, VERIFY_RESEND_RATE_LIMIT)) {
+        logSecurityEvent("verify_resend_rate_limited", { userId: user.id, ip });
+        return sendError(res, 429, "Too many resend attempts. Please try again later.");
+      }
+      
+      const verifyToken = await createEmailToken(user.id, "verify_email");
+      await sendVerificationEmail(user.email, verifyToken, user.name);
+      
+      logSecurityEvent("verify_email_resent", { userId: user.id, email: user.email, ip });
+      
+      res.json({ success: true, message: "Verification email sent" });
+    } catch (err) {
+      console.error("Resend verification error:", err);
+      sendError(res, 500, "Failed to resend verification email");
+    }
+  });
+  
+  // ========================================
+  // PASSWORD RESET
+  // ========================================
+  
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      const ip = getClientIP(req);
+      
+      if (!email || typeof email !== "string") {
+        return sendError(res, 400, "Email is required");
+      }
+      
+      // Rate limiting (by IP and email)
+      const ipKey = `ip:${ip}`;
+      const emailKey = `email:${email.toLowerCase()}`;
+      
+      if (!checkRateLimit(resetAttempts, ipKey, RESET_RATE_LIMIT) ||
+          !checkRateLimit(resetAttempts, emailKey, RESET_RATE_LIMIT)) {
+        logSecurityEvent("password_reset_rate_limited", { email, ip });
+        // Return generic success to not reveal if email exists
+        return res.json({ success: true, message: "If an account exists, a reset email has been sent" });
+      }
+      
+      const user = await getUserByEmail(email);
+      
+      // Always return success to not reveal if email exists
+      if (user) {
+        const resetToken = await createEmailToken(user.id, "reset_password");
+        await sendPasswordResetEmail(user.email, resetToken, user.name);
+        logSecurityEvent("password_reset_requested", { userId: user.id, email: user.email, ip });
+      } else {
+        logSecurityEvent("password_reset_unknown_email", { email, ip });
+      }
+      
+      res.json({ success: true, message: "If an account exists, a reset email has been sent" });
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      // Return success even on error to not reveal information
+      res.json({ success: true, message: "If an account exists, a reset email has been sent" });
+    }
+  });
+  
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, password } = req.body;
+      
+      if (!token || typeof token !== "string") {
+        return sendError(res, 400, "Invalid reset token");
+      }
+      
+      // Validate password
+      const passwordResult = passwordSchema.safeParse(password);
+      if (!passwordResult.success) {
+        return sendError(res, 400, passwordResult.error.errors[0].message, "password");
+      }
+      
+      const user = await verifyEmailToken(token, "reset_password");
+      
+      if (!user) {
+        return sendError(res, 400, "Invalid or expired reset token");
+      }
+      
+      await updateUserPassword(user.id, password);
+      await markTokenUsed(token);
+      
+      // Revoke all sessions for security
+      await revokeAllUserSessions(user.id);
+      
+      logSecurityEvent("password_reset_completed", { userId: user.id, email: user.email });
+      
+      res.json({ success: true, message: "Password reset successfully. Please log in." });
+    } catch (err) {
+      console.error("Reset password error:", err);
+      sendError(res, 500, "Failed to reset password");
+    }
+  });
+  
+  // ========================================
+  // ACCOUNT MANAGEMENT
+  // ========================================
+  
+  app.put("/api/auth/profile", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { name } = req.body;
+      
+      if (name !== undefined) {
+        if (typeof name !== "string" || name.length > 100) {
+          return sendError(res, 400, "Invalid name", "name");
+        }
+        await updateUserName(user.id, name.trim());
+      }
+      
+      res.json({ success: true, message: "Profile updated" });
+    } catch (err) {
+      console.error("Update profile error:", err);
+      sendError(res, 500, "Failed to update profile");
+    }
+  });
+  
+  app.put("/api/auth/password", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { currentPassword, newPassword } = req.body;
+      
+      // Verify current password
+      const verified = await verifyPassword(user.email, currentPassword);
+      if (!verified) {
+        return sendError(res, 400, "Current password is incorrect", "currentPassword");
+      }
+      
+      // Validate new password
+      const passwordResult = passwordSchema.safeParse(newPassword);
+      if (!passwordResult.success) {
+        return sendError(res, 400, passwordResult.error.errors[0].message, "newPassword");
+      }
+      
+      await updateUserPassword(user.id, newPassword);
+      
+      logSecurityEvent("password_changed", { userId: user.id, email: user.email });
+      
+      res.json({ success: true, message: "Password updated successfully" });
+    } catch (err) {
+      console.error("Change password error:", err);
+      sendError(res, 500, "Failed to change password");
+    }
+  });
+  
+  app.post("/api/auth/logout-all", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      
+      await revokeAllUserSessions(user.id);
+      clearSessionCookie(res);
+      
+      logSecurityEvent("logout_all_devices", { userId: user.id, email: user.email });
+      
+      res.json({ success: true, message: "Logged out of all devices" });
+    } catch (err) {
+      console.error("Logout all error:", err);
+      sendError(res, 500, "Failed to log out of all devices");
+    }
+  });
+  
+  app.delete("/api/auth/account", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { password } = req.body;
+      
+      // Verify password before deletion
+      const verified = await verifyPassword(user.email, password);
+      if (!verified) {
+        return sendError(res, 400, "Password is incorrect", "password");
+      }
+      
+      await softDeleteUser(user.id);
+      clearSessionCookie(res);
+      
+      logSecurityEvent("account_deleted", { userId: user.id, email: user.email });
+      
+      res.json({ success: true, message: "Account deleted" });
+    } catch (err) {
+      console.error("Delete account error:", err);
+      sendError(res, 500, "Failed to delete account");
+    }
+  });
+  
+  // ========================================
+  // USER BOOKINGS
+  // ========================================
+  
+  app.get("/api/auth/bookings", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      
+      const userBookings = await db.select()
+        .from(bookings)
+        .where(eq(bookings.userId, user.id))
+        .orderBy(desc(bookings.createdAt));
+      
+      res.json({ bookings: userBookings });
+    } catch (err) {
+      console.error("Get bookings error:", err);
+      sendError(res, 500, "Failed to get bookings");
+    }
+  });
+  
+  app.get("/api/auth/bookings/:id", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const bookingId = req.params.id as string;
+      
+      const [booking] = await db.select()
+        .from(bookings)
+        .where(and(
+          eq(bookings.id, bookingId),
+          eq(bookings.userId, user.id)
+        ))
+        .limit(1);
+      
+      if (!booking) {
+        return sendError(res, 404, "Booking not found");
+      }
+      
+      res.json({ booking });
+    } catch (err) {
+      console.error("Get booking error:", err);
+      sendError(res, 500, "Failed to get booking");
+    }
+  });
+  
+  // ========================================
+  // DEAL ALERTS
+  // ========================================
+  
+  app.get("/api/auth/alerts", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      
+      const [prefs] = await db.select()
+        .from(userAlertPreferences)
+        .where(eq(userAlertPreferences.userId, user.id))
+        .limit(1);
+      
+      res.json({
+        preferences: prefs || {
+          preferredCity: null,
+          maxPrice: null,
+          alertFrequency: "daily",
+          isEnabled: false,
+        },
+      });
+    } catch (err) {
+      console.error("Get alerts error:", err);
+      sendError(res, 500, "Failed to get alert preferences");
+    }
+  });
+  
+  app.put("/api/auth/alerts", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { preferredCity, maxPrice, alertFrequency, isEnabled } = req.body;
+      
+      // Validate inputs
+      if (alertFrequency && !["daily", "instant"].includes(alertFrequency)) {
+        return sendError(res, 400, "Invalid alert frequency", "alertFrequency");
+      }
+      
+      if (maxPrice !== undefined && maxPrice !== null && (typeof maxPrice !== "number" || maxPrice < 0)) {
+        return sendError(res, 400, "Invalid max price", "maxPrice");
+      }
+      
+      // Check if preferences exist
+      const [existing] = await db.select()
+        .from(userAlertPreferences)
+        .where(eq(userAlertPreferences.userId, user.id))
+        .limit(1);
+      
+      if (existing) {
+        await db.update(userAlertPreferences)
+          .set({
+            preferredCity: preferredCity ?? existing.preferredCity,
+            maxPrice: maxPrice ?? existing.maxPrice,
+            alertFrequency: alertFrequency ?? existing.alertFrequency,
+            isEnabled: isEnabled ?? existing.isEnabled,
+            updatedAt: new Date(),
+          })
+          .where(eq(userAlertPreferences.userId, user.id));
+      } else {
+        await db.insert(userAlertPreferences).values({
+          id: uuidv4(),
+          userId: user.id,
+          preferredCity: preferredCity || null,
+          maxPrice: maxPrice || null,
+          alertFrequency: alertFrequency || "daily",
+          isEnabled: isEnabled ?? true,
+        });
+      }
+      
+      res.json({ success: true, message: "Alert preferences updated" });
+    } catch (err) {
+      console.error("Update alerts error:", err);
+      sendError(res, 500, "Failed to update alert preferences");
+    }
+  });
+}

@@ -27,6 +27,14 @@ import HotelDeals from "@/pages/owner/HotelDeals";
 import HotelDealsPublic, { HotelDealDetail } from "@/pages/HotelDealsPublic";
 import Booking from "@/pages/Booking";
 
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import VerifyEmail from "@/pages/VerifyEmail";
+import Account from "@/pages/Account";
+import { initAuth } from "@/hooks/useAuth";
+
 function MainRouter() {
   return (
     <Switch>
@@ -47,6 +55,12 @@ function MainRouter() {
       <Route path="/owner/hotels/:hotelId/deals" component={HotelDeals} />
       <Route path="/gap-night-deals" component={HotelDealsPublic} />
       <Route path="/hotels/:hotelId/deals" component={HotelDealDetail} />
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/verify-email" component={VerifyEmail} />
+      <Route path="/account" component={Account} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -65,6 +79,12 @@ function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
       <Route path="/owner/hotels/:hotelId/deals" component={HotelDeals} />
       <Route path="/gap-night-deals" component={HotelDealsPublic} />
       <Route path="/hotels/:hotelId/deals" component={HotelDealDetail} />
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/verify-email" component={VerifyEmail} />
+      <Route path="/account" component={Account} />
       <Route>
         <ComingSoon onPartnerAccess={onPartnerAccess} />
       </Route>
@@ -79,6 +99,11 @@ function App() {
     }
     return false;
   });
+
+  useEffect(() => {
+    // Initialize user auth on app load
+    initAuth();
+  }, []);
 
   useEffect(() => {
     const handleStorageChange = () => {

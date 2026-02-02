@@ -1,5 +1,55 @@
 # Gap Night - Recent Updates Log
-# Last Updated: Feb 2, 2026
+# Last Updated: Feb 3, 2026
+
+## User Authentication System - Feb 3, 2026 ✅
+
+### Features Implemented
+- **User signup/login** with secure password hashing (bcrypt, 12 rounds)
+- **Email verification** with tokenized links (24hr expiry)
+- **Password reset** flow with one-time use tokens (1hr expiry)
+- **Remember me** option (30 days vs 24 hours session)
+- **Account management** - profile, password change, delete account
+- **Booking history** - view all bookings linked to account
+- **Deal alerts** - save city/price preferences (UI ready, email sending TBD)
+
+### Security Features
+- HttpOnly secure cookies for sessions
+- CSRF protection with double-submit cookie pattern
+- Rate limiting on auth endpoints
+- Security headers (CSP, X-Frame-Options, HSTS, etc.)
+- Session revocation on password change
+- "Log out of all devices" feature
+
+### Database Tables Added
+- `users` - id, email, passwordHash, name, emailVerifiedAt, deletedAt
+- `user_sessions` - sessionHash, userId, expiresAt, revokedAt, userAgent, ip
+- `email_tokens` - tokenHash, type, userId, expiresAt, usedAt
+- `user_alert_preferences` - preferredCity, maxPrice, alertFrequency
+- `bookings.user_id` - links bookings to user accounts
+
+### New Files
+- `server/user-auth.ts` - Auth logic, session management, CSRF
+- `server/user-routes.ts` - Auth API endpoints
+- `server/user-email.ts` - Verification and reset emails
+- `client/src/hooks/useAuth.ts` - Auth state management (Zustand)
+- `client/src/pages/Login.tsx` - Login page
+- `client/src/pages/Signup.tsx` - Signup page with password strength
+- `client/src/pages/ForgotPassword.tsx` - Password reset request
+- `client/src/pages/ResetPassword.tsx` - New password form
+- `client/src/pages/VerifyEmail.tsx` - Email verification handler
+- `client/src/pages/Account.tsx` - User dashboard (profile, bookings, alerts)
+- `SECURITY.md` - Security documentation
+- `.env.example` - Environment variable template
+
+### Routes Added
+- `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/verify-email`, `/account`
+
+### Booking Integration
+- Bookings automatically linked to user account when logged in
+- Guest checkout still supported (no account required)
+- View booking history in account dashboard
+
+---
 
 ## Railway Deployment - Feb 2, 2026
 

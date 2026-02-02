@@ -171,6 +171,68 @@ async function createTables() {
     )
   `);
   
+  // User authentication tables
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "users" (
+      "id" text PRIMARY KEY NOT NULL,
+      "email" text NOT NULL UNIQUE,
+      "password_hash" text NOT NULL,
+      "name" text,
+      "email_verified_at" timestamp,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL,
+      "deleted_at" timestamp
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "user_sessions" (
+      "id" text PRIMARY KEY NOT NULL,
+      "user_id" text NOT NULL REFERENCES "users"("id"),
+      "session_hash" text NOT NULL,
+      "expires_at" timestamp NOT NULL,
+      "revoked_at" timestamp,
+      "user_agent" text,
+      "ip_address" text,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "email_tokens" (
+      "id" text PRIMARY KEY NOT NULL,
+      "user_id" text NOT NULL REFERENCES "users"("id"),
+      "token_hash" text NOT NULL,
+      "type" text NOT NULL,
+      "expires_at" timestamp NOT NULL,
+      "used_at" timestamp,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "user_alert_preferences" (
+      "id" text PRIMARY KEY NOT NULL,
+      "user_id" text NOT NULL REFERENCES "users"("id") UNIQUE,
+      "preferred_city" text,
+      "max_price" integer,
+      "alert_frequency" text DEFAULT 'daily',
+      "is_enabled" boolean DEFAULT true NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  
+  // Add user_id column to bookings if not exists
+  await db.execute(sql`
+    DO $$ 
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bookings' AND column_name='user_id') THEN
+        ALTER TABLE "bookings" ADD COLUMN "user_id" text REFERENCES "users"("id");
+      END IF;
+    END $$;
+  `);
+  
   console.log("Tables created!");
 }
 
