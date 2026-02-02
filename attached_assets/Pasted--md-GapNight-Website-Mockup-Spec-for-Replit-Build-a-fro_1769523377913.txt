@@ -1,5 +1,5 @@
 ````md
-# GapNight — Website Mockup Spec (for Replit)
+# GapNight — Website Mockup Spec
 
 > Build a **front-end mockup** website for a concept called **GapNight** (name can be swapped easily).
 > The product sells **hotel “gap nights / orphan nights”** (usually 1-night stays, sometimes 2) at clearance prices.
@@ -259,13 +259,6 @@ Create mock data locally inside the project (no DB).
 * Clicking card navigates to `/deal/:id`
 
 ---
-
-## 9) Tech & Implementation Notes (Replit-friendly)
-
-**Recommended stack:** Next.js + Tailwind (or React + Vite + Tailwind)
-
-* Mobile-first layout
-* Reusable components:
 
   * `TopSearchBar`
   * `CategoryChips`

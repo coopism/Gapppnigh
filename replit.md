@@ -69,11 +69,6 @@ Database tables:
 - `date-fns`: Date formatting utilities
 - `lucide-react`: Icon library
 
-### Replit-Specific
-- `@replit/vite-plugin-runtime-error-modal`: Development error overlay
-- `@replit/vite-plugin-cartographer`: Development tooling
-- `connect-pg-simple`: PostgreSQL session storage (available but not currently used)
-
 ## Recent Changes
 
 ### January 2026

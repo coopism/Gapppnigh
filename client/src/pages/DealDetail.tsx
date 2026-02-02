@@ -3,27 +3,17 @@ import { useDeal, useHotelAvailability } from "@/hooks/use-deals";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { 
-  ArrowLeft, Star, MapPin, Share2, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation as NavIcon, Calendar, Check
+  ArrowLeft, Star, MapPin, Share2, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation as NavIcon, Calendar, Check, Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { formatPrice } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 
-const markerIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
 
 const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "WiFi": Wifi,
@@ -32,7 +22,57 @@ const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "Restaurant": UtensilsCrossed,
   "Pool": Waves,
   "Spa": Sparkles,
+  "Bar": UtensilsCrossed,
+  "Beach Access": Waves,
+  "Room Service": UtensilsCrossed,
+  "Concierge": Star,
 };
+
+function DealMap({ latitude, longitude, hotelName }: { latitude: number; longitude: number; hotelName: string }) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (!mapContainer.current) return;
+    
+    const map = L.map(mapContainer.current, {
+      attributionControl: false,
+      zoomControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+    }).setView([latitude, longitude], 14);
+    
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+    }).addTo(map);
+    
+    const icon = L.divIcon({
+      className: 'custom-marker',
+      html: `
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="#0ea5a5" stroke="white" stroke-width="1.5" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3" fill="white"></circle>
+        </svg>
+      `,
+      iconSize: [40, 40],
+      iconAnchor: [20, 40],
+    });
+    
+    L.marker([latitude, longitude], { icon }).addTo(map);
+    
+    return () => {
+      map.remove();
+    };
+  }, [latitude, longitude]);
+  
+  return (
+    <div 
+      ref={mapContainer} 
+      className="bg-card rounded-xl overflow-hidden border border-border/50 h-[250px]"
+    />
+  );
+}
 
 export default function DealDetail() {
   const [, params] = useRoute("/deal/:id");
@@ -129,6 +169,9 @@ export default function DealDetail() {
                 src={deal.imageUrl}
                 alt={deal.hotelName}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop';
+                }}
               />
             </div>
             {/* Action buttons on image */}
@@ -138,6 +181,7 @@ export default function DealDetail() {
                 size="icon" 
                 className="rounded-full bg-card/90 backdrop-blur shadow-lg"
                 data-testid="button-share"
+                aria-label="Share this deal"
               >
                 <Share2 className="w-4 h-4" />
               </Button>
@@ -146,6 +190,7 @@ export default function DealDetail() {
                 size="icon" 
                 className="rounded-full bg-card/90 backdrop-blur shadow-lg text-destructive"
                 data-testid="button-favorite"
+                aria-label="Add to favorites"
               >
                 <Heart className="w-4 h-4" />
               </Button>
@@ -228,8 +273,11 @@ export default function DealDetail() {
                             <div className="font-semibold text-foreground text-sm">
                               {formatDateRange(option.checkInDate, option.checkOutDate)}
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
                               {option.nights} night{option.nights > 1 ? 's' : ''} · {option.roomType}
+                              <span className="mx-1">·</span>
+                              <Users className="w-3 h-3" />
+                              <span>{option.maxGuests || 2}</span>
                             </div>
                           </div>
                         </div>
@@ -315,7 +363,13 @@ export default function DealDetail() {
             <div>
               <h2 className="text-xl font-bold text-foreground mb-4">About this room</h2>
               <div className="bg-card rounded-xl p-5 border border-border/50">
-                <h3 className="font-bold text-foreground mb-2">{selectedAvailability?.roomType || deal.roomType}</h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-foreground">{selectedAvailability?.roomType || deal.roomType}</h3>
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-secondary px-2.5 py-1 rounded-full">
+                    <Users className="w-4 h-4" />
+                    <span>Sleeps {(selectedAvailability?.maxGuests || deal.maxGuests) || 2}</span>
+                  </div>
+                </div>
                 <p className="text-muted-foreground text-sm leading-relaxed mb-4">
                   Experience luxury in this spacious room featuring modern amenities and 
                   stunning views. Perfect for a short gap-night stay, this room offers 
@@ -353,30 +407,7 @@ export default function DealDetail() {
           <div>
             <h2 className="text-xl font-bold text-foreground mb-4">Location</h2>
             {deal.latitude && deal.longitude ? (
-              <div className="bg-card rounded-xl overflow-hidden border border-border/50 h-[250px] gapnight-map">
-                <MapContainer
-                  center={[parseFloat(deal.latitude), parseFloat(deal.longitude)]}
-                  zoom={14}
-                  scrollWheelZoom={false}
-                  style={{ height: "100%", width: "100%" }}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                  />
-                  <Marker
-                    position={[parseFloat(deal.latitude), parseFloat(deal.longitude)]}
-                    icon={markerIcon}
-                  >
-                    <Popup>
-                      <div className="text-center">
-                        <p className="font-semibold">{deal.hotelName}</p>
-                        <p className="text-sm text-muted-foreground">{deal.location}</p>
-                      </div>
-                    </Popup>
-                  </Marker>
-                </MapContainer>
-              </div>
+              <DealMap latitude={parseFloat(deal.latitude)} longitude={parseFloat(deal.longitude)} hotelName={deal.hotelName} />
             ) : (
               <div className="bg-card rounded-xl p-5 border border-border/50 h-[200px] flex items-center justify-center">
                 <div className="text-center text-muted-foreground">

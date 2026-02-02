@@ -111,7 +111,18 @@
   @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
 }
 
-/* GapNight branded map with subtle teal tint */
-.gapnight-map .leaflet-tile-pane {
-  filter: sepia(10%) saturate(120%) hue-rotate(160deg);
+/* Clean map styling */
+.custom-marker {
+  background: transparent;
+  border: none;
+}
+
+.leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+.leaflet-popup-content {
+  margin: 0;
 }

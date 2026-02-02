@@ -3,41 +3,14 @@ import { Resend } from 'resend';
 import type { Booking } from "@shared/schema";
 import { format, parseISO } from "date-fns";
 
-let connectionSettings: any;
-
-async function getCredentials() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'GapNight <noreply@gapnight.com>';
+  
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY environment variable is not set');
   }
-
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
-
-  if (!connectionSettings || (!connectionSettings.settings.api_key)) {
-    throw new Error('Resend not connected');
-  }
-  return {
-    apiKey: connectionSettings.settings.api_key, 
-    fromEmail: connectionSettings.settings.from_email
-  };
-}
-
-async function getResendClient() {
-  const { apiKey, fromEmail } = await getCredentials();
+  
   return {
     client: new Resend(apiKey),
     fromEmail
@@ -46,7 +19,7 @@ async function getResendClient() {
 
 export async function sendBookingConfirmationEmail(booking: Booking): Promise<boolean> {
   try {
-    const { client, fromEmail } = await getResendClient();
+    const { client, fromEmail } = getResendClient();
     
     const checkInDate = format(parseISO(booking.checkInDate), "EEEE, MMMM d, yyyy");
     const checkOutDate = format(parseISO(booking.checkOutDate), "EEEE, MMMM d, yyyy");
@@ -136,7 +109,7 @@ export async function sendBookingConfirmationEmail(booking: Booking): Promise<bo
     `;
 
     const result = await client.emails.send({
-      from: fromEmail || 'GapNight <noreply@gapnight.com>',
+      from: fromEmail,
       to: booking.guestEmail,
       subject: `Booking Confirmed - ${booking.hotelName} (${booking.id})`,
       html: emailHtml,

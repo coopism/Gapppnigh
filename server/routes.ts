@@ -6,6 +6,71 @@ import { z } from "zod";
 import { authMiddleware, SESSION_COOKIE_NAME } from "./auth";
 import { v4 as uuidv4 } from "uuid";
 import { sendBookingConfirmationEmail } from "./email";
+import { authRateLimit, bookingRateLimit, paymentRateLimit } from "./rate-limit";
+import { createPaymentIntent, confirmPaymentSuccess, isStripeConfigured } from "./stripe";
+
+// ========================================
+// IN-MEMORY DEAL HOLDS (5 minute reservation)
+// ========================================
+
+interface DealHold {
+  dealId: string;
+  sessionId: string;
+  expiresAt: Date;
+}
+
+const dealHolds = new Map<string, DealHold>(); // dealId -> hold
+const HOLD_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
+function cleanupExpiredHolds() {
+  const now = new Date();
+  dealHolds.forEach((hold, dealId) => {
+    if (hold.expiresAt < now) {
+      dealHolds.delete(dealId);
+    }
+  });
+}
+
+function createDealHold(dealId: string, sessionId: string): boolean {
+  cleanupExpiredHolds();
+  
+  const existingHold = dealHolds.get(dealId);
+  if (existingHold && existingHold.sessionId !== sessionId && existingHold.expiresAt > new Date()) {
+    return false; // Deal is held by someone else
+  }
+  
+  dealHolds.set(dealId, {
+    dealId,
+    sessionId,
+    expiresAt: new Date(Date.now() + HOLD_DURATION_MS),
+  });
+  return true;
+}
+
+function isDealHeld(dealId: string, excludeSessionId?: string): boolean {
+  cleanupExpiredHolds();
+  const hold = dealHolds.get(dealId);
+  if (!hold) return false;
+  if (excludeSessionId && hold.sessionId === excludeSessionId) return false;
+  return hold.expiresAt > new Date();
+}
+
+function releaseDealHold(dealId: string) {
+  dealHolds.delete(dealId);
+}
+
+function getHeldDealIds(excludeSessionId?: string): Set<string> {
+  cleanupExpiredHolds();
+  const heldIds = new Set<string>();
+  const now = new Date();
+  dealHolds.forEach((hold, dealId) => {
+    if (excludeSessionId && hold.sessionId === excludeSessionId) return;
+    if (hold.expiresAt > now) {
+      heldIds.add(dealId);
+    }
+  });
+  return heldIds;
+}
 
 // ========================================
 // ERROR HANDLING UTILITIES
@@ -20,9 +85,10 @@ function sendError(res: Response, status: number, message: string, field?: strin
   res.status(status).json({ error: true, message, field });
 }
 
-function sanitizeString(input: string | undefined | null, maxLength: number = MAX_STRING_LENGTH): string {
+function sanitizeString(input: string | string[] | undefined | null, maxLength: number = MAX_STRING_LENGTH): string {
   if (!input) return "";
-  return String(input).trim().slice(0, maxLength);
+  const str = Array.isArray(input) ? input[0] : input;
+  return String(str || "").trim().slice(0, maxLength);
 }
 
 function logError(context: string, error: unknown): void {
@@ -48,7 +114,42 @@ export async function registerRoutes(
       const search = sanitizeString(req.query.search as string | undefined, MAX_NAME_LENGTH);
       const category = sanitizeString(req.query.category as string | undefined, MAX_NAME_LENGTH);
       const sort = sanitizeString(req.query.sort as string | undefined, 20);
-      const deals = await storage.getDeals(search || undefined, category || undefined, sort || undefined);
+      const startDate = sanitizeString(req.query.startDate as string | undefined, 10);
+      const endDate = sanitizeString(req.query.endDate as string | undefined, 10);
+      const nightsStr = sanitizeString(req.query.nights as string | undefined, 2);
+      const minGuestsStr = sanitizeString(req.query.minGuests as string | undefined, 2);
+      const sessionId = req.ip || "unknown";
+      
+      let deals = await storage.getDeals(search || undefined, category || undefined, sort || undefined);
+      
+      // Filter out deals held by other users
+      const heldDealIds = getHeldDealIds(sessionId);
+      deals = deals.filter(deal => !heldDealIds.has(deal.id));
+      
+      // Filter by date range
+      if (startDate) {
+        deals = deals.filter(deal => deal.checkInDate >= startDate);
+      }
+      if (endDate) {
+        deals = deals.filter(deal => deal.checkInDate <= endDate);
+      }
+      
+      // Filter by number of nights
+      if (nightsStr) {
+        const nights = parseInt(nightsStr, 10);
+        if (!isNaN(nights) && nights > 0) {
+          deals = deals.filter(deal => deal.nights === nights);
+        }
+      }
+      
+      // Filter by minimum guests (room capacity)
+      if (minGuestsStr) {
+        const minGuests = parseInt(minGuestsStr, 10);
+        if (!isNaN(minGuests) && minGuests > 0) {
+          deals = deals.filter(deal => (deal.maxGuests || 2) >= minGuests);
+        }
+      }
+      
       res.json(deals);
     } catch (err) {
       logError("GET /api/deals", err);
@@ -79,7 +180,7 @@ export async function registerRoutes(
       const sanitizedInput = {
         ...input,
         email: sanitizeString(input.email, MAX_EMAIL_LENGTH).toLowerCase(),
-        name: input.name ? sanitizeString(input.name, MAX_NAME_LENGTH) : undefined,
+        preferredCity: input.preferredCity ? sanitizeString(input.preferredCity, MAX_NAME_LENGTH) : undefined,
       };
       await storage.createWaitlistEntry(sanitizedInput);
       res.status(201).json({ success: true, message: "Joined waitlist successfully" });
@@ -97,10 +198,10 @@ export async function registerRoutes(
       const input = api.hotelInquiries.submit.input.parse(req.body);
       const sanitizedInput = {
         ...input,
-        email: sanitizeString(input.email, MAX_EMAIL_LENGTH).toLowerCase(),
         hotelName: sanitizeString(input.hotelName, MAX_NAME_LENGTH),
-        contactName: sanitizeString(input.contactName, MAX_NAME_LENGTH),
-        message: input.message ? sanitizeString(input.message, MAX_STRING_LENGTH) : undefined,
+        city: sanitizeString(input.city, MAX_NAME_LENGTH),
+        contactEmail: sanitizeString(input.contactEmail, MAX_EMAIL_LENGTH).toLowerCase(),
+        gapNightsPerWeek: sanitizeString(input.gapNightsPerWeek, 50),
       };
       await storage.createHotelInquiry(sanitizedInput);
       res.status(201).json({ success: true, message: "Inquiry submitted successfully" });
@@ -147,8 +248,7 @@ export async function registerRoutes(
     name: z.string().max(MAX_NAME_LENGTH).optional(),
   });
 
-  // TODO: Add rate limiting - max 5 attempts per IP per 15 minutes
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", authRateLimit, async (req, res) => {
     try {
       const { email, password, name } = registerSchema.parse(req.body);
       
@@ -187,8 +287,7 @@ export async function registerRoutes(
     }
   });
 
-  // TODO: Add rate limiting - max 5 attempts per IP per 15 minutes
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", authRateLimit, async (req, res) => {
     try {
       const { email, password } = loginSchema.parse(req.body);
       
@@ -1093,6 +1192,74 @@ export async function registerRoutes(
   });
 
   // ========================================
+  // STRIPE PAYMENT ROUTES
+  // ========================================
+
+  app.get("/api/stripe/config", (req, res) => {
+    res.json({
+      configured: isStripeConfigured(),
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null,
+    });
+  });
+
+  const createPaymentIntentSchema = z.object({
+    amount: z.number().min(100).max(100000000), // Min $1, Max $1M in cents
+    currency: z.string().max(3).default("aud"),
+    dealId: z.string().max(100),
+    hotelName: z.string().max(MAX_NAME_LENGTH),
+    guestEmail: z.string().email().max(MAX_EMAIL_LENGTH),
+  });
+
+  app.post("/api/stripe/create-payment-intent", paymentRateLimit, async (req, res) => {
+    try {
+      if (!isStripeConfigured()) {
+        return sendError(res, 503, "Payment processing not configured");
+      }
+
+      const data = createPaymentIntentSchema.parse(req.body);
+      const sessionId = req.ip || "unknown";
+      
+      // Check if deal is already booked
+      const isBooked = await storage.isDealBooked(data.dealId);
+      if (isBooked) {
+        return sendError(res, 409, "This deal has already been booked");
+      }
+      
+      // Try to create/extend hold for this deal
+      const holdCreated = createDealHold(data.dealId, sessionId);
+      if (!holdCreated) {
+        return sendError(res, 409, "This deal is currently being booked by another user. Please try again in a few minutes.");
+      }
+      
+      const paymentIntent = await createPaymentIntent(
+        data.amount,
+        data.currency,
+        {
+          dealId: data.dealId,
+          hotelName: data.hotelName,
+          guestEmail: data.guestEmail,
+        }
+      );
+
+      if (!paymentIntent) {
+        releaseDealHold(data.dealId); // Release hold on failure
+        return sendError(res, 500, "Failed to create payment intent");
+      }
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return sendError(res, 400, err.errors[0].message, err.errors[0].path.join('.'));
+      }
+      logError("POST /api/stripe/create-payment-intent", err);
+      sendError(res, 500, "Failed to create payment intent");
+    }
+  });
+
+  // ========================================
   // BOOKING ROUTES
   // ========================================
   
@@ -1111,10 +1278,10 @@ export async function registerRoutes(
     specialRequests: z.string().max(MAX_STRING_LENGTH).optional(),
     totalPrice: z.number().min(0).max(1000000),
     currency: z.string().max(10).default("$"),
+    paymentIntentId: z.string().max(100).optional(),
   });
 
-  // TODO: Add rate limiting - max 10 bookings per IP per hour
-  app.post("/api/bookings", async (req, res) => {
+  app.post("/api/bookings", bookingRateLimit, async (req, res) => {
     try {
       const data = bookingSchema.parse(req.body);
       
@@ -1130,7 +1297,16 @@ export async function registerRoutes(
         guestCountryCode: sanitizeString(data.guestCountryCode, 10),
         specialRequests: data.specialRequests ? sanitizeString(data.specialRequests, MAX_STRING_LENGTH) : undefined,
         currency: sanitizeString(data.currency, 10),
+        paymentIntentId: data.paymentIntentId ? sanitizeString(data.paymentIntentId, 100) : undefined,
       };
+      
+      // Verify payment if Stripe is configured and paymentIntentId provided
+      if (isStripeConfigured() && sanitizedData.paymentIntentId) {
+        const paymentSuccess = await confirmPaymentSuccess(sanitizedData.paymentIntentId);
+        if (!paymentSuccess) {
+          return sendError(res, 400, "Payment not completed. Please complete payment first.", "payment");
+        }
+      }
       
       const isBooked = await storage.isDealBooked(sanitizedData.dealId);
       if (isBooked) {
@@ -1145,6 +1321,9 @@ export async function registerRoutes(
         status: "CONFIRMED",
         emailSent: false,
       });
+      
+      // Release the hold after successful booking
+      releaseDealHold(sanitizedData.dealId);
       
       sendBookingConfirmationEmail(booking)
         .then(async (sent) => {
@@ -1201,6 +1380,78 @@ export async function registerRoutes(
     } catch (err) {
       logError("GET /api/deals/:dealId/booked", err);
       sendError(res, 500, "Failed to check booking status");
+    }
+  });
+
+  // Hold a deal when entering booking page (5 minute reservation)
+  app.post("/api/deals/:dealId/hold", async (req, res) => {
+    try {
+      const dealId = sanitizeString(req.params.dealId, 100);
+      if (!dealId) {
+        return sendError(res, 400, "Deal ID is required", "dealId");
+      }
+      
+      const sessionId = req.ip || "unknown";
+      
+      // Check if already booked
+      const isBooked = await storage.isDealBooked(dealId);
+      if (isBooked) {
+        return sendError(res, 409, "This deal has already been booked");
+      }
+      
+      // Try to create hold
+      const holdCreated = createDealHold(dealId, sessionId);
+      if (!holdCreated) {
+        return sendError(res, 409, "This deal is currently being booked by another user");
+      }
+      
+      res.json({ 
+        success: true, 
+        message: "Deal held for 5 minutes",
+        expiresIn: HOLD_DURATION_MS / 1000 
+      });
+    } catch (err) {
+      logError("POST /api/deals/:dealId/hold", err);
+      sendError(res, 500, "Failed to hold deal");
+    }
+  });
+
+  // Release a hold (e.g., when user leaves booking page)
+  app.delete("/api/deals/:dealId/hold", async (req, res) => {
+    try {
+      const dealId = sanitizeString(req.params.dealId, 100);
+      if (!dealId) {
+        return sendError(res, 400, "Deal ID is required", "dealId");
+      }
+      
+      releaseDealHold(dealId);
+      res.json({ success: true });
+    } catch (err) {
+      logError("DELETE /api/deals/:dealId/hold", err);
+      sendError(res, 500, "Failed to release hold");
+    }
+  });
+
+  // Check deal availability (booked or held by others)
+  app.get("/api/deals/:dealId/availability", async (req, res) => {
+    try {
+      const dealId = sanitizeString(req.params.dealId, 100);
+      if (!dealId) {
+        return sendError(res, 400, "Deal ID is required", "dealId");
+      }
+      
+      const sessionId = req.ip || "unknown";
+      const isBooked = await storage.isDealBooked(dealId);
+      const isHeldByOther = isDealHeld(dealId, sessionId);
+      
+      res.json({ 
+        available: !isBooked && !isHeldByOther,
+        booked: isBooked,
+        heldByOther: isHeldByOther
+      });
+    } catch (err) {
+      logError("GET /api/deals/:dealId/availability", err);
+      sendError(res, 500, "Failed to check availability");
     }
   });
 

@@ -1,5 +1,4 @@
-````md
-# Replit Prompt — Build “Hotel Dashboard: Orphan Nights Review + Pricing” Component (GapNight)
+# Build "Hotel Dashboard: Orphan Nights Review + Pricing" Component (GapNight)
 
 Build a **front-end mock** of the hotel dashboard that supports this exact flow:
 
@@ -249,4 +248,4 @@ No real integration yet—just structure it so the ARI fetch function can later 
 
 ```
 ::contentReference[oaicite:0]{index=0}
-```
+```

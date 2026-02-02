@@ -118,10 +118,43 @@ export default function Home() {
   // View mode (grid or map)
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
+  // Calculate date filter values based on selection
+  const getDateFilterParams = () => {
+    const today = new Date();
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+    
+    if (dateMode === "within") {
+      const startDate = formatDate(today);
+      switch (withinOption) {
+        case "7days":
+          return { startDate, endDate: formatDate(addDays(today, 7)) };
+        case "14days":
+          return { startDate, endDate: formatDate(addDays(today, 14)) };
+        case "21days":
+          return { startDate, endDate: formatDate(addDays(today, 21)) };
+        default: // anytime
+          return {};
+      }
+    } else if (dateMode === "month" && selectedMonth !== null) {
+      const monthStart = startOfMonth(addMonths(today, selectedMonth));
+      const monthEnd = endOfMonth(monthStart);
+      return { startDate: formatDate(monthStart), endDate: formatDate(monthEnd) };
+    } else if (dateMode === "specific" && selectedDate) {
+      return { startDate: formatDate(selectedDate), endDate: checkoutDate ? formatDate(checkoutDate) : formatDate(selectedDate) };
+    }
+    return {};
+  };
+
+  const dateFilters = getDateFilterParams();
+
   const { data: deals, isLoading, error } = useDeals({
     search: debouncedSearch || undefined,
     category: activeCategory,
     sort: sortBy,
+    startDate: dateFilters.startDate,
+    endDate: dateFilters.endDate,
+    nights: nights > 0 ? nights : undefined,
+    minGuests: guests > 1 ? guests : undefined,
   });
 
   const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label || "Deal Score";

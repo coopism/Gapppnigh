@@ -10,6 +10,7 @@ import {
   ArrowLeft, Star, MapPin, Calendar, CreditCard, User, Mail, Phone, 
   MessageSquare, ChevronDown, ChevronUp, Check, Shield, Clock, AlertCircle, Loader
 } from "lucide-react";
+import { StripePaymentForm } from "@/components/StripePaymentForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,12 +42,6 @@ const bookingSchema = z.object({
   phone: z.string().min(8, "Valid phone number is required").regex(/^[0-9]+$/, "Phone must contain only numbers"),
   countryCode: z.string().default("+61"),
   specialRequests: z.string().optional(),
-  cardNumber: z.string()
-    .transform(val => val.replace(/\s/g, ""))
-    .refine(val => /^\d{16}$/.test(val), "Card number must be 16 digits"),
-  cardholderName: z.string().min(1, "Cardholder name is required"),
-  expiryDate: z.string().regex(/^\d{2}\/\d{2}$/, "Use MM/YY format"),
-  cvv: z.string().regex(/^\d{3,4}$/, "CVV must be 3-4 digits"),
 });
 
 type BookingForm = z.infer<typeof bookingSchema>;
@@ -62,44 +57,232 @@ export default function Booking() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingRef, setBookingRef] = useState("");
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [paymentComplete, setPaymentComplete] = useState(false);
+  const [guestDetailsValid, setGuestDetailsValid] = useState(false);
+  const [redirectHandled, setRedirectHandled] = useState(false);
+  const [dealUnavailable, setDealUnavailable] = useState(false);
+
+  // Create hold when entering booking page (5 minute reservation)
+  useEffect(() => {
+    if (!dealId || bookingComplete) return;
+    
+    const createHold = async () => {
+      try {
+        const response = await fetch(`/api/deals/${dealId}/hold`, { method: "POST" });
+        if (!response.ok) {
+          const data = await response.json();
+          if (response.status === 409) {
+            setDealUnavailable(true);
+            toast({
+              title: "Deal Unavailable",
+              description: data.message || "This deal is no longer available",
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to create hold:", error);
+      }
+    };
+    
+    createHold();
+    
+    // Release hold when leaving page
+    return () => {
+      if (!bookingComplete) {
+        fetch(`/api/deals/${dealId}/hold`, { method: "DELETE" }).catch(() => {});
+      }
+    };
+  }, [dealId, bookingComplete, toast]);
+
+  // Handle Stripe redirect - check URL for payment_intent on page load
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentIntent = urlParams.get("payment_intent");
+    const redirectStatus = urlParams.get("redirect_status");
+    
+    if (paymentIntent && redirectStatus === "succeeded" && !redirectHandled && deal) {
+      setRedirectHandled(true);
+      setPaymentIntentId(paymentIntent);
+      setPaymentComplete(true);
+      
+      // Clean URL
+      window.history.replaceState({}, "", window.location.pathname);
+      
+      // Get saved form data and auto-submit booking
+      const savedData = localStorage.getItem(`booking_form_${dealId}`);
+      if (savedData) {
+        const formData = JSON.parse(savedData);
+        const gstAmount = deal.dealPrice * 0.1;
+        const total = deal.dealPrice + gstAmount;
+        
+        // Auto-submit booking
+        setIsSubmitting(true);
+        fetch("/api/bookings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dealId: deal.id,
+            hotelName: deal.hotelName,
+            roomType: deal.roomType,
+            checkInDate: deal.checkInDate,
+            checkOutDate: deal.checkOutDate,
+            nights: deal.nights,
+            guestFirstName: formData.firstName,
+            guestLastName: formData.lastName,
+            guestEmail: formData.email,
+            guestPhone: formData.phone,
+            guestCountryCode: formData.countryCode || "+61",
+            specialRequests: formData.specialRequests || "",
+            totalPrice: total,
+            currency: deal.currency,
+            paymentIntentId: paymentIntent,
+          }),
+        })
+          .then(res => res.json())
+          .then(result => {
+            if (result.booking) {
+              setBookingRef(result.booking.id);
+              setBookingComplete(true);
+              localStorage.removeItem(`booking_form_${dealId}`);
+              toast({
+                title: "Booking Confirmed!",
+                description: `Your booking reference is ${result.booking.id}`,
+              });
+            } else {
+              throw new Error(result.message || "Failed to create booking");
+            }
+          })
+          .catch(error => {
+            toast({
+              title: "Booking Failed",
+              description: error.message || "Something went wrong.",
+              variant: "destructive",
+            });
+          })
+          .finally(() => setIsSubmitting(false));
+      } else {
+        toast({
+          title: "Payment Successful",
+          description: "Please click Complete Booking to finalize.",
+        });
+      }
+    }
+  }, [redirectHandled, toast, deal, dealId]);
+
+  // Restore form data from localStorage if returning from Stripe redirect
+  const getSavedFormData = () => {
+    try {
+      const saved = localStorage.getItem(`booking_form_${dealId}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  };
+
+  const savedFormData = getSavedFormData();
 
   const form = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
-    defaultValues: {
+    defaultValues: savedFormData || {
       firstName: "",
       lastName: "",
       email: "",
       phone: "",
       countryCode: "+61",
       specialRequests: "",
-      cardNumber: "",
-      cardholderName: "",
-      expiryDate: "",
-      cvv: "",
     },
   });
 
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || "";
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
+  // Watch form fields to validate guest details before payment
+  const watchedFields = form.watch(["firstName", "lastName", "email", "phone"]);
+  
+  useEffect(() => {
+    const [firstName, lastName, email, phone] = watchedFields;
+    const isValid = 
+      firstName?.length > 0 && 
+      lastName?.length > 0 && 
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || "") && 
+      /^[0-9]{8,}$/.test(phone || "");
+    setGuestDetailsValid(isValid);
+  }, [watchedFields]);
+
+  const handlePaymentSuccess = async (intentId: string) => {
+    setPaymentIntentId(intentId);
+    setPaymentComplete(true);
+    
+    // Auto-submit the booking after payment success
+    const formData = form.getValues();
+    if (deal && formData.firstName && formData.lastName && formData.email && formData.phone) {
+      setIsSubmitting(true);
+      try {
+        const response = await fetch("/api/bookings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dealId: deal.id,
+            hotelName: deal.hotelName,
+            roomType: deal.roomType,
+            checkInDate: deal.checkInDate,
+            checkOutDate: deal.checkOutDate,
+            nights: deal.nights,
+            guestFirstName: formData.firstName,
+            guestLastName: formData.lastName,
+            guestEmail: formData.email,
+            guestPhone: formData.phone,
+            guestCountryCode: formData.countryCode,
+            specialRequests: formData.specialRequests,
+            totalPrice: grandTotal,
+            currency: deal.currency,
+            paymentIntentId: intentId,
+          }),
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to create booking");
+        }
+        
+        setBookingRef(result.booking.id);
+        setBookingComplete(true);
+        
+        toast({
+          title: "Booking Confirmed!",
+          description: `Your booking reference is ${result.booking.id}`,
+        });
+      } catch (error: any) {
+        toast({
+          title: "Booking Failed",
+          description: error.message || "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
-    return parts.length ? parts.join(" ") : value;
   };
 
-  const formatExpiryDate = (value: string) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
-    if (v.length >= 2) {
-      return v.substring(0, 2) + "/" + v.substring(2, 4);
-    }
-    return v;
+  const handlePaymentError = (error: string) => {
+    toast({
+      title: "Payment Error",
+      description: error,
+      variant: "destructive",
+    });
   };
 
   const onSubmit = async (data: BookingForm) => {
     if (!deal) return;
+    
+    // Require payment to be completed first
+    if (!paymentComplete || !paymentIntentId) {
+      toast({
+        title: "Payment Required",
+        description: "Please complete payment before finalizing your booking.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -122,6 +305,7 @@ export default function Booking() {
           specialRequests: data.specialRequests,
           totalPrice: grandTotal,
           currency: deal.currency,
+          paymentIntentId: paymentIntentId,
         }),
       });
       
@@ -162,7 +346,7 @@ export default function Booking() {
     );
   }
 
-  if (!deal) {
+  if (!deal || dealUnavailable) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -171,9 +355,13 @@ export default function Booking() {
             <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-8 h-8 text-destructive" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Deal Not Found</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              {dealUnavailable ? "Deal Unavailable" : "Deal Not Found"}
+            </h1>
             <p className="text-muted-foreground mb-8">
-              Sorry, we couldn't find the deal you're looking for. It may have been removed or the link might be incorrect.
+              {dealUnavailable 
+                ? "This deal has already been booked or is currently being reserved by another user. Please try a different deal."
+                : "Sorry, we couldn't find the deal you're looking for. It may have been removed or the link might be incorrect."}
             </p>
             
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -474,133 +662,64 @@ export default function Booking() {
                     Your payment details are encrypted and secure.
                   </p>
 
-                  <div className="flex items-center gap-2 mb-6 flex-wrap">
-                    <div className="flex items-center gap-1 px-3 py-1.5 bg-muted rounded-lg">
-                      <Check className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-medium">Credit/Debit Card</span>
+                  {!guestDetailsValid && (
+                    <div className="bg-muted/50 border border-border rounded-lg p-4 mb-4">
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" />
+                        Please fill in your guest details above before proceeding to payment.
+                      </p>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Badge variant="outline" className="text-xs font-bold">VISA</Badge>
-                      <Badge variant="outline" className="text-xs font-bold">MC</Badge>
-                      <Badge variant="outline" className="text-xs font-bold">AMEX</Badge>
-                    </div>
-                  </div>
+                  )}
 
-                  <div className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="cardNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Card Number *</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="1234 5678 9012 3456"
-                              maxLength={19}
-                              data-testid="input-card-number"
-                              autoComplete="cc-number"
-                              {...field}
-                              onChange={(e) => {
-                                const formatted = formatCardNumber(e.target.value);
-                                field.onChange(formatted);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  {paymentComplete ? (
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-primary">
+                        <Check className="w-5 h-5" />
+                        <span className="font-semibold">Payment Successful</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Your payment has been processed. Click below to complete your booking.
+                      </p>
+                    </div>
+                  ) : (
+                    <StripePaymentForm
+                      amount={grandTotal}
+                      currency={deal.currency}
+                      dealId={deal.id}
+                      hotelName={deal.hotelName}
+                      guestEmail={form.watch("email") || ""}
+                      onBeforePayment={() => {
+                        // Save form data to localStorage before payment redirect
+                        localStorage.setItem(`booking_form_${deal.id}`, JSON.stringify(form.getValues()));
+                      }}
+                      onPaymentSuccess={handlePaymentSuccess}
+                      onPaymentError={handlePaymentError}
+                      disabled={!guestDetailsValid}
                     />
-
-                    <FormField
-                      control={form.control}
-                      name="cardholderName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cardholder Name *</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Name as shown on card"
-                              data-testid="input-cardholder-name"
-                              autoComplete="cc-name"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="expiryDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Expiry Date *</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="MM/YY"
-                                maxLength={5}
-                                data-testid="input-expiry"
-                                autoComplete="cc-exp"
-                                {...field}
-                                onChange={(e) => {
-                                  const formatted = formatExpiryDate(e.target.value);
-                                  field.onChange(formatted);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="cvv"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>CVV *</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="password"
-                                placeholder="123"
-                                maxLength={4}
-                                data-testid="input-cvv"
-                                autoComplete="cc-csc"
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 mt-6 p-3 bg-muted/50 rounded-lg">
-                    <Shield className="w-5 h-5 text-primary" />
-                    <span className="text-sm text-muted-foreground">
-                      Your payment is protected by 256-bit SSL encryption
-                    </span>
-                  </div>
+                  )}
                 </div>
 
-                <Button 
-                  type="submit" 
-                  size="lg"
-                  className="w-full font-bold"
-                  disabled={isSubmitting}
-                  data-testid="button-complete-booking"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader className="w-4 h-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    `Complete Booking - ${formatPrice(grandTotal, deal.currency)}`
-                  )}
-                </Button>
+                {paymentComplete && (
+                  <Button 
+                    type="submit" 
+                    size="lg"
+                    className="w-full font-bold"
+                    disabled={isSubmitting}
+                    data-testid="button-complete-booking"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader className="w-4 h-4 mr-2 animate-spin" />
+                        Confirming Booking...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Complete Booking
+                      </>
+                    )}
+                  </Button>
+                )}
 
                 <p className="text-xs text-muted-foreground text-center">
                   By completing this booking, you agree to our Terms of Service and Privacy Policy.
@@ -617,6 +736,9 @@ export default function Booking() {
                     src={deal.imageUrl} 
                     alt={deal.hotelName}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop';
+                    }}
                   />
                 </div>
                 <div className="flex-1 min-w-0">

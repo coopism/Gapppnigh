@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { db } from "../server/db";
 import { hotelOwners, hotels, roomTypes, availability, publishedDeals, deals } from "../shared/schema";
 import bcrypt from "bcrypt";
@@ -399,6 +400,7 @@ async function seed() {
       longitude: "144.9631",
       amenities: ["WiFi", "Pool", "Gym", "Spa", "Restaurant"],
       nearbyHighlight: "5 min to Flinders Station",
+      maxGuests: 2,
     },
     {
       id: "gn_001a",
@@ -423,6 +425,7 @@ async function seed() {
       longitude: "144.9631",
       amenities: ["WiFi", "Pool", "Gym", "Spa", "Restaurant"],
       nearbyHighlight: "5 min to Flinders Station",
+      maxGuests: 3,
     },
     // Crown Riverfront
     {
@@ -448,6 +451,7 @@ async function seed() {
       longitude: "144.9600",
       amenities: ["WiFi", "Pool", "Gym", "Spa", "Bar"],
       nearbyHighlight: "Southbank Promenade views",
+      maxGuests: 2,
     },
     {
       id: "gn_002a",
@@ -472,6 +476,7 @@ async function seed() {
       longitude: "144.9600",
       amenities: ["WiFi", "Pool", "Gym", "Spa", "Bar"],
       nearbyHighlight: "Southbank Promenade views",
+      maxGuests: 4,
     },
     // Bayview Boutique
     {
@@ -497,6 +502,7 @@ async function seed() {
       longitude: "144.3617",
       amenities: ["WiFi", "Restaurant", "Bar", "Parking"],
       nearbyHighlight: "Walk to Waterfront",
+      maxGuests: 2,
     },
     {
       id: "gn_003a",
@@ -521,6 +527,7 @@ async function seed() {
       longitude: "144.3617",
       amenities: ["WiFi", "Restaurant", "Bar", "Parking"],
       nearbyHighlight: "Walk to Waterfront",
+      maxGuests: 2,
     },
     // Bayview Coastal
     {
@@ -546,6 +553,7 @@ async function seed() {
       longitude: "145.0388",
       amenities: ["WiFi", "Pool", "Spa", "Beach Access"],
       nearbyHighlight: "2 min walk to beach",
+      maxGuests: 2,
     },
     {
       id: "gn_004a",
@@ -570,6 +578,7 @@ async function seed() {
       longitude: "145.0388",
       amenities: ["WiFi", "Pool", "Spa", "Beach Access"],
       nearbyHighlight: "2 min walk to beach",
+      maxGuests: 3,
     },
     // The Langham Melbourne
     {
@@ -595,6 +604,7 @@ async function seed() {
       longitude: "144.9580",
       amenities: ["WiFi", "Pool", "Gym", "Spa", "Restaurant", "Bar"],
       nearbyHighlight: "Yarra River views",
+      maxGuests: 2,
     },
     // Park Hyatt Melbourne
     {
@@ -620,6 +630,7 @@ async function seed() {
       longitude: "144.9695",
       amenities: ["WiFi", "Pool", "Gym", "Spa", "Restaurant"],
       nearbyHighlight: "Opposite St Patrick's Cathedral",
+      maxGuests: 2,
     },
   ];
 

@@ -1,4 +1,4 @@
-# GapNight Landing Page Improvements — Prompt for Replit
+# GapNight Landing Page Improvements
 
 You are improving an existing GapNight landing page. Use the attached screenshot as the **target hero layout and style** (modern, airy, soft gradient background, rounded UI, teal accents, bold headline).
 

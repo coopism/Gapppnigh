@@ -164,6 +164,7 @@ export const deals = pgTable("deals", {
   longitude: numeric("longitude"),
   amenities: text("amenities").array(), // WiFi, Pool, Gym, Parking, etc.
   nearbyHighlight: text("nearby_highlight"), // "5 min walk to beach"
+  maxGuests: integer("max_guests").notNull().default(2), // Room capacity
 });
 
 export const waitlist = pgTable("waitlist", {
@@ -272,3 +273,19 @@ export const bookings = pgTable("bookings", {
 export const insertBookingSchema = createInsertSchema(bookings).omit({ createdAt: true });
 export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
+
+// ========================================
+// DEAL HOLDS TABLE (5 minute reservation)
+// ========================================
+
+export const dealHolds = pgTable("deal_holds", {
+  id: text("id").primaryKey(), // UUID
+  dealId: text("deal_id").notNull(),
+  sessionId: text("session_id").notNull(), // Browser session or IP
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDealHoldSchema = createInsertSchema(dealHolds).omit({ createdAt: true });
+export type DealHold = typeof dealHolds.$inferSelect;
+export type InsertDealHold = z.infer<typeof insertDealHoldSchema>;

@@ -1,0 +1,222 @@
+# Gap Night - Recent Updates Log
+# Last Updated: Feb 2, 2026
+
+## Date & Guest Filters + Room Capacity - Feb 2, 2026
+
+### Date Filters - FIXED
+- File: `client/src/pages/Home.tsx`
+- Date picker UI now actually filters deals by check-in date
+- Supports: "Within X days", "By Month", and "Specific dates" modes
+- Nights filter also works (filters deals by number of nights)
+- Passes `startDate`, `endDate`, `nights` params to API
+
+### Guest Filter - FIXED  
+- File: `client/src/pages/Home.tsx`
+- Guest count now filters deals by room capacity
+- Only shows deals that can accommodate selected number of guests
+- Passes `minGuests` param to API
+
+### Room Capacity (maxGuests) - NEW
+- File: `shared/schema.ts` - Added `maxGuests` field to deals table
+- File: `server/routes.ts` - Added filtering by `minGuests` param
+- File: `client/src/components/DealCard.tsx` - Shows guest capacity with icon
+- File: `client/src/pages/DealDetail.tsx` - Shows "Sleeps X" badge in About section + in availability options
+- File: `client/src/hooks/use-deals.ts` - Added filter params to hook
+- File: `scripts/seed.ts` - Updated seed data with maxGuests values
+- Display: Shows "Room Type • 👤2" format on deal cards and detail page
+
+### API Changes
+- `GET /api/deals` now accepts:
+  - `startDate` - Filter deals with check-in >= this date
+  - `endDate` - Filter deals with check-in <= this date  
+  - `nights` - Filter deals with exact number of nights
+  - `minGuests` - Filter deals where maxGuests >= this value
+
+---
+
+## Deal Holds & Booking Availability - Feb 1, 2026 (11:15pm)
+
+### 5-Minute Deal Holds
+- When user enters booking page, deal is held for 5 minutes
+- Other users cannot book or see held deals
+- Hold is released when user leaves page or completes booking
+- Prevents double-booking scenarios
+
+### Booked Deals Hidden from Listings
+- Confirmed bookings are filtered out of deal listings
+- Users won't see deals that have already been booked
+- File: `server/storage.ts` - getDeals() filters booked deals
+- File: `server/routes.ts` - Also filters held deals
+
+### New API Endpoints
+- `POST /api/deals/:dealId/hold` - Create 5-min hold
+- `DELETE /api/deals/:dealId/hold` - Release hold
+- `GET /api/deals/:dealId/availability` - Check if available
+
+---
+
+## Stripe Payment & UI Fixes - Feb 1, 2026 (10:40pm)
+
+### Payment Flow - FIXED (CRITICAL)
+- **Root cause**: Nested forms - StripePaymentForm had `<form>` inside Booking's `<Form>`
+- **Fix**: Changed StripePaymentForm from `<form>` to `<div>`, button from `type="submit"` to `type="button"` with `onClick`
+- File: `client/src/components/StripePaymentForm.tsx`
+- Uses `stripe.confirmCardPayment()` with CardElement (no redirects)
+- Auto-submits booking after successful payment
+- Payment → Booking confirmation is now seamless
+
+### Rate Limiting Fix for Payment Intent
+- File: `server/rate-limit.ts`
+- Added separate `paymentRateLimit` (30 requests/hour)
+- Prevents blocking during payment testing
+- File: `server/routes.ts` - Updated to use new limiter
+
+### Stripe Payment Form Fix
+- File: `client/src/components/StripePaymentForm.tsx`
+- Fixed multiple API calls on re-renders using useRef
+- Payment intent only created once when guest details complete
+- Added waiting state before guest details are filled
+
+### Force Light Mode
+- File: `client/src/components/ThemeProvider.tsx`
+- Forced light mode for better visual appearance
+- Disabled theme toggle functionality
+
+---
+
+## Bug Fixes & Improvements - Feb 1, 2026
+
+### BUG-003: Font Inconsistency - FIXED
+- File: `client/src/pages/ComingSoon.tsx`
+- Changed: Removed inline `style={{ fontFamily: "Georgia, serif" }}` 
+- Now uses: `font-display` class for consistent theming
+- Also fixed same issue in `client/src/pages/Landing.tsx`
+
+### BUG-007: Image Error Handling - FIXED
+- Added `onError` handlers with fallback image to:
+  - `client/src/components/DealCard.tsx`
+  - `client/src/pages/DealDetail.tsx`
+  - `client/src/pages/Landing.tsx`
+  - `client/src/pages/Booking.tsx`
+- Fallback: Unsplash hotel image placeholder
+
+### BUG-008: Aria Labels on Icon Buttons - FIXED
+- File: `client/src/pages/DealDetail.tsx`
+- Added `aria-label` to Share and Favorite icon buttons
+
+### Missing Amenity Icons - FIXED
+- File: `client/src/pages/DealDetail.tsx`
+- Added icons for: Bar, Beach Access, Room Service, Concierge
+
+### Rate Limiting - IMPLEMENTED
+- Created: `server/rate-limit.ts` 
+- Features:
+  - In-memory rate limiting store
+  - Configurable attempts and time windows
+  - Automatic cleanup of expired entries
+- Applied to:
+  - `/api/auth/register` - 5 attempts per 15 minutes
+  - `/api/auth/login` - 5 attempts per 15 minutes  
+  - `/api/bookings` - 10 bookings per hour
+- Returns 429 status with Retry-After header when exceeded
+
+### Already Fixed (Verified):
+- BUG-001: Currency formatting - formatPrice utility already correct
+- BUG-002: Mobile hamburger data-testid - already present
+- BUG-005: DealCard amenity icons - already present
+- BUG-006: Navigation link consistency - already consistent
+- BUG-011: Focus rings on category chips - already present
+
+## Files Modified
+1. `client/src/pages/ComingSoon.tsx` - Font fix
+2. `client/src/pages/Landing.tsx` - Font fix, image fallback
+3. `client/src/pages/DealDetail.tsx` - Amenity icons, aria-labels, image fallback
+4. `client/src/components/DealCard.tsx` - Image fallback
+5. `client/src/pages/Booking.tsx` - Image fallback
+6. `server/routes.ts` - Rate limiting integration
+7. `server/rate-limit.ts` - NEW: Rate limiting middleware
+
+## Intended Results
+- Improved accessibility with aria-labels
+- Graceful image loading failures with fallbacks
+- Consistent font theming across pages
+- Security improvement with rate limiting on auth/booking endpoints
+- All 12 bugs from BUG_REPORT.md addressed
+
+## Additional Fixes (Pre-existing Technical Debt)
+
+### TypeScript Type Errors - FIXED
+- File: `server/routes.ts`
+- Fixed `sanitizeString` to accept `string | string[]` for Express params/query
+- Fixed schema mismatches in waitlist route (removed non-existent `name` field)
+- Fixed schema mismatches in hotel inquiry route (use correct field names)
+
+### ThemeProvider Dark Mode - FIXED
+- File: `client/src/components/ThemeProvider.tsx`
+- Added proper `toggleTheme` and `setTheme` functions
+- Added theme persistence to localStorage
+- Added system preference detection
+
+## Build Status
+- TypeScript check: ✅ PASSED (0 errors)
+- All 12 bugs from BUG_REPORT.md: ✅ ADDRESSED
+
+## Additional Changes
+- Updated `package.json` scripts to use `cross-env` for Windows compatibility
+- Added `cross-env` as devDependency
+
+## Stripe Payment Integration - Feb 1, 2026
+
+### Server-Side (`server/stripe.ts`) - NEW
+- Created Stripe configuration module
+- Functions: `createPaymentIntent`, `getPaymentIntent`, `confirmPaymentSuccess`, `createRefund`
+- Graceful handling when STRIPE_SECRET_KEY not configured
+
+### New API Endpoints
+- `GET /api/stripe/config` - Returns Stripe configuration status and publishable key
+- `POST /api/stripe/create-payment-intent` - Creates payment intent for booking
+
+### Booking Flow Updated
+- File: `server/routes.ts`
+  - Added `paymentIntentId` to booking schema
+  - Payment verification before booking creation
+  - Rate limiting applied to payment intent creation
+
+### Client-Side Payment Form (`client/src/components/StripePaymentForm.tsx`) - NEW
+- Full Stripe Elements integration
+- Payment Element with tabs layout
+- Loading states and error handling
+- Secure payment badge and card logos
+- Disabled state until guest details are valid
+
+### Booking Page Updated (`client/src/pages/Booking.tsx`)
+- Removed manual card input fields
+- Integrated StripePaymentForm component
+- Two-step flow: Pay first, then confirm booking
+- Guest details validation before payment enabled
+- Payment success state management
+
+### Environment Variables Required
+```
+STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxx
+STRIPE_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxx
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxx  # For client-side (Vite)
+```
+
+### Stripe Keys Configured ✅
+- Test/Sandbox mode keys added to `.env`
+- Ready for testing payments
+
+### Packages Added
+- `stripe` - Server-side Stripe SDK
+- `@stripe/stripe-js` - Client-side Stripe.js loader
+- `@stripe/react-stripe-js` - React components for Stripe Elements
+
+## To Run
+Ensure environment variables are set in your .env file:
+```
+DATABASE_URL=postgresql://user:password@localhost:5432/gapnight
+STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxx
+STRIPE_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxx
+```
+Then run: `npm run dev`

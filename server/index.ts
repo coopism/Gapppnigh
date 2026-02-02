@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
@@ -64,7 +65,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await bootstrapDatabase();
+  // await bootstrapDatabase();
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -98,8 +99,7 @@ app.use((req, res, next) => {
   httpServer.listen(
     {
       port,
-      host: "0.0.0.0",
-      reusePort: true,
+      host: "localhost",
     },
     () => {
       log(`serving on port ${port}`);

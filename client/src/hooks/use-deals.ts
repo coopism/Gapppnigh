@@ -9,19 +9,29 @@ interface UseDealsParams {
   search?: string;
   category?: string;
   sort?: SortOption;
+  // Date filters
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string;   // YYYY-MM-DD
+  nights?: number;
+  // Guest filter
+  minGuests?: number;
 }
 
-export function useDeals({ search, category, sort }: UseDealsParams = {}) {
+export function useDeals({ search, category, sort, startDate, endDate, nights, minGuests }: UseDealsParams = {}) {
   // Construct URL with query params
   const queryParams = new URLSearchParams();
   if (search) queryParams.set("search", search);
   if (category && category !== "All Deals") queryParams.set("category", category);
   if (sort) queryParams.set("sort", sort);
+  if (startDate) queryParams.set("startDate", startDate);
+  if (endDate) queryParams.set("endDate", endDate);
+  if (nights) queryParams.set("nights", nights.toString());
+  if (minGuests) queryParams.set("minGuests", minGuests.toString());
 
   const url = `${api.deals.list.path}?${queryParams.toString()}`;
 
   return useQuery({
-    queryKey: [api.deals.list.path, { search, category, sort }],
+    queryKey: [api.deals.list.path, { search, category, sort, startDate, endDate, nights, minGuests }],
     queryFn: async () => {
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch deals");

@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Star, MapPin, Bed, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation, CalendarDays, Wine, Umbrella, Bell, ConciergeBell } from "lucide-react";
+import { Star, MapPin, Bed, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation, CalendarDays, Wine, Umbrella, Bell, ConciergeBell, Users } from "lucide-react";
 import type { Deal } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
@@ -35,6 +35,9 @@ export function DealCard({ deal }: DealCardProps) {
             src={deal.imageUrl}
             alt={deal.hotelName}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            onError={(e) => {
+              e.currentTarget.src = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop';
+            }}
           />
           
           {/* Top badges */}
@@ -85,10 +88,13 @@ export function DealCard({ deal }: DealCardProps) {
             </div>
           )}
 
-          {/* Room type */}
+          {/* Room type + capacity */}
           <div className="flex items-center text-muted-foreground text-sm mb-1.5">
             <Bed className="w-3.5 h-3.5 mr-1.5 shrink-0" />
             <span>{deal.roomType}</span>
+            <span className="mx-1.5 text-border">•</span>
+            <Users className="w-3.5 h-3.5 mr-1 shrink-0" />
+            <span>{deal.maxGuests || 2}</span>
           </div>
 
           {/* Amenities icons */}

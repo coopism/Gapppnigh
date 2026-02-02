@@ -1,22 +1,9 @@
 import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Deal } from "@shared/schema";
-import { Star, Calendar } from "lucide-react";
-import { format, parseISO } from "date-fns";
-import { Link } from "wouter";
-import "leaflet/dist/leaflet.css";
 import { formatPrice } from "@/lib/utils";
-
-const customIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+import { format, parseISO } from "date-fns";
+import "leaflet/dist/leaflet.css";
 
 interface DealsMapProps {
   deals: Deal[];
@@ -24,28 +11,91 @@ interface DealsMapProps {
   onDealSelect?: (dealId: string) => void;
 }
 
-function FitBounds({ deals }: { deals: Deal[] }) {
-  const map = useMap();
-  
-  useEffect(() => {
-    if (deals.length > 0) {
-      const validDeals = deals.filter(d => d.latitude && d.longitude);
-      if (validDeals.length > 0) {
-        const bounds = L.latLngBounds(
-          validDeals.map(d => [parseFloat(d.latitude!), parseFloat(d.longitude!)])
-        );
-        map.fitBounds(bounds, { padding: [50, 50] });
-      }
-    }
-  }, [deals, map]);
-  
-  return null;
-}
-
 export function DealsMap({ deals, selectedDealId, onDealSelect }: DealsMapProps) {
-  const mapRef = useRef<L.Map>(null);
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<L.Map | null>(null);
+  const markers = useRef<L.Marker[]>([]);
   
   const validDeals = deals.filter(d => d.latitude && d.longitude);
+  
+  useEffect(() => {
+    if (!mapContainer.current || validDeals.length === 0) return;
+    
+    // Calculate center
+    const lats = validDeals.map(d => parseFloat(d.latitude!));
+    const lngs = validDeals.map(d => parseFloat(d.longitude!));
+    const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+    const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+    
+    // Initialize map with clean CartoDB tiles
+    map.current = L.map(mapContainer.current, {
+      attributionControl: false,
+      zoomControl: true,
+    }).setView([centerLat, centerLng], 8);
+    
+    // Add clean, minimal tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+    }).addTo(map.current);
+    
+    // Create custom icon
+    const createIcon = (isSelected: boolean) => L.divIcon({
+      className: 'custom-marker',
+      html: `
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="${isSelected ? '#f59e0b' : '#0ea5a5'}" stroke="white" stroke-width="1.5" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3" fill="white"></circle>
+        </svg>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+    });
+    
+    // Add markers
+    validDeals.forEach((deal) => {
+      const popupContent = `
+        <div style="min-width: 200px; padding: 8px;">
+          <img src="${deal.imageUrl}" alt="${deal.hotelName}" style="width: 100%; height: 96px; object-fit: cover; border-radius: 6px; margin-bottom: 8px;" />
+          <h3 style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${deal.hotelName}</h3>
+          <div style="font-size: 12px; color: #666; margin-bottom: 4px;">⭐ ${deal.rating} (${deal.reviewCount})</div>
+          <div style="font-size: 12px; color: #666; margin-bottom: 8px;">📅 ${format(parseISO(deal.checkInDate), "MMM d")} (${deal.nights}N)</div>
+          <div style="display: flex; justify-between; align-items: center;">
+            <div>
+              <span style="font-size: 12px; text-decoration: line-through; color: #999;">${formatPrice(deal.normalPrice, deal.currency)}</span>
+              <span style="margin-left: 8px; font-weight: bold; color: #0ea5a5;">${formatPrice(deal.dealPrice, deal.currency)}</span>
+            </div>
+            <span style="font-size: 12px; font-weight: bold; color: #d97706; background: #fef3c7; padding: 2px 6px; border-radius: 4px;">${Math.round(((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100)}% OFF</span>
+          </div>
+        </div>
+      `;
+      
+      const marker = L.marker(
+        [parseFloat(deal.latitude!), parseFloat(deal.longitude!)],
+        { icon: createIcon(selectedDealId === deal.id) }
+      )
+        .bindPopup(popupContent, { closeButton: false })
+        .addTo(map.current!)
+        .on('click', () => {
+          onDealSelect?.(deal.id);
+        });
+      
+      markers.current.push(marker);
+    });
+    
+    // Fit bounds
+    if (validDeals.length > 1) {
+      const bounds = L.latLngBounds(
+        validDeals.map(d => [parseFloat(d.latitude!), parseFloat(d.longitude!)] as [number, number])
+      );
+      map.current.fitBounds(bounds, { padding: [50, 50] });
+    }
+    
+    return () => {
+      markers.current.forEach(m => m.remove());
+      markers.current = [];
+      map.current?.remove();
+    };
+  }, [validDeals, selectedDealId, onDealSelect]);
   
   if (validDeals.length === 0) {
     return (
@@ -55,80 +105,11 @@ export function DealsMap({ deals, selectedDealId, onDealSelect }: DealsMapProps)
     );
   }
   
-  const center: [number, number] = [
-    parseFloat(validDeals[0].latitude!),
-    parseFloat(validDeals[0].longitude!),
-  ];
-
   return (
-    <MapContainer
-      center={center}
-      zoom={5}
-      className="w-full h-full rounded-xl z-0 gapnight-map"
-      ref={mapRef}
+    <div 
+      ref={mapContainer} 
+      className="w-full h-full rounded-xl overflow-hidden" 
       data-testid="deals-map"
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-      />
-      <FitBounds deals={validDeals} />
-      {validDeals.map((deal) => {
-        const discountPercent = Math.round(
-          ((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100
-        );
-        const checkIn = format(parseISO(deal.checkInDate), "MMM d");
-        
-        return (
-          <Marker
-            key={deal.id}
-            position={[parseFloat(deal.latitude!), parseFloat(deal.longitude!)]}
-            icon={customIcon}
-            eventHandlers={{
-              click: () => onDealSelect?.(deal.id),
-            }}
-          >
-            <Popup>
-              <Link href={`/deal/${deal.id}`} className="block min-w-[200px]">
-                <div className="space-y-2">
-                  <img 
-                    src={deal.imageUrl} 
-                    alt={deal.hotelName}
-                    className="w-full h-24 object-cover rounded-md"
-                  />
-                  <div>
-                    <h3 className="font-bold text-sm text-foreground line-clamp-1">
-                      {deal.hotelName}
-                    </h3>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                      <span>{deal.rating}</span>
-                      <span>({deal.reviewCount})</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center text-xs text-muted-foreground">
-                    <Calendar className="w-3 h-3 mr-1" />
-                    <span>{checkIn} ({deal.nights}N)</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs line-through text-muted-foreground">
-                        {formatPrice(deal.normalPrice, deal.currency)}
-                      </span>
-                      <span className="ml-2 font-bold text-primary">
-                        {formatPrice(deal.dealPrice, deal.currency)}
-                      </span>
-                    </div>
-                    <span className="text-xs font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
-                      {discountPercent}% OFF
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            </Popup>
-          </Marker>
-        );
-      })}
-    </MapContainer>
+    />
   );
 }

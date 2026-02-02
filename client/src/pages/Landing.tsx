@@ -107,7 +107,7 @@ export default function Landing() {
             <div className="bg-card/80 backdrop-blur-sm rounded-3xl p-6 md:p-12 border border-border/50 shadow-xl">
               {/* Header with title and pronunciation */}
               <div className="mb-6 md:mb-8">
-                <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-2 md:mb-3" style={{ fontFamily: "Georgia, serif" }}>
+                <h1 className="text-4xl md:text-6xl font-display font-bold text-foreground mb-2 md:mb-3">
                   Gap Night
                 </h1>
                 <div className="flex items-center gap-2 md:gap-3 text-muted-foreground">
@@ -306,6 +306,9 @@ export default function Landing() {
                         src={deal.imageUrl}
                         alt={deal.hotelName}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop';
+                        }}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
