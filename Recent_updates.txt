@@ -1,6 +1,24 @@
 # Gap Night - Recent Updates Log
 # Last Updated: Feb 3, 2026
 
+## Auth UI Redesign - Feb 3, 2026 ✅
+
+### Improvements Made
+- Added "Sign in" button to Navigation (desktop dropdown + mobile menu)
+- Redesigned Login page with GapNight logo, rounded cards, stats section
+- Redesigned Signup page with password strength indicator, benefits list
+- Redesigned ForgotPassword page with success state
+- Redesigned ResetPassword page with validation feedback
+- Redesigned VerifyEmail page with loading/success/error states
+- All auth pages now use consistent GapNight aesthetic:
+  - Proper header with logo
+  - Footer included
+  - Rounded-xl inputs and buttons
+  - Primary color accents
+  - Shadow effects
+
+---
+
 ## User Authentication System - Feb 3, 2026 ✅
 
 ### Features Implemented

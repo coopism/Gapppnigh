@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Hotel, Menu, Home, UserPlus } from "lucide-react";
+import { Hotel, Menu, Home, UserPlus, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -8,10 +8,24 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { GapNightLogo } from "./GapNightLogo";
+import { useAuthStore, logout } from "@/hooks/useAuth";
 
 export function Navigation() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+  const { user, isLoading } = useAuthStore();
+
+  const handleLogout = async () => {
+    await logout();
+    setLocation("/");
+  };
 
   const isActive = (path: string) => location === path;
 
@@ -34,6 +48,35 @@ export function Navigation() {
             <Link href="/list-your-hotel" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/list-your-hotel") ? "text-primary" : "text-muted-foreground"}`}>
               For Hotels
             </Link>
+            {!isLoading && (
+              user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="rounded-full gap-2">
+                      <User className="w-4 h-4" />
+                      <span className="max-w-24 truncate">{user.name || user.email.split('@')[0]}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem asChild>
+                      <Link href="/account" className="cursor-pointer">
+                        <User className="w-4 h-4 mr-2" /> My Account
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
+                      <LogOut className="w-4 h-4 mr-2" /> Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Link href="/login">
+                  <Button variant="outline" size="sm" className="rounded-full px-4">
+                    Sign in
+                  </Button>
+                </Link>
+              )
+            )}
             <Link href="/waitlist">
                <Button variant={isActive("/waitlist") ? "secondary" : "default"} size="sm" className="rounded-full px-5 font-bold shadow-md hover:shadow-lg transition-all">
                 Join Waitlist
@@ -67,6 +110,26 @@ export function Navigation() {
                       <Hotel className="w-5 h-5 mr-3" /> For Hotels
                     </Button>
                   </Link>
+                  {!isLoading && (
+                    user ? (
+                      <>
+                        <Link href="/account">
+                          <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
+                            <User className="w-5 h-5 mr-3" /> My Account
+                          </Button>
+                        </Link>
+                        <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-lg font-medium h-12 text-destructive">
+                          <LogOut className="w-5 h-5 mr-3" /> Sign out
+                        </Button>
+                      </>
+                    ) : (
+                      <Link href="/login">
+                        <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
+                          <User className="w-5 h-5 mr-3" /> Sign in
+                        </Button>
+                      </Link>
+                    )
+                  )}
                   <Link href="/waitlist">
                     <Button className="w-full justify-start text-lg font-bold h-12 mt-4">
                       <UserPlus className="w-5 h-5 mr-3" /> Join Waitlist

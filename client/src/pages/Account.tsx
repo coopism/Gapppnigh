@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Moon, User, Mail, Lock, Bell, Calendar, LogOut, Loader2, 
+  User, Mail, Lock, Bell, Calendar, LogOut, Loader2, 
   AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Shield, Check, X 
 } from "lucide-react";
 import { 

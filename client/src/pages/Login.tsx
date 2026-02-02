@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Moon, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
-import { login, useAuthStore } from "@/hooks/useAuth";
+import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowLeft, Sparkles } from "lucide-react";
+import { login } from "@/hooks/useAuth";
+import { GapNightLogo } from "@/components/GapNightLogo";
+import { Footer } from "@/components/Footer";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -30,7 +31,6 @@ export default function Login() {
     setIsLoading(false);
 
     if (result.success) {
-      // Redirect to account or previous page
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect") || "/account";
       setLocation(redirect);
@@ -41,35 +41,51 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-2xl font-bold">
-            <Moon className="w-8 h-8 text-primary" />
-            <span>GapNight</span>
-          </Link>
-          <p className="text-muted-foreground mt-2">Sign in to your account</p>
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Header */}
+      <header className="border-b border-border/50 bg-background/80 backdrop-blur-md">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="group-hover:scale-110 transition-transform">
+                <GapNightLogo size={32} />
+              </div>
+              <span className="font-display font-bold text-xl tracking-tight">GapNight</span>
+            </Link>
+            <Link href="/deals">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Back to deals
+              </Button>
+            </Link>
+          </div>
         </div>
+      </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Welcome back</CardTitle>
-            <CardDescription>
-              Enter your credentials to access your account
-            </CardDescription>
-          </CardHeader>
-          
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          {/* Hero Section */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+              <Sparkles className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-3xl font-display font-bold tracking-tight">Welcome back</h1>
+            <p className="text-muted-foreground mt-2">Sign in to access your bookings and saved deals</p>
+          </div>
+
+          {/* Login Form */}
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="rounded-xl">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -78,18 +94,17 @@ export default function Login() {
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={`pl-9 ${fieldError === "email" ? "border-destructive" : ""}`}
+                    className={`pl-10 h-11 rounded-xl ${fieldError === "email" ? "border-destructive focus-visible:ring-destructive" : ""}`}
                     required
                     autoComplete="email"
-                    aria-invalid={fieldError === "email"}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                  <Link href="/forgot-password" className="text-sm text-primary hover:underline font-medium">
                     Forgot password?
                   </Link>
                 </div>
@@ -98,39 +113,40 @@ export default function Login() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••••"
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`pl-9 pr-9 ${fieldError === "password" ? "border-destructive" : ""}`}
+                    className={`pl-10 pr-10 h-11 rounded-xl ${fieldError === "password" ? "border-destructive focus-visible:ring-destructive" : ""}`}
                     required
                     autoComplete="current-password"
-                    aria-invalid={fieldError === "password"}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <Checkbox
                   id="remember"
                   checked={rememberMe}
                   onCheckedChange={(checked) => setRememberMe(checked === true)}
+                  className="rounded"
                 />
-                <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
-                  Remember me for 30 days
+                <Label htmlFor="remember" className="text-sm font-normal cursor-pointer text-muted-foreground">
+                  Keep me signed in for 30 days
                 </Label>
               </div>
-            </CardContent>
 
-            <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full h-11 rounded-xl font-bold text-base shadow-md hover:shadow-lg transition-all" 
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -140,17 +156,37 @@ export default function Login() {
                   "Sign in"
                 )}
               </Button>
-              
-              <p className="text-sm text-center text-muted-foreground">
-                Don't have an account?{" "}
-                <Link href="/signup" className="text-primary hover:underline font-medium">
-                  Sign up
+            </form>
+
+            <div className="mt-6 pt-6 border-t border-border text-center">
+              <p className="text-sm text-muted-foreground">
+                New to GapNight?{" "}
+                <Link href="/signup" className="text-primary hover:underline font-semibold">
+                  Create an account
                 </Link>
               </p>
-            </CardFooter>
-          </form>
-        </Card>
-      </div>
+            </div>
+          </div>
+
+          {/* Benefits */}
+          <div className="mt-8 grid grid-cols-3 gap-4 text-center">
+            <div className="space-y-1">
+              <div className="text-2xl font-bold text-primary">50%+</div>
+              <div className="text-xs text-muted-foreground">Average savings</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-2xl font-bold text-primary">4.8★</div>
+              <div className="text-xs text-muted-foreground">Hotel quality</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-2xl font-bold text-primary">24hr</div>
+              <div className="text-xs text-muted-foreground">Last-minute deals</div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }
