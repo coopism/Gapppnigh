@@ -74,24 +74,42 @@ export default function Signup() {
       }
     };
 
+    // Wait for script to load with event listener
+    const handleGoogleLoad = () => {
+      // @ts-ignore
+      if (window.google?.accounts?.id) {
+        initGoogle();
+      }
+    };
+
+    // Check if already loaded
     // @ts-ignore
     if (window.google?.accounts?.id) {
       initGoogle();
     } else {
+      // Try multiple approaches
+      window.addEventListener('load', handleGoogleLoad);
+      
       const checkGoogle = setInterval(() => {
         // @ts-ignore
         if (window.google?.accounts?.id) {
           clearInterval(checkGoogle);
+          window.removeEventListener('load', handleGoogleLoad);
           initGoogle();
         }
       }, 100);
+
+      // Timeout after 10 seconds
       const timeout = setTimeout(() => {
         clearInterval(checkGoogle);
+        window.removeEventListener('load', handleGoogleLoad);
         setGoogleFailed(true);
-      }, 5000);
+      }, 10000);
+      
       return () => {
         clearInterval(checkGoogle);
         clearTimeout(timeout);
+        window.removeEventListener('load', handleGoogleLoad);
       };
     }
   }, [setLocation]);

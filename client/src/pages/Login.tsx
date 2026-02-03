@@ -84,31 +84,49 @@ export default function Login() {
       }
     };
 
+    // Wait for script to load with event listener
+    const handleGoogleLoad = () => {
+      console.log('Google script load event fired');
+      // @ts-ignore
+      if (window.google?.accounts?.id) {
+        initGoogle();
+      }
+    };
+
     // Check if already loaded
     // @ts-ignore
     if (window.google?.accounts?.id) {
+      console.log('Google already loaded');
       initGoogle();
     } else {
       // Wait for script to load
       console.log('Waiting for Google script to load...');
+      
+      // Try multiple approaches
+      window.addEventListener('load', handleGoogleLoad);
+      
       const checkGoogle = setInterval(() => {
         // @ts-ignore
         if (window.google?.accounts?.id) {
-          console.log('Google script loaded!');
+          console.log('Google script loaded via polling!');
           clearInterval(checkGoogle);
+          window.removeEventListener('load', handleGoogleLoad);
           initGoogle();
         }
       }, 100);
 
-      // Timeout after 5 seconds - show manual button
+      // Timeout after 10 seconds - show manual button
       const timeout = setTimeout(() => {
-        console.error('Google script failed to load after 5 seconds');
+        console.error('Google script failed to load after 10 seconds');
         clearInterval(checkGoogle);
+        window.removeEventListener('load', handleGoogleLoad);
         setGoogleFailed(true);
-      }, 5000);
+      }, 10000);
+      
       return () => {
         clearInterval(checkGoogle);
         clearTimeout(timeout);
+        window.removeEventListener('load', handleGoogleLoad);
       };
     }
   }, [setLocation]);

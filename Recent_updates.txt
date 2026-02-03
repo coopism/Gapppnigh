@@ -1,6 +1,33 @@
 # Gap Night - Recent Updates Log
 # Last Updated: Feb 3, 2026
 
+## Google OAuth Fix - Feb 3, 2026 ✅
+
+### Critical Fixes
+- **Content Security Policy (CSP)** - Updated to allow Google OAuth scripts and domains
+  - Added `https://accounts.google.com` and `https://apis.google.com` to script-src
+  - Added `https://accounts.google.com` to style-src and frame-src
+  - Added `https://www.googleapis.com` to connect-src
+  - Disabled X-Frame-Options header to allow Google OAuth iframe
+- **Google Script Loading** - Improved detection and initialization
+  - Added window load event listener in addition to polling
+  - Increased timeout from 5 to 10 seconds
+  - Better cleanup of event listeners
+  - Applied fixes to both Login and Signup pages
+- **Debug Logging** - Added console logs to track Google script loading and initialization
+
+### Files Modified
+- `server/index.ts` - Updated CSP headers, disabled X-Frame-Options
+- `client/src/pages/Login.tsx` - Improved Google script loading detection
+- `client/src/pages/Signup.tsx` - Applied same loading improvements
+
+### Intended Result
+- Google Sign-In button should now load and function properly
+- Users can authenticate with their Google account
+- No more infinite "Loading Google Sign-In..." state
+
+---
+
 ## Comprehensive Site Polish - Feb 3, 2026 ✅
 
 ### Bug Fixes
