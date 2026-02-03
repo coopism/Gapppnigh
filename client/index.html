@@ -52,15 +52,29 @@
       }
       
       /* Google button container */
+      .S9gUrf-YoZ4jf {
+        height: 44px !important;
+        overflow: hidden !important;
+      }
+      
       div[role="button"][aria-labelledby] {
         height: 44px !important;
         border-radius: 0.75rem !important;
       }
       
-      /* Google button iframe */
+      /* Google button iframe - fix negative margins */
       iframe[id^="gsi_"] {
         height: 44px !important;
+        width: 100% !important;
         border-radius: 0.75rem !important;
+        margin: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+      }
+      
+      /* Additional container fix */
+      .L5Fo6c-PQbLGe {
+        margin: 0 !important;
       }
     </style>
     
