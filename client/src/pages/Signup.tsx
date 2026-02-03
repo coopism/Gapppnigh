@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, User, Check, X, ArrowLeft, UserPlus } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, User, Check, X, ArrowLeft } from "lucide-react";
 import { signup, validatePassword, getPasswordStrength } from "@/hooks/useAuth";
 import { GapNightLogo } from "@/components/GapNightLogo";
 import { Footer } from "@/components/Footer";
@@ -183,11 +183,8 @@ export default function Signup() {
         <div className="w-full max-w-md">
           {/* Hero Section */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-              <UserPlus className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-3xl font-display font-bold tracking-tight">Create account</h1>
-            <p className="text-muted-foreground mt-2">Join GapNight to unlock exclusive hotel deals</p>
+            <h1 className="text-3xl font-display font-bold tracking-tight mb-2">Create account</h1>
+            <p className="text-muted-foreground">Join GapNight to unlock exclusive hotel deals</p>
           </div>
 
           {/* Signup Form */}

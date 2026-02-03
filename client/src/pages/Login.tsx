@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowLeft, Sparkles } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 import { login } from "@/hooks/useAuth";
 import { GapNightLogo } from "@/components/GapNightLogo";
 import { Footer } from "@/components/Footer";
@@ -185,11 +185,8 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Hero Section */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-              <Sparkles className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-3xl font-display font-bold tracking-tight">Welcome back</h1>
-            <p className="text-muted-foreground mt-2">Sign in to access your bookings and saved deals</p>
+            <h1 className="text-3xl font-display font-bold tracking-tight mb-2">Welcome back</h1>
+            <p className="text-muted-foreground">Sign in to access your bookings and saved deals</p>
           </div>
 
           {/* Login Form */}
