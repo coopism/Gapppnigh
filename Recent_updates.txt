@@ -15,16 +15,26 @@
   - Better cleanup of event listeners
   - Applied fixes to both Login and Signup pages
 - **Debug Logging** - Added console logs to track Google script loading and initialization
+- **OAuth Callback** - Fixed redirect using window.location.href instead of setLocation
+- **Button Styling** - Added persistent CSS to override Google's inline styles
+  - Targets `.S9gUrf-YoZ4jf`, `.L5Fo6c-PQbLGe`, and iframe elements
+  - Forces 44px height, 0.75rem border-radius, removes negative margins
+  - Prevents layout shift after Google renders button
+  - Matches Apple button styling
 
 ### Files Modified
 - `server/index.ts` - Updated CSP headers, disabled X-Frame-Options
-- `client/src/pages/Login.tsx` - Improved Google script loading detection
-- `client/src/pages/Signup.tsx` - Applied same loading improvements
+- `server/user-routes.ts` - Added comprehensive OAuth logging
+- `client/src/pages/Login.tsx` - Improved script loading, fixed redirect, added logging
+- `client/src/pages/Signup.tsx` - Applied same improvements
+- `client/index.html` - Added persistent CSS for Google button styling
 
 ### Intended Result
-- Google Sign-In button should now load and function properly
+- Google Sign-In button loads and functions properly
 - Users can authenticate with their Google account
-- No more infinite "Loading Google Sign-In..." state
+- Button styling matches design system (44px height, rounded corners)
+- No layout shift or "jerking" after button renders
+- Successful redirect to /account after OAuth
 
 ---
 
