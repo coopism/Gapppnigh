@@ -344,21 +344,6 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Benefits */}
-          <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-            <div className="space-y-1">
-              <div className="text-2xl font-bold text-primary">50%+</div>
-              <div className="text-xs text-muted-foreground">Average savings</div>
-            </div>
-            <div className="space-y-1">
-              <div className="text-2xl font-bold text-primary">4.8★</div>
-              <div className="text-xs text-muted-foreground">Hotel quality</div>
-            </div>
-            <div className="space-y-1">
-              <div className="text-2xl font-bold text-primary">24hr</div>
-              <div className="text-xs text-muted-foreground">Last-minute deals</div>
-            </div>
-          </div>
         </div>
       </main>
 
