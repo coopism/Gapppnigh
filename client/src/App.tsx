@@ -24,6 +24,7 @@ import OwnerDashboard from "@/pages/owner/Dashboard";
 import HotelNew from "@/pages/owner/HotelNew";
 import HotelManage from "@/pages/owner/HotelManage";
 import HotelDeals from "@/pages/owner/HotelDeals";
+import AutoListingRules from "@/pages/owner/AutoListingRules";
 import HotelDealsPublic, { HotelDealDetail } from "@/pages/HotelDealsPublic";
 import Booking from "@/pages/Booking";
 
@@ -52,6 +53,7 @@ function MainRouter() {
       <Route path="/owner/hotels/new" component={HotelNew} />
       <Route path="/owner/hotels/:hotelId" component={HotelManage} />
       <Route path="/owner/hotels/:hotelId/deals" component={HotelDeals} />
+      <Route path="/owner/hotels/:hotelId/auto-listing" component={AutoListingRules} />
       <Route path="/gap-night-deals" component={HotelDealsPublic} />
       <Route path="/hotels/:hotelId/deals" component={HotelDealDetail} />
       <Route path="/login" component={Login} />
@@ -75,6 +77,7 @@ function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
       <Route path="/owner/hotels/new" component={HotelNew} />
       <Route path="/owner/hotels/:hotelId" component={HotelManage} />
       <Route path="/owner/hotels/:hotelId/deals" component={HotelDeals} />
+      <Route path="/owner/hotels/:hotelId/auto-listing" component={AutoListingRules} />
       <Route path="/gap-night-deals" component={HotelDealsPublic} />
       <Route path="/hotels/:hotelId/deals" component={HotelDealDetail} />
       <Route path="/login" component={Login} />
