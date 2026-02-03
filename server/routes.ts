@@ -10,6 +10,7 @@ import { authRateLimit, bookingRateLimit, paymentRateLimit } from "./rate-limit"
 import { createPaymentIntent, confirmPaymentSuccess, isStripeConfigured } from "./stripe";
 import { registerUserAuthRoutes } from "./user-routes";
 import { optionalUserAuthMiddleware } from "./user-auth";
+import ownerRoutes from "./owner-routes";
 
 // ========================================
 // IN-MEMORY DEAL HOLDS (5 minute reservation)
@@ -111,6 +112,11 @@ export async function registerRoutes(
   // USER AUTHENTICATION ROUTES
   // ========================================
   registerUserAuthRoutes(app);
+  
+  // ========================================
+  // OWNER ROUTES (Auto-listing rules, etc.)
+  // ========================================
+  app.use(ownerRoutes);
   
   // ========================================
   // EXISTING PUBLIC ROUTES
