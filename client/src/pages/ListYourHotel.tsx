@@ -68,12 +68,20 @@ export default function ListYourHotel() {
           {/* Left: Pitch Content */}
           <div className="space-y-8">
             <div>
+              <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-full text-xs font-semibold mb-4 border border-amber-500/20">
+                Coming Soon
+              </div>
               <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground leading-tight mb-4">
                 Fill your gap nights with <span className="text-primary">high-quality guests</span>
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed">
                 Don't let rooms sit empty between bookings. GapNight connects you with spontaneous travelers looking for short stays, helping you maximize occupancy without degrading your brand value.
               </p>
+              <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  <strong className="text-foreground">Note:</strong> GapNight is launching soon. Register your interest now and we'll contact you as soon as we're ready to onboard hotels.
+                </p>
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -111,9 +119,9 @@ export default function ListYourHotel() {
             
             <Card className="relative z-10 border-border/50 shadow-xl backdrop-blur-sm bg-card">
               <CardHeader>
-                <CardTitle className="font-display text-2xl">Partner with GapNight</CardTitle>
+                <CardTitle className="font-display text-2xl">Register Your Interest</CardTitle>
                 <CardDescription>
-                  Submit your details and our partnerships team will reach out within 24 hours.
+                  Submit your details and we'll contact you when GapNight launches. Our partnerships team will reach out to discuss onboarding.
                 </CardDescription>
               </CardHeader>
               <CardContent>

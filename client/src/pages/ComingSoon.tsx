@@ -130,9 +130,9 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
           {/* Dictionary Card - Hero Definition */}
           <div className="bg-card/80 backdrop-blur-sm rounded-3xl p-6 md:p-10 border border-border/50 shadow-xl">
             {/* Coming Soon Badge */}
-            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-4 py-1.5 rounded-full text-sm font-semibold mb-6 border border-amber-500/20">
               <Sparkles className="w-4 h-4" />
-              Coming Soon
+              Platform Launching Soon
             </div>
 
             {/* Header with title and pronunciation */}
@@ -154,6 +154,11 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
               <p className="text-base md:text-lg text-muted-foreground max-w-lg">
                 Hotels list these nights directly on GapNight, so you get real discounts on real rooms.
               </p>
+              <div className="mt-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+                <p className="text-sm text-muted-foreground">
+                  <strong className="text-foreground">Note:</strong> GapNight is currently in development. Join the waitlist below to be notified when we launch, or if you're a hotel owner, register your interest now.
+                </p>
+              </div>
             </div>
 
             {/* Divider */}
@@ -224,6 +229,19 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
                 We respect your inbox. No spam, just deals.
               </p>
             </div>
+          </div>
+
+          {/* Hotel Registration CTA */}
+          <div className="bg-card/60 backdrop-blur-sm rounded-2xl p-6 border border-border/50 text-center">
+            <h3 className="text-lg font-semibold mb-2">Are you a hotel owner?</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Register your interest now and be among the first hotels on GapNight when we launch.
+            </p>
+            <a href="/list-your-hotel">
+              <Button variant="outline" className="font-semibold">
+                Register Your Hotel
+              </Button>
+            </a>
           </div>
 
           {/* Partner Access & Developer Portal */}
