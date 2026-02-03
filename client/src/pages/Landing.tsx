@@ -97,14 +97,15 @@ export default function Landing() {
       <Navigation />
       
       {/* Hero Section - Dictionary Definition Focus */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-muted via-background to-muted/50 dark:from-muted/30 dark:via-background dark:to-muted/20 py-16 md:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(14,165,165,0.08),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(14,165,165,0.05),transparent_40%)]" />
+      <section className="relative overflow-hidden min-h-[85vh] flex items-center bg-gradient-to-br from-background via-muted/30 to-background py-16 md:py-24">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,165,165,0.12),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(14,165,165,0.08),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(14,165,165,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(14,165,165,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
         
         <div className="container mx-auto px-4 relative">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-5xl mx-auto">
             {/* Dictionary Card */}
-            <div className="bg-card/80 backdrop-blur-sm rounded-3xl p-6 md:p-12 border border-border/50 shadow-xl">
+            <div className="bg-card/90 backdrop-blur-md rounded-3xl p-8 md:p-16 border border-border/50 shadow-2xl">
               {/* Header with title and pronunciation */}
               <div className="mb-6 md:mb-8">
                 <h1 className="text-4xl md:text-6xl font-display font-bold text-foreground mb-2 md:mb-3">
@@ -198,39 +199,6 @@ export default function Landing() {
                   </div>
                 </div>
                 
-                {/* Badges */}
-                <div className="flex flex-wrap justify-center md:justify-start gap-3 pt-4">
-                  <Badge variant="secondary" className="text-sm py-1.5 px-3">
-                    <Clock className="w-3.5 h-3.5 mr-1.5" />
-                    Usually 1 night
-                  </Badge>
-                  <Badge variant="secondary" className="text-sm py-1.5 px-3">
-                    <Hotel className="w-3.5 h-3.5 mr-1.5" />
-                    Limited rooms
-                  </Badge>
-                  <Badge variant="secondary" className="text-sm py-1.5 px-3">
-                    <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                    20–70% off
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            
-            {/* Stats Row */}
-            <div className="flex flex-wrap justify-center gap-12 md:gap-16 mt-12">
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-foreground">15+</div>
-                <div className="text-sm text-muted-foreground mt-1">Active Deals</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-foreground">50%</div>
-                <div className="text-sm text-muted-foreground mt-1">Avg. Savings</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-foreground flex items-center justify-center gap-1">
-                  4.5 <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">Avg. Rating</div>
               </div>
             </div>
           </div>
