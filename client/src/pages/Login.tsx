@@ -277,7 +277,7 @@ export default function Login() {
             </form>
 
             {/* OAuth Divider */}
-            <div className="relative my-6">
+            <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-border"></div>
               </div>
@@ -291,7 +291,7 @@ export default function Login() {
               {/* Google Sign-In Button - rendered by Google */}
               <div 
                 ref={googleButtonRef} 
-                className="w-full [&>div]:w-full [&>div>div]:w-full [&>div>div]:h-11 [&>div>div]:rounded-xl"
+                className="w-full [&>div]:w-full [&>div>div]:w-full [&>div>div]:!h-11 [&>div>div]:!rounded-xl [&>div>div]:!border-input"
               />
               {!googleLoaded && !googleFailed && (
                 <Button
