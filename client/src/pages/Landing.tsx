@@ -97,15 +97,15 @@ export default function Landing() {
       <Navigation />
       
       {/* Hero Section - Dictionary Definition Focus */}
-      <section className="relative overflow-hidden min-h-[85vh] flex items-center bg-gradient-to-br from-background via-muted/30 to-background py-16 md:py-24">
+      <section className="relative overflow-visible min-h-[90vh] flex items-center bg-gradient-to-br from-background via-muted/30 to-background py-12 md:py-20">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,165,165,0.12),transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(14,165,165,0.08),transparent_50%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(14,165,165,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(14,165,165,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
         
         <div className="container mx-auto px-4 relative">
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-3xl mx-auto">
             {/* Dictionary Card */}
-            <div className="bg-card/90 backdrop-blur-md rounded-3xl p-8 md:p-16 border border-border/50 shadow-2xl">
+            <div className="bg-card/90 backdrop-blur-md rounded-3xl p-8 md:p-12 border border-border/50 shadow-2xl">
               {/* Header with title and pronunciation */}
               <div className="mb-6 md:mb-8">
                 <h1 className="text-4xl md:text-6xl font-display font-bold text-foreground mb-2 md:mb-3">
@@ -161,8 +161,8 @@ export default function Landing() {
                         </button>
                       )}
                       
-                      {showSuggestions && (
-                        <div className="absolute top-full left-0 right-0 mt-3 bg-popover rounded-2xl shadow-2xl border border-border/50 overflow-hidden z-50 max-h-[320px] overflow-y-auto">
+                      {showSuggestions && search && filteredSuggestions.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-3 bg-popover rounded-2xl shadow-2xl border border-border/50 overflow-visible z-50 max-h-[320px] overflow-y-auto">
                           <div className="p-3">
                             <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-3 py-2">
                               Popular Destinations
@@ -206,7 +206,7 @@ export default function Landing() {
       </section>
 
       {/* Deals Preview Section */}
-      <section ref={dealsRef} className="py-16 md:py-20 bg-muted/50">
+      <section ref={dealsRef} className="py-12 md:py-16 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
             <div>
@@ -312,7 +312,7 @@ export default function Landing() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-16 md:py-20 bg-background">
+      <section className="py-12 md:py-16 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold text-foreground">
@@ -337,7 +337,7 @@ export default function Landing() {
       </section>
 
       {/* For Hotels Section */}
-      <section className="py-16 md:py-20 bg-neutral-900 dark:bg-neutral-950 text-white">
+      <section className="py-12 md:py-16 bg-neutral-900 dark:bg-neutral-950 text-white">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-12 items-center">
             <div>
