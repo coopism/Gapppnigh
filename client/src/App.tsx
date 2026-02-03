@@ -20,7 +20,6 @@ import OrphanNightsDashboard from "@/pages/hotel/dashboard/OrphanNights";
 import NotFound from "@/pages/NotFound";
 
 import OwnerLogin from "@/pages/owner/Login";
-import OwnerRegister from "@/pages/owner/Register";
 import OwnerDashboard from "@/pages/owner/Dashboard";
 import HotelNew from "@/pages/owner/HotelNew";
 import HotelManage from "@/pages/owner/HotelManage";
@@ -49,7 +48,6 @@ function MainRouter() {
       <Route path="/privacy" component={Privacy} />
       <Route path="/hotel/dashboard/orphan-nights" component={OrphanNightsDashboard} />
       <Route path="/owner/login" component={OwnerLogin} />
-      <Route path="/owner/register" component={OwnerRegister} />
       <Route path="/owner/dashboard" component={OwnerDashboard} />
       <Route path="/owner/hotels/new" component={HotelNew} />
       <Route path="/owner/hotels/:hotelId" component={HotelManage} />
@@ -73,7 +71,6 @@ function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/owner/login" component={OwnerLogin} />
-      <Route path="/owner/register" component={OwnerRegister} />
       <Route path="/owner/dashboard" component={OwnerDashboard} />
       <Route path="/owner/hotels/new" component={HotelNew} />
       <Route path="/owner/hotels/:hotelId" component={HotelManage} />
