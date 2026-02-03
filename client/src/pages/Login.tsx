@@ -80,9 +80,10 @@ export default function Login() {
             type: "standard",
             theme: "outline",
             size: "large",
-            width: "100%",
+            width: googleButtonRef.current.offsetWidth,
             text: "continue_with",
-            shape: "pill",
+            shape: "rectangular",
+            logo_alignment: "left",
           });
           console.log('Google button rendered successfully');
         }
@@ -290,7 +291,7 @@ export default function Login() {
               {/* Google Sign-In Button - rendered by Google */}
               <div 
                 ref={googleButtonRef} 
-                className="w-full flex justify-center [&>div]:w-full [&>div>div]:w-full"
+                className="w-full [&>div]:w-full [&>div>div]:w-full [&>div>div]:h-11 [&>div>div]:rounded-xl"
               />
               {!googleLoaded && !googleFailed && (
                 <Button

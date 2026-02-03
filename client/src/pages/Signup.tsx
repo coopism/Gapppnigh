@@ -72,9 +72,10 @@ export default function Signup() {
             type: "standard",
             theme: "outline",
             size: "large",
-            width: "100%",
+            width: googleButtonRef.current.offsetWidth,
             text: "signup_with",
-            shape: "pill",
+            shape: "rectangular",
+            logo_alignment: "left",
           });
         }
         setGoogleLoaded(true);
@@ -345,7 +346,7 @@ export default function Signup() {
               {/* Google Sign-In Button - rendered by Google */}
               <div 
                 ref={googleButtonRef} 
-                className="w-full flex justify-center [&>div]:w-full [&>div>div]:w-full"
+                className="w-full [&>div]:w-full [&>div>div]:w-full [&>div>div]:h-11 [&>div>div]:rounded-xl"
               />
               {!googleLoaded && !googleFailed && (
                 <Button
