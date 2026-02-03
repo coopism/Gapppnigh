@@ -592,9 +592,11 @@ export function registerUserAuthRoutes(app: Express) {
   // Google OAuth callback - receives token from frontend
   app.post("/api/auth/oauth/google", async (req, res) => {
     try {
+      console.log('[OAuth] Received Google OAuth request');
       const { credential, redirectUrl } = req.body;
       
       if (!credential) {
+        console.error('[OAuth] Missing credential');
         return sendError(res, 400, "Missing Google credential");
       }
       
@@ -602,33 +604,41 @@ export function registerUserAuthRoutes(app: Express) {
       // In production, you should verify with Google's public keys
       const parts = credential.split(".");
       if (parts.length !== 3) {
+        console.error('[OAuth] Invalid credential format');
         return sendError(res, 400, "Invalid Google credential format");
       }
       
       const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+      console.log('[OAuth] Decoded payload:', { email: payload.email, sub: payload.sub, name: payload.name });
       
       if (!payload.email || !payload.sub) {
+        console.error('[OAuth] Invalid token payload');
         return sendError(res, 400, "Invalid Google token payload");
       }
       
       // Verify token hasn't expired
       if (payload.exp && payload.exp * 1000 < Date.now()) {
+        console.error('[OAuth] Token expired');
         return sendError(res, 400, "Google token has expired");
       }
       
+      console.log('[OAuth] Finding or creating user...');
       const user = await findOrCreateOAuthUser(
         "google",
         payload.sub,
         payload.email,
         payload.name
       );
+      console.log('[OAuth] User found/created:', user.id);
       
+      console.log('[OAuth] Creating session...');
       const sessionToken = await createSession(
         user.id,
         true, // Remember me for OAuth
         req.headers["user-agent"],
         req.ip
       );
+      console.log('[OAuth] Session created');
       
       setSessionCookie(res, sessionToken, true);
       
@@ -637,6 +647,7 @@ export function registerUserAuthRoutes(app: Express) {
       
       logSecurityEvent("oauth_login", { userId: user.id, provider: "google", ip: req.ip });
       
+      console.log('[OAuth] Sending success response, redirectUrl:', redirectUrl || "/account");
       res.json({ 
         success: true, 
         user: {

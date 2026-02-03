@@ -41,26 +41,32 @@ export default function Login() {
         window.google.accounts.id.initialize({
           client_id: clientId,
           callback: async (response: any) => {
-            console.log('Google callback triggered');
+            console.log('Google callback triggered', response);
             setIsLoading(true);
             setError(null);
             try {
               const params = new URLSearchParams(window.location.search);
               const redirect = params.get("redirect") || "/account";
+              console.log('Sending credential to server...');
               const res = await fetch("/api/auth/oauth/google", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
                 body: JSON.stringify({ credential: response.credential, redirectUrl: redirect }),
               });
+              console.log('Server response status:', res.status);
               const data = await res.json();
+              console.log('Server response data:', data);
               if (data.success) {
-                setLocation(data.redirectUrl || "/account");
+                console.log('Redirecting to:', data.redirectUrl || "/account");
+                window.location.href = data.redirectUrl || "/account";
               } else {
+                console.error('OAuth failed:', data.message);
                 setError(data.message || "Google sign-in failed");
               }
             } catch (err) {
-              setError("Google sign-in failed");
+              console.error('OAuth error:', err);
+              setError("Google sign-in failed: " + (err instanceof Error ? err.message : String(err)));
             }
             setIsLoading(false);
           },
