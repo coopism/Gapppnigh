@@ -1,4 +1,47 @@
 # Gap Night - Recent Updates Log
+# Last Updated: Feb 3, 2026 (10:10 PM)
+
+## Automatic Listing Rules Engine - Feb 3, 2026 🚀 IN PROGRESS
+
+### Major Feature: Auto-Publish Gap Nights
+- **Database Schema** - Added `auto_listing_rules` table with comprehensive configuration options
+  - Hotel-specific rules (one rule per hotel)
+  - Hours before check-in trigger (default: 48 hours)
+  - Default discount percentage (default: 30%)
+  - Minimum price floor to prevent underselling
+  - Room type filtering (all or specific room types)
+  - Days of week filtering (weekdays/weekends/all)
+  - Blackout dates for special events
+  - Orphan night detection (only list if gap between bookings)
+  - Minimum gap duration requirement
+- **Storage Layer** - Implemented CRUD operations for auto listing rules
+  - `getAutoListingRule()` - Fetch rule for hotel
+  - `upsertAutoListingRule()` - Create or update rule
+  - `deleteAutoListingRule()` - Remove rule
+- **API Routes** - Created owner-routes.ts with authenticated endpoints
+  - GET `/api/owner/hotels/:hotelId/auto-listing-rule` - Fetch current rule
+  - POST `/api/owner/hotels/:hotelId/auto-listing-rule` - Save/update rule
+  - DELETE `/api/owner/hotels/:hotelId/auto-listing-rule` - Remove rule
+  - All routes protected with owner authentication middleware
+
+### Files Modified
+- `shared/schema.ts` - Added autoListingRules table, relations, types
+- `server/storage.ts` - Implemented auto listing rules methods
+- `server/owner-routes.ts` - NEW FILE - API routes for rules management
+
+### Next Steps (In Progress)
+- [ ] Create owner dashboard UI for rules configuration
+- [ ] Build cron job to auto-publish gap nights based on rules
+- [ ] Add orphan night detection algorithm
+- [ ] Comprehensive UI/UX polish across entire platform
+- [ ] Bug fixes and quality of life improvements
+
+### Intended Result
+Hotels can configure automatic listing rules once, then gap nights are automatically published without manual intervention. System runs daily to identify orphan nights and publish them according to hotel preferences.
+
+---
+
+# Gap Night - Recent Updates Log
 # Last Updated: Feb 3, 2026
 
 ## Google OAuth Fix - Feb 3, 2026 ✅

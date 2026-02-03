@@ -1,10 +1,10 @@
 import { 
-  deals, waitlist, hotelInquiries, hotelOwners, hotels, roomTypes, availability, publishedDeals, ownerSessions, bookings,
+  deals, waitlist, hotelInquiries, hotelOwners, hotels, roomTypes, availability, publishedDeals, ownerSessions, bookings, autoListingRules,
   type Deal, type InsertDeal, type InsertWaitlist, type InsertHotelInquiry, 
   type HotelOwner, type InsertHotelOwner, type HotelProfile, type InsertHotel,
   type RoomTypeRecord, type InsertRoomType, type AvailabilityRecord, type InsertAvailability,
   type PublishedDeal, type InsertPublishedDeal, type OwnerSession,
-  type Booking, type InsertBooking
+  type Booking, type InsertBooking, type AutoListingRule, type InsertAutoListingRule
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
@@ -73,6 +73,11 @@ export interface IStorage {
   createDeal(data: InsertDeal): Promise<Deal>;
   deleteDeal(dealId: string): Promise<void>;
   updateDeal(dealId: string, data: Partial<InsertDeal>): Promise<Deal | undefined>;
+  
+  // Auto listing rules methods
+  getAutoListingRule(hotelId: string): Promise<AutoListingRule | undefined>;
+  upsertAutoListingRule(data: InsertAutoListingRule): Promise<AutoListingRule>;
+  deleteAutoListingRule(hotelId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -514,6 +519,43 @@ export class DatabaseStorage implements IStorage {
       .where(eq(deals.id, dealId))
       .returning();
     return deal;
+  }
+
+  // ========================================
+  // AUTO LISTING RULES METHODS
+  // ========================================
+
+  async getAutoListingRule(hotelId: string): Promise<AutoListingRule | undefined> {
+    const [rule] = await db
+      .select()
+      .from(autoListingRules)
+      .where(eq(autoListingRules.hotelId, hotelId));
+    return rule;
+  }
+
+  async upsertAutoListingRule(data: InsertAutoListingRule): Promise<AutoListingRule> {
+    const existing = await this.getAutoListingRule(data.hotelId);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(autoListingRules)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(autoListingRules.hotelId, data.hotelId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(autoListingRules)
+        .values(data)
+        .returning();
+      return created;
+    }
+  }
+
+  async deleteAutoListingRule(hotelId: string): Promise<void> {
+    await db
+      .delete(autoListingRules)
+      .where(eq(autoListingRules.hotelId, hotelId));
   }
 }
 
@@ -1081,6 +1123,19 @@ export class MemStorage implements IStorage {
     const updated = { ...deal, ...data } as Deal;
     this.deals.set(dealId, updated);
     return updated;
+  }
+
+  // Auto listing rules stub methods for MemStorage
+  async getAutoListingRule(hotelId: string): Promise<AutoListingRule | undefined> {
+    return undefined;
+  }
+
+  async upsertAutoListingRule(data: InsertAutoListingRule): Promise<AutoListingRule> {
+    return data as AutoListingRule;
+  }
+
+  async deleteAutoListingRule(hotelId: string): Promise<void> {
+    return;
   }
 }
 

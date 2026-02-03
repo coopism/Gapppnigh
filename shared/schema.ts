@@ -78,6 +78,23 @@ export const publishedDeals = pgTable("published_deals", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Automatic listing rules for hotels
+export const autoListingRules = pgTable("auto_listing_rules", {
+  id: text("id").primaryKey(), // UUID
+  hotelId: text("hotel_id").notNull().references(() => hotels.id).unique(),
+  enabled: boolean("enabled").notNull().default(false),
+  hoursBeforeCheckin: integer("hours_before_checkin").notNull().default(48),
+  defaultDiscountPercent: integer("default_discount_percent").notNull().default(30),
+  minPriceFloor: integer("min_price_floor").notNull().default(50),
+  roomTypeIds: text("room_type_ids").array(), // null = all room types
+  daysOfWeek: text("days_of_week").array(), // ["MON", "TUE", ...] or null = all days
+  blackoutDates: text("blackout_dates").array(), // ["2026-12-25", "2026-12-31"]
+  requiresGap: boolean("requires_gap").notNull().default(true), // Only list if orphan night
+  minGapDuration: integer("min_gap_duration").notNull().default(1), // Min nights in gap
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const hotelOwnersRelations = relations(hotelOwners, ({ many }) => ({
   hotels: many(hotels),
@@ -91,6 +108,7 @@ export const hotelsRelations = relations(hotels, ({ one, many }) => ({
   }),
   roomTypes: many(roomTypes),
   publishedDeals: many(publishedDeals),
+  autoListingRule: one(autoListingRules),
 }));
 
 export const roomTypesRelations = relations(roomTypes, ({ one, many }) => ({
@@ -120,12 +138,20 @@ export const publishedDealsRelations = relations(publishedDeals, ({ one }) => ({
   }),
 }));
 
+export const autoListingRulesRelations = relations(autoListingRules, ({ one }) => ({
+  hotel: one(hotels, {
+    fields: [autoListingRules.hotelId],
+    references: [hotels.id],
+  }),
+}));
+
 // Insert schemas for new tables
 export const insertHotelOwnerSchema = createInsertSchema(hotelOwners).omit({ createdAt: true });
 export const insertHotelSchema = createInsertSchema(hotels).omit({ createdAt: true, updatedAt: true });
 export const insertRoomTypeSchema = createInsertSchema(roomTypes).omit({ createdAt: true, updatedAt: true });
 export const insertAvailabilitySchema = createInsertSchema(availability).omit({ createdAt: true, updatedAt: true });
 export const insertPublishedDealSchema = createInsertSchema(publishedDeals).omit({ createdAt: true, updatedAt: true });
+export const insertAutoListingRuleSchema = createInsertSchema(autoListingRules).omit({ createdAt: true, updatedAt: true });
 
 // Types for new tables
 export type HotelOwner = typeof hotelOwners.$inferSelect;
@@ -138,6 +164,8 @@ export type AvailabilityRecord = typeof availability.$inferSelect;
 export type InsertAvailability = z.infer<typeof insertAvailabilitySchema>;
 export type PublishedDeal = typeof publishedDeals.$inferSelect;
 export type InsertPublishedDeal = z.infer<typeof insertPublishedDealSchema>;
+export type AutoListingRule = typeof autoListingRules.$inferSelect;
+export type InsertAutoListingRule = z.infer<typeof insertAutoListingRuleSchema>;
 export type OwnerSession = typeof ownerSessions.$inferSelect;
 
 export const deals = pgTable("deals", {
