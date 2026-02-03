@@ -121,7 +121,7 @@ export default function OwnerLogin() {
             <div className="mt-6 pt-6 border-t border-border text-center">
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <Link href="/owner/register" className="text-primary hover:underline font-semibold">
+                <Link href="/list-your-hotel" className="text-primary hover:underline font-semibold">
                   Register here
                 </Link>
               </p>
