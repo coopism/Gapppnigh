@@ -26,15 +26,22 @@ export default function Login() {
   // Initialize Google Sign-In when script loads
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) return;
+    console.log('Google Client ID:', clientId);
+    if (!clientId) {
+      console.error('No Google Client ID found');
+      return;
+    }
 
     const initGoogle = () => {
+      console.log('Initializing Google Sign-In...');
       // @ts-ignore
       if (window.google?.accounts?.id) {
+        console.log('Google accounts.id found, initializing...');
         // @ts-ignore
         window.google.accounts.id.initialize({
           client_id: clientId,
           callback: async (response: any) => {
+            console.log('Google callback triggered');
             setIsLoading(true);
             setError(null);
             try {
@@ -61,6 +68,7 @@ export default function Login() {
 
         // Render the Google button
         if (googleButtonRef.current) {
+          console.log('Rendering Google button...');
           // @ts-ignore
           window.google.accounts.id.renderButton(googleButtonRef.current, {
             type: "standard",
@@ -70,6 +78,7 @@ export default function Login() {
             text: "continue_with",
             shape: "pill",
           });
+          console.log('Google button rendered successfully');
         }
         setGoogleLoaded(true);
       }
@@ -81,9 +90,11 @@ export default function Login() {
       initGoogle();
     } else {
       // Wait for script to load
+      console.log('Waiting for Google script to load...');
       const checkGoogle = setInterval(() => {
         // @ts-ignore
         if (window.google?.accounts?.id) {
+          console.log('Google script loaded!');
           clearInterval(checkGoogle);
           initGoogle();
         }
@@ -91,6 +102,7 @@ export default function Login() {
 
       // Timeout after 5 seconds - show manual button
       const timeout = setTimeout(() => {
+        console.error('Google script failed to load after 5 seconds');
         clearInterval(checkGoogle);
         setGoogleFailed(true);
       }, 5000);

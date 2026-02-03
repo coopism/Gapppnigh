@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Auth Debug</title>
+    <meta name="google-signin-client_id" content="517818988709-dcrs944f7kl129d8kfu7mod774dr5esl.apps.googleusercontent.com">
+</head>
+<body>
+    <h1>Google Auth Debug</h1>
+    <div id="google-signin-button"></div>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        window.onload = function() {
+            console.log('Window loaded');
+            console.log('Google available:', !!window.google);
+            console.log('Google accounts:', window.google?.accounts);
+            
+            if (window.google?.accounts?.id) {
+                console.log('Initializing Google Sign-In');
+                window.google.accounts.id.initialize({
+                    client_id: "517818988709-dcrs944f7kl129d8kfu7mod774dr5esl.apps.googleusercontent.com",
+                    callback: handleCredentialResponse
+                });
+                
+                window.google.accounts.id.renderButton(
+                    document.getElementById("google-signin-button"),
+                    { 
+                        theme: "outline", 
+                        size: "large",
+                        width: "100%",
+                        text: "continue_with",
+                        shape: "pill"
+                    }
+                );
+            } else {
+                console.error('Google accounts not available');
+            }
+        };
+        
+        function handleCredentialResponse(response) {
+            console.log("Credential response:", response);
+            // Decode the JWT
+            const parts = response.credential.split(".");
+            const payload = JSON.parse(atob(parts[1]));
+            console.log("User info:", payload);
+        }
+    </script>
+</body>
+</html>
