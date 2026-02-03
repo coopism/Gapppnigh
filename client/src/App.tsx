@@ -72,6 +72,7 @@ function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
     <Switch>
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
+      <Route path="/list-your-hotel" component={ListYourHotel} />
       <Route path="/owner/login" component={OwnerLogin} />
       <Route path="/owner/dashboard" component={OwnerDashboard} />
       <Route path="/owner/hotels/new" component={HotelNew} />
