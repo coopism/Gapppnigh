@@ -8,7 +8,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   User, Mail, Lock, Bell, Calendar, LogOut, Loader2, 
-  AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Shield, Check, X 
+  AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Shield, Check, X,
+  Star, Gift, TrendingUp, Award, MapPin, Clock, DollarSign, Tag, MessageSquare
 } from "lucide-react";
 import { 
   useAuthStore, logout, resendVerification, fetchCurrentUser,
@@ -215,16 +216,64 @@ export default function Account() {
     <div className="min-h-screen flex flex-col">
       <Navigation />
       
-      <main className="flex-1 container mx-auto px-4 py-8 max-w-4xl">
-        <div className="flex items-center justify-between mb-8">
+      <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold">My Account</h1>
-            <p className="text-muted-foreground">Manage your profile and settings</p>
+            <h1 className="text-3xl font-bold">Welcome back, {user.name || "Traveler"}!</h1>
+            <p className="text-muted-foreground">Manage your account, bookings, and preferences</p>
           </div>
           <Button variant="outline" onClick={handleLogout}>
             <LogOut className="w-4 h-4 mr-2" />
             Sign out
           </Button>
+        </div>
+
+        {/* Account Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Bookings</p>
+                  <p className="text-2xl font-bold">0</p>
+                </div>
+                <Calendar className="w-8 h-8 text-primary opacity-20" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Saved</p>
+                  <p className="text-2xl font-bold">$0</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-green-500 opacity-20" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Rewards Points</p>
+                  <p className="text-2xl font-bold">0</p>
+                </div>
+                <Award className="w-8 h-8 text-amber-500 opacity-20" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Reviews</p>
+                  <p className="text-2xl font-bold">0</p>
+                </div>
+                <Star className="w-8 h-8 text-yellow-500 opacity-20" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {!user.emailVerified && (
@@ -257,22 +306,30 @@ export default function Account() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 mb-6">
             <TabsTrigger value="profile">
               <User className="w-4 h-4 mr-2" />
               Profile
-            </TabsTrigger>
-            <TabsTrigger value="security">
-              <Shield className="w-4 h-4 mr-2" />
-              Security
             </TabsTrigger>
             <TabsTrigger value="bookings">
               <Calendar className="w-4 h-4 mr-2" />
               Bookings
             </TabsTrigger>
+            <TabsTrigger value="reviews">
+              <Star className="w-4 h-4 mr-2" />
+              Reviews
+            </TabsTrigger>
+            <TabsTrigger value="rewards">
+              <Gift className="w-4 h-4 mr-2" />
+              Rewards
+            </TabsTrigger>
             <TabsTrigger value="alerts">
               <Bell className="w-4 h-4 mr-2" />
               Alerts
+            </TabsTrigger>
+            <TabsTrigger value="security">
+              <Shield className="w-4 h-4 mr-2" />
+              Security
             </TabsTrigger>
           </TabsList>
 
@@ -524,6 +581,14 @@ export default function Account() {
             <AccountBookings csrfToken={csrfToken} />
           </TabsContent>
 
+          <TabsContent value="reviews">
+            <AccountReviews csrfToken={csrfToken} />
+          </TabsContent>
+
+          <TabsContent value="rewards">
+            <AccountRewards csrfToken={csrfToken} />
+          </TabsContent>
+
           <TabsContent value="alerts">
             <AccountAlerts csrfToken={csrfToken} />
           </TabsContent>
@@ -588,7 +653,7 @@ function AccountBookings({ csrfToken }: { csrfToken: string | null }) {
           <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="font-semibold mb-2">No bookings yet</h3>
           <p className="text-muted-foreground mb-4">Start exploring deals to book your first stay!</p>
-          <Link href="/">
+          <Link href="/deals">
             <Button>Browse deals</Button>
           </Link>
         </CardContent>
@@ -599,39 +664,347 @@ function AccountBookings({ csrfToken }: { csrfToken: string | null }) {
   return (
     <div className="space-y-4">
       {bookings.map((booking) => (
-        <Card key={booking.id}>
+        <Card key={booking.id} className="hover:shadow-lg transition-shadow">
           <CardContent className="p-6">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-semibold text-lg">{booking.hotelName}</h3>
-                <p className="text-muted-foreground">{booking.roomType}</p>
-                <div className="mt-2 text-sm">
-                  <p>
-                    <span className="font-medium">Check-in:</span> {booking.checkInDate}
-                  </p>
-                  <p>
-                    <span className="font-medium">Check-out:</span> {booking.checkOutDate}
-                  </p>
-                  <p>
-                    <span className="font-medium">Nights:</span> {booking.nights}
-                  </p>
+            <div className="flex flex-col md:flex-row justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="font-semibold text-lg">{booking.hotelName}</h3>
+                    <p className="text-muted-foreground flex items-center gap-1 mt-1">
+                      <MapPin className="w-3 h-3" />
+                      {booking.city}
+                    </p>
+                  </div>
+                  <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                    booking.status === "CONFIRMED" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" :
+                    booking.status === "CANCELLED" ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" :
+                    "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+                  }`}>
+                    {booking.status}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Check-in</p>
+                      <p className="font-medium">{booking.checkInDate}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Check-out</p>
+                      <p className="font-medium">{booking.checkOutDate}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Duration</p>
+                      <p className="font-medium">{booking.nights} night{booking.nights > 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Room</p>
+                      <p className="font-medium">{booking.roomType}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold">{booking.currency}{booking.totalPrice}</p>
-                <span className={`inline-block px-2 py-1 text-xs rounded-full mt-2 ${
-                  booking.status === "CONFIRMED" ? "bg-green-100 text-green-800" :
-                  booking.status === "CANCELLED" ? "bg-red-100 text-red-800" :
-                  "bg-gray-100 text-gray-800"
-                }`}>
-                  {booking.status}
-                </span>
-                <p className="text-xs text-muted-foreground mt-2">Ref: {booking.id}</p>
+              
+              <div className="flex flex-col items-end justify-between border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-6">
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Total paid</p>
+                  <p className="text-3xl font-bold text-primary">{booking.currency}{booking.totalPrice}</p>
+                </div>
+                <div className="space-y-2 w-full">
+                  <p className="text-xs text-muted-foreground text-right">Ref: {booking.id}</p>
+                  {booking.status === "CONFIRMED" && (
+                    <Button variant="outline" size="sm" className="w-full">
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Write Review
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
       ))}
+    </div>
+  );
+}
+
+// Reviews component
+function AccountReviews({ csrfToken }: { csrfToken: string | null }) {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Mock data for now - will be replaced with real API call
+    setTimeout(() => {
+      setReviews([]);
+      setIsLoading(false);
+    }, 500);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (reviews.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <Star className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="font-semibold mb-2">No reviews yet</h3>
+          <p className="text-muted-foreground mb-4">
+            Complete a stay to leave your first review and help other travelers!
+          </p>
+          <Link href="/deals">
+            <Button>Browse deals</Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {reviews.map((review) => (
+        <Card key={review.id}>
+          <CardContent className="p-6">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h3 className="font-semibold text-lg">{review.hotelName}</h3>
+                <p className="text-sm text-muted-foreground">{review.date}</p>
+              </div>
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-4 h-4 ${
+                      i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+            <p className="text-sm">{review.comment}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// Rewards component
+function AccountRewards({ csrfToken }: { csrfToken: string | null }) {
+  const [promoCode, setPromoCode] = useState("");
+  const [isApplying, setIsApplying] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [rewards, setRewards] = useState({
+    points: 0,
+    tier: "Bronze",
+    nextTierPoints: 500,
+    availableCoupons: [] as any[],
+  });
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return;
+    
+    setIsApplying(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/auth/promo-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken || "",
+        },
+        credentials: "include",
+        body: JSON.stringify({ code: promoCode }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setMessage({ type: "success", text: `Promo code applied! ${data.message}` });
+        setPromoCode("");
+      } else {
+        const data = await res.json();
+        setMessage({ type: "error", text: data.message || "Invalid promo code" });
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: "Network error. Please try again." });
+    }
+
+    setIsApplying(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Rewards Overview */}
+      <Card className="bg-gradient-to-br from-primary/10 to-purple-500/10 border-primary/20">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-2xl font-bold">GapNight Rewards</h3>
+              <p className="text-muted-foreground">Member Tier: <span className="font-semibold text-amber-600">{rewards.tier}</span></p>
+            </div>
+            <Award className="w-12 h-12 text-amber-500" />
+          </div>
+          
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span>Points Progress</span>
+                <span className="font-medium">{rewards.points} / {rewards.nextTierPoints}</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-primary to-purple-500 transition-all"
+                  style={{ width: `${(rewards.points / rewards.nextTierPoints) * 100}%` }}
+                />
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Earn {rewards.nextTierPoints - rewards.points} more points to reach Silver tier!
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Promo Code Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Tag className="w-5 h-5" />
+            Apply Promo Code
+          </CardTitle>
+          <CardDescription>
+            Have a promo code? Enter it here to unlock special discounts and rewards
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {message && (
+            <Alert variant={message.type === "error" ? "destructive" : "default"}>
+              {message.type === "success" ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
+              <AlertDescription>{message.text}</AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter promo code"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              className="uppercase"
+            />
+            <Button onClick={handleApplyPromo} disabled={isApplying || !promoCode.trim()}>
+              {isApplying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Applying...
+                </>
+              ) : (
+                "Apply"
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Available Coupons */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Gift className="w-5 h-5" />
+            Your Coupons
+          </CardTitle>
+          <CardDescription>Active discounts and vouchers</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {rewards.availableCoupons.length === 0 ? (
+            <div className="text-center py-8">
+              <Gift className="w-12 h-12 mx-auto text-muted-foreground mb-3 opacity-50" />
+              <p className="text-muted-foreground">No active coupons</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Coupons will appear here when you earn or redeem them
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rewards.availableCoupons.map((coupon) => (
+                <div key={coupon.id} className="border rounded-lg p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold">{coupon.title}</p>
+                    <p className="text-sm text-muted-foreground">{coupon.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Expires: {coupon.expiryDate}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-primary">{coupon.discount}</p>
+                    <Button size="sm" variant="outline" className="mt-2">Use Now</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* How to Earn Points */}
+      <Card>
+        <CardHeader>
+          <CardTitle>How to Earn Points</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">Book a stay</p>
+                <p className="text-sm text-muted-foreground">Earn 10 points per dollar spent</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Star className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">Write a review</p>
+                <p className="text-sm text-muted-foreground">Earn 50 bonus points</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">Refer a friend</p>
+                <p className="text-sm text-muted-foreground">Earn 100 points per referral</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
