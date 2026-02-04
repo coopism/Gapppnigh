@@ -1,4 +1,4 @@
-import { Router, type Request, Response } from "express";
+import type { Express, Request, Response } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
 import bcrypt from "bcrypt";
@@ -82,13 +82,13 @@ async function logAdminActivity(
   }
 }
 
-export function registerAdminRoutes(app: Router) {
+export function registerAdminRoutes(app: Express) {
   // ========================================
   // ADMIN AUTHENTICATION
   // ========================================
 
   // Admin login
-  app.post(`${ADMIN_PREFIX}/login`, async (req, res) => {
+  app.post(`${ADMIN_PREFIX}/login`, async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
       const ip = getClientIP(req);
@@ -155,7 +155,7 @@ export function registerAdminRoutes(app: Router) {
   });
 
   // Admin logout
-  app.post(`${ADMIN_PREFIX}/logout`, adminAuthMiddleware, async (req, res) => {
+  app.post(`${ADMIN_PREFIX}/logout`, adminAuthMiddleware, async (req: Request, res: Response) => {
     const sessionToken = req.cookies?.[ADMIN_SESSION_COOKIE];
     const admin = (req as any).admin;
 
@@ -169,7 +169,7 @@ export function registerAdminRoutes(app: Router) {
   });
 
   // Get current admin
-  app.get(`${ADMIN_PREFIX}/me`, adminAuthMiddleware, (req, res) => {
+  app.get(`${ADMIN_PREFIX}/me`, adminAuthMiddleware, (req: Request, res: Response) => {
     const admin = (req as any).admin;
     res.json({
       admin: {
@@ -186,7 +186,7 @@ export function registerAdminRoutes(app: Router) {
   // DASHBOARD STATISTICS
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/stats/overview`, adminAuthMiddleware, async (req, res) => {
+  app.get(`${ADMIN_PREFIX}/stats/overview`, adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       const admin = (req as any).admin;
 
@@ -257,7 +257,7 @@ export function registerAdminRoutes(app: Router) {
   });
 
   // Revenue analytics
-  app.get(`${ADMIN_PREFIX}/stats/revenue`, adminAuthMiddleware, async (req, res) => {
+  app.get(`${ADMIN_PREFIX}/stats/revenue`, adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       const { period = "30d" } = req.query;
       let daysAgo = 30;
@@ -302,7 +302,7 @@ export function registerAdminRoutes(app: Router) {
   // USER MANAGEMENT
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/users`, adminAuthMiddleware, async (req, res) => {
+  app.get(`${ADMIN_PREFIX}/users`, adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       const { page = "1", limit = "10", search } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -336,7 +336,7 @@ export function registerAdminRoutes(app: Router) {
     }
   });
 
-  app.get(`${ADMIN_PREFIX}/users/:userId`, adminAuthMiddleware, async (req, res) => {
+  app.get(`${ADMIN_PREFIX}/users/:userId`, adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
 
@@ -393,7 +393,7 @@ export function registerAdminRoutes(app: Router) {
   // BOOKING MANAGEMENT
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/bookings`, adminAuthMiddleware, async (req, res) => {
+  app.get(`${ADMIN_PREFIX}/bookings`, adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       const { status, page = "1", limit = "10" } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -426,7 +426,7 @@ export function registerAdminRoutes(app: Router) {
   // PROMO CODE MANAGEMENT
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/promo-codes`, adminAuthMiddleware, async (req, res) => {
+  app.get(`${ADMIN_PREFIX}/promo-codes`, adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       const codes = await db
         .select()
@@ -440,7 +440,7 @@ export function registerAdminRoutes(app: Router) {
     }
   });
 
-  app.post(`${ADMIN_PREFIX}/promo-codes`, adminAuthMiddleware, async (req, res) => {
+  app.post(`${ADMIN_PREFIX}/promo-codes`, adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       const admin = (req as any).admin;
       const { code, type, value, description, maxUses, expiresAt, hotelId } = req.body;
@@ -480,7 +480,7 @@ export function registerAdminRoutes(app: Router) {
     }
   });
 
-  app.delete(`${ADMIN_PREFIX}/promo-codes/:codeId`, adminAuthMiddleware, async (req, res) => {
+  app.delete(`${ADMIN_PREFIX}/promo-codes/:codeId`, adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       const admin = (req as any).admin;
       const { codeId } = req.params;
@@ -507,7 +507,7 @@ export function registerAdminRoutes(app: Router) {
   // ACTIVITY LOGS
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/activity-logs`, adminAuthMiddleware, async (req, res) => {
+  app.get(`${ADMIN_PREFIX}/activity-logs`, adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       const { page = "1", limit = "100" } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -537,7 +537,7 @@ export function registerAdminRoutes(app: Router) {
   // SYSTEM HEALTH
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/system/health`, adminAuthMiddleware, async (req, res) => {
+  app.get(`${ADMIN_PREFIX}/system/health`, adminAuthMiddleware, async (req: Request, res: Response) => {
     try {
       // Database connection check
       const dbHealthy = await db.select({ count: count() }).from(users).then(() => true).catch(() => false);
