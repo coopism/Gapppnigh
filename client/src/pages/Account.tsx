@@ -15,6 +15,7 @@ import {
   useAuthStore, logout, resendVerification, fetchCurrentUser,
   validatePassword, getPasswordStrength 
 } from "@/hooks/useAuth";
+import { useRewards } from "@/hooks/useRewards";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 
@@ -586,7 +587,7 @@ export default function Account() {
           </TabsContent>
 
           <TabsContent value="rewards">
-            <AccountRewards csrfToken={csrfToken} />
+            <AccountRewards />
           </TabsContent>
 
           <TabsContent value="alerts">
@@ -810,16 +811,14 @@ function AccountReviews({ csrfToken }: { csrfToken: string | null }) {
 }
 
 // Rewards component
-function AccountRewards({ csrfToken }: { csrfToken: string | null }) {
+function AccountRewards() {
+  const { rewards: rewardsData, isLoading, applyPromoCode, convertPointsToCredit, transactions } = useRewards();
   const [promoCode, setPromoCode] = useState("");
   const [isApplying, setIsApplying] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [rewards, setRewards] = useState({
-    points: 0,
-    tier: "Bronze",
-    nextTierPoints: 500,
-    availableCoupons: [] as any[],
-  });
+  const [pointsToConvert, setPointsToConvert] = useState("");
+  const [isConverting, setIsConverting] = useState(false);
+  const [convertMessage, setConvertMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -827,31 +826,55 @@ function AccountRewards({ csrfToken }: { csrfToken: string | null }) {
     setIsApplying(true);
     setMessage(null);
 
-    try {
-      const res = await fetch("/api/auth/promo-code", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken || "",
-        },
-        credentials: "include",
-        body: JSON.stringify({ code: promoCode }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setMessage({ type: "success", text: `Promo code applied! ${data.message}` });
-        setPromoCode("");
-      } else {
-        const data = await res.json();
-        setMessage({ type: "error", text: data.message || "Invalid promo code" });
-      }
-    } catch (err) {
-      setMessage({ type: "error", text: "Network error. Please try again." });
+    const result = await applyPromoCode(promoCode);
+    
+    if (result.success) {
+      setMessage({ type: "success", text: result.message || "Promo code applied!" });
+      setPromoCode("");
+    } else {
+      setMessage({ type: "error", text: result.message || "Invalid promo code" });
     }
 
     setIsApplying(false);
   };
+
+  const handleConvertPoints = async () => {
+    const points = parseInt(pointsToConvert);
+    if (isNaN(points) || points < 100) {
+      setConvertMessage({ type: "error", text: "Minimum 100 points required" });
+      return;
+    }
+
+    setIsConverting(true);
+    setConvertMessage(null);
+
+    const result = await convertPointsToCredit(points);
+    
+    if (result.success) {
+      setConvertMessage({ type: "success", text: result.message || "Points converted!" });
+      setPointsToConvert("");
+    } else {
+      setConvertMessage({ type: "error", text: result.message || "Conversion failed" });
+    }
+
+    setIsConverting(false);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!rewardsData) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Failed to load rewards data</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -861,7 +884,7 @@ function AccountRewards({ csrfToken }: { csrfToken: string | null }) {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-2xl font-bold">GapNight Rewards</h3>
-              <p className="text-muted-foreground">Member Tier: <span className="font-semibold text-amber-600">{rewards.tier}</span></p>
+              <p className="text-muted-foreground">Member Tier: <span className="font-semibold text-amber-600">{rewardsData.tier}</span></p>
             </div>
             <Award className="w-12 h-12 text-amber-500" />
           </div>
@@ -870,17 +893,17 @@ function AccountRewards({ csrfToken }: { csrfToken: string | null }) {
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span>Points Progress</span>
-                <span className="font-medium">{rewards.points} / {rewards.nextTierPoints}</span>
+                <span className="font-medium">{rewardsData.currentPoints} / {rewardsData.pointsToNextTier}</span>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-primary to-purple-500 transition-all"
-                  style={{ width: `${(rewards.points / rewards.nextTierPoints) * 100}%` }}
+                  style={{ width: `${rewardsData.pointsToNextTier > 0 ? (rewardsData.currentPoints / rewardsData.pointsToNextTier) * 100 : 0}%` }}
                 />
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              Earn {rewards.nextTierPoints - rewards.points} more points to reach Silver tier!
+              Earn {rewardsData.pointsToNextTier} more points to reach {rewardsData.nextTier} tier!
             </p>
           </div>
         </CardContent>
@@ -940,7 +963,8 @@ function AccountRewards({ csrfToken }: { csrfToken: string | null }) {
           <CardDescription>Active discounts and vouchers</CardDescription>
         </CardHeader>
         <CardContent>
-          {rewards.availableCoupons.length === 0 ? (
+          {/* No coupons system yet - placeholder */}
+          {true ? (
             <div className="text-center py-8">
               <Gift className="w-12 h-12 mx-auto text-muted-foreground mb-3 opacity-50" />
               <p className="text-muted-foreground">No active coupons</p>
@@ -950,7 +974,8 @@ function AccountRewards({ csrfToken }: { csrfToken: string | null }) {
             </div>
           ) : (
             <div className="space-y-3">
-              {rewards.availableCoupons.map((coupon) => (
+              {/* Coupons will be mapped here when implemented */}
+              {[].map((coupon: any) => (
                 <div key={coupon.id} className="border rounded-lg p-4 flex items-center justify-between">
                   <div>
                     <p className="font-semibold">{coupon.title}</p>
@@ -960,6 +985,133 @@ function AccountRewards({ csrfToken }: { csrfToken: string | null }) {
                   <div className="text-right">
                     <p className="text-2xl font-bold text-primary">{coupon.discount}</p>
                     <Button size="sm" variant="outline" className="mt-2">Use Now</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Points & Credit Balance */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Available Points
+            </CardTitle>
+            <CardDescription>Convert points to credit for future bookings</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center py-4">
+              <p className="text-4xl font-bold text-primary">{rewardsData.currentPoints}</p>
+              <p className="text-sm text-muted-foreground mt-1">Available Points</p>
+            </div>
+            
+            {convertMessage && (
+              <Alert variant={convertMessage.type === "error" ? "destructive" : "default"}>
+                {convertMessage.type === "success" ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                <AlertDescription>{convertMessage.text}</AlertDescription>
+              </Alert>
+            )}
+            
+            <div className="space-y-2">
+              <Label>Convert to Credit (100 pts = $1)</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  placeholder="Points to convert"
+                  value={pointsToConvert}
+                  onChange={(e) => setPointsToConvert(e.target.value)}
+                  min="100"
+                  step="100"
+                />
+                <Button onClick={handleConvertPoints} disabled={isConverting}>
+                  {isConverting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Converting...
+                    </>
+                  ) : (
+                    "Convert"
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Minimum 100 points required</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5" />
+              Credit Balance
+            </CardTitle>
+            <CardDescription>Use credit on your next booking</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-4">
+              <p className="text-4xl font-bold text-green-600">
+                ${(rewardsData.creditBalance / 100).toFixed(2)}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">Available Credit</p>
+            </div>
+            <div className="mt-4 p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                Your credit will be automatically applied to your next booking at checkout.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Transactions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5" />
+            Recent Transactions
+          </CardTitle>
+          <CardDescription>Your points and rewards activity</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {transactions.length === 0 ? (
+            <div className="text-center py-8">
+              <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-3 opacity-50" />
+              <p className="text-muted-foreground">No transactions yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Start earning points by booking stays and writing reviews!
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {transactions.slice(0, 10).map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      transaction.points > 0 ? 'bg-green-100' : 'bg-red-100'
+                    }`}>
+                      {transaction.points > 0 ? (
+                        <TrendingUp className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <DollarSign className="w-5 h-5 text-red-600" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{transaction.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(transaction.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`font-semibold ${transaction.points > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {transaction.points > 0 ? '+' : ''}{transaction.points} pts
                   </div>
                 </div>
               ))}
@@ -981,7 +1133,7 @@ function AccountRewards({ csrfToken }: { csrfToken: string | null }) {
               </div>
               <div>
                 <p className="font-medium">Book a stay</p>
-                <p className="text-sm text-muted-foreground">Earn 10 points per dollar spent</p>
+                <p className="text-sm text-muted-foreground">Earn 5 points per dollar spent</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -995,11 +1147,11 @@ function AccountRewards({ csrfToken }: { csrfToken: string | null }) {
             </div>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-5 h-5 text-primary" />
+                <Tag className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="font-medium">Refer a friend</p>
-                <p className="text-sm text-muted-foreground">Earn 100 points per referral</p>
+                <p className="font-medium">Use promo codes</p>
+                <p className="text-sm text-muted-foreground">Unlock special point bonuses</p>
               </div>
             </div>
           </div>

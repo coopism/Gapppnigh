@@ -25,11 +25,13 @@ import {
   USER_SESSION_COOKIE,
   CSRF_COOKIE,
 } from "./user-auth";
-import { signupSchema, loginSchema, passwordSchema, bookings, userAlertPreferences } from "@shared/schema";
+import { signupSchema, loginSchema, passwordSchema, bookings, userAlertPreferences, hotelReviews } from "@shared/schema";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./user-email";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { storage } from "./storage";
+import * as rewards from "./rewards";
 
 // Rate limiting stores (in-memory for MVP)
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -582,6 +584,194 @@ export function registerUserAuthRoutes(app: Express) {
     } catch (err) {
       console.error("Update alerts error:", err);
       sendError(res, 500, "Failed to update alert preferences");
+    }
+  });
+
+  // ========================================
+  // REWARDS SYSTEM
+  // ========================================
+  
+  // Get user rewards data
+  app.get("/api/auth/rewards", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      
+      let userRewards = await storage.getUserRewards(user.id);
+      
+      // Create rewards account if it doesn't exist
+      if (!userRewards) {
+        userRewards = await storage.createUserRewards({
+          id: uuidv4(),
+          userId: user.id,
+          totalPointsEarned: 0,
+          currentPoints: 0,
+          creditBalance: 0,
+          tier: "Bronze",
+        });
+      }
+      
+      // Get next tier info
+      const nextTierInfo = rewards.getNextTierInfo(userRewards.tier, userRewards.totalPointsEarned);
+      
+      res.json({
+        rewards: {
+          ...userRewards,
+          nextTier: nextTierInfo.nextTier,
+          pointsToNextTier: nextTierInfo.pointsNeeded,
+        },
+      });
+    } catch (err) {
+      console.error("Get rewards error:", err);
+      sendError(res, 500, "Failed to get rewards data");
+    }
+  });
+  
+  // Get rewards transactions history
+  app.get("/api/auth/rewards/transactions", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const transactions = await storage.getRewardsTransactions(user.id);
+      res.json({ transactions });
+    } catch (err) {
+      console.error("Get transactions error:", err);
+      sendError(res, 500, "Failed to get transactions");
+    }
+  });
+  
+  // Convert points to credit
+  app.post("/api/auth/rewards/convert", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { points } = req.body;
+      
+      if (!points || typeof points !== "number" || points < 100) {
+        return sendError(res, 400, "Minimum 100 points required to convert", "points");
+      }
+      
+      const result = await rewards.convertPointsToCredit(storage, user.id, points);
+      
+      if (!result.success) {
+        return sendError(res, 400, result.message || "Conversion failed");
+      }
+      
+      res.json({ 
+        success: true, 
+        message: result.message,
+        creditAdded: result.creditAdded,
+      });
+    } catch (err) {
+      console.error("Convert points error:", err);
+      sendError(res, 500, "Failed to convert points");
+    }
+  });
+  
+  // Apply promo code
+  app.post("/api/auth/promo-code", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { code } = req.body;
+      
+      if (!code || typeof code !== "string") {
+        return sendError(res, 400, "Promo code is required", "code");
+      }
+      
+      const result = await rewards.applyPromoCode(storage, user.id, code.toUpperCase());
+      
+      if (!result.success) {
+        return sendError(res, 400, result.message || "Invalid promo code");
+      }
+      
+      res.json({
+        success: true,
+        message: result.message,
+        promoCode: result.promoCode,
+      });
+    } catch (err) {
+      console.error("Apply promo code error:", err);
+      sendError(res, 500, "Failed to apply promo code");
+    }
+  });
+  
+  // Submit hotel review
+  app.post("/api/auth/reviews", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { bookingId, rating, comment } = req.body;
+      
+      // Validate inputs
+      if (!bookingId || typeof bookingId !== "string") {
+        return sendError(res, 400, "Booking ID is required", "bookingId");
+      }
+      
+      if (!rating || typeof rating !== "number" || rating < 1 || rating > 5) {
+        return sendError(res, 400, "Rating must be between 1 and 5", "rating");
+      }
+      
+      if (!comment || typeof comment !== "string" || comment.trim().length < 10) {
+        return sendError(res, 400, "Review must be at least 10 characters", "comment");
+      }
+      
+      // Verify booking exists and belongs to user
+      const [booking] = await db.select()
+        .from(bookings)
+        .where(and(
+          eq(bookings.id, bookingId),
+          eq(bookings.userId, user.id)
+        ))
+        .limit(1);
+      
+      if (!booking) {
+        return sendError(res, 404, "Booking not found");
+      }
+      
+      // Check if review already submitted
+      if (booking.reviewSubmitted) {
+        return sendError(res, 400, "Review already submitted for this booking");
+      }
+      
+      // Create review
+      const review = await storage.createHotelReview({
+        id: uuidv4(),
+        userId: user.id,
+        bookingId: booking.id,
+        hotelName: booking.hotelName,
+        rating,
+        comment: comment.trim(),
+        isVerified: true,
+      });
+      
+      // Award review points
+      const pointsResult = await rewards.awardReviewPoints(
+        storage,
+        user.id,
+        review.id,
+        booking.hotelName
+      );
+      
+      // Mark booking as reviewed
+      await storage.markBookingReviewSubmitted(bookingId);
+      
+      res.json({
+        success: true,
+        message: `Review submitted! You earned ${pointsResult.pointsAwarded} points!`,
+        review,
+        pointsAwarded: pointsResult.pointsAwarded,
+      });
+    } catch (err) {
+      console.error("Submit review error:", err);
+      sendError(res, 500, "Failed to submit review");
+    }
+  });
+  
+  // Get user reviews
+  app.get("/api/auth/reviews", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const reviews = await storage.getUserReviews(user.id);
+      res.json({ reviews });
+    } catch (err) {
+      console.error("Get reviews error:", err);
+      sendError(res, 500, "Failed to get reviews");
     }
   });
 
