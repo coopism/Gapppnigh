@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   User, Mail, Lock, Bell, Calendar, LogOut, Loader2, 
   AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Shield, Check, X,
@@ -22,7 +24,14 @@ import { Footer } from "@/components/Footer";
 export default function Account() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading, csrfToken } = useAuthStore();
+  const { rewards: rewardsData, reviews } = useRewards();
   const [activeTab, setActiveTab] = useState("profile");
+  const [accountStats, setAccountStats] = useState({
+    totalBookings: 0,
+    totalSaved: 0,
+    rewardsPoints: 0,
+    reviewsCount: 0,
+  });
   
   // Profile state
   const [name, setName] = useState("");
@@ -48,6 +57,37 @@ export default function Account() {
   
   const passwordValidation = validatePassword(newPassword);
   const passwordStrength = getPasswordStrength(newPassword);
+
+  // Calculate account stats from real data
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/auth/bookings", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          const bookings = data.bookings || [];
+          
+          // Calculate total saved (sum of discounts from deals)
+          const totalSaved = bookings.reduce((sum: number, booking: any) => {
+            return sum + (booking.discountAmount || 0);
+          }, 0);
+          
+          setAccountStats({
+            totalBookings: bookings.length,
+            totalSaved: totalSaved / 100, // Convert cents to dollars
+            rewardsPoints: rewardsData?.currentPoints || 0,
+            reviewsCount: reviews?.length || 0,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch account stats:", err);
+      }
+    };
+
+    if (user) {
+      fetchStats();
+    }
+  }, [user, rewardsData, reviews]);
 
   useEffect(() => {
     if (user) {
@@ -236,7 +276,7 @@ export default function Account() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Bookings</p>
-                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-2xl font-bold">{accountStats.totalBookings}</p>
                 </div>
                 <Calendar className="w-8 h-8 text-primary opacity-20" />
               </div>
@@ -247,7 +287,7 @@ export default function Account() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Saved</p>
-                  <p className="text-2xl font-bold">$0</p>
+                  <p className="text-2xl font-bold">${accountStats.totalSaved.toFixed(2)}</p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-green-500 opacity-20" />
               </div>
@@ -258,7 +298,7 @@ export default function Account() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Rewards Points</p>
-                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-2xl font-bold">{accountStats.rewardsPoints}</p>
                 </div>
                 <Award className="w-8 h-8 text-amber-500 opacity-20" />
               </div>
@@ -269,7 +309,7 @@ export default function Account() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Reviews</p>
-                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-2xl font-bold">{accountStats.reviewsCount}</p>
                 </div>
                 <Star className="w-8 h-8 text-yellow-500 opacity-20" />
               </div>
@@ -603,9 +643,16 @@ export default function Account() {
 
 // Bookings component
 function AccountBookings({ csrfToken }: { csrfToken: string | null }) {
+  const { submitReview } = useRewards();
   const [bookings, setBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     fetchBookings();
@@ -624,6 +671,38 @@ function AccountBookings({ csrfToken }: { csrfToken: string | null }) {
       setError("Network error");
     }
     setIsLoading(false);
+  };
+
+  const handleOpenReviewDialog = (booking: any) => {
+    setSelectedBooking(booking);
+    setReviewRating(0);
+    setReviewComment("");
+    setReviewMessage(null);
+    setReviewDialogOpen(true);
+  };
+
+  const handleSubmitReview = async () => {
+    if (!selectedBooking || reviewRating === 0 || reviewComment.trim().length < 10) {
+      setReviewMessage({ type: "error", text: "Please provide a rating and at least 10 characters of feedback" });
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    setReviewMessage(null);
+
+    const result = await submitReview(selectedBooking.id, reviewRating, reviewComment);
+
+    if (result.success) {
+      setReviewMessage({ type: "success", text: result.message || "Review submitted successfully!" });
+      setTimeout(() => {
+        setReviewDialogOpen(false);
+        fetchBookings(); // Refresh bookings to update reviewSubmitted status
+      }, 1500);
+    } else {
+      setReviewMessage({ type: "error", text: result.message || "Failed to submit review" });
+    }
+
+    setIsSubmittingReview(false);
   };
 
   if (isLoading) {
@@ -725,11 +804,22 @@ function AccountBookings({ csrfToken }: { csrfToken: string | null }) {
                 </div>
                 <div className="space-y-2 w-full">
                   <p className="text-xs text-muted-foreground text-right">Ref: {booking.id}</p>
-                  {booking.status === "CONFIRMED" && (
-                    <Button variant="outline" size="sm" className="w-full">
+                  {booking.status === "CONFIRMED" && !booking.reviewSubmitted && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                      onClick={() => handleOpenReviewDialog(booking)}
+                    >
                       <MessageSquare className="w-4 h-4 mr-2" />
                       Write Review
                     </Button>
+                  )}
+                  {booking.reviewSubmitted && (
+                    <div className="text-xs text-green-600 flex items-center justify-end gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Review submitted
+                    </div>
                   )}
                 </div>
               </div>
@@ -737,22 +827,98 @@ function AccountBookings({ csrfToken }: { csrfToken: string | null }) {
           </CardContent>
         </Card>
       ))}
+
+      {/* Write Review Dialog */}
+      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Write a Review</DialogTitle>
+            <DialogDescription>
+              {selectedBooking && `Share your experience at ${selectedBooking.hotelName}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {reviewMessage && (
+              <Alert variant={reviewMessage.type === "error" ? "destructive" : "default"}>
+                {reviewMessage.type === "success" ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                <AlertDescription>{reviewMessage.text}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label>Rating *</Label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <button
+                    key={rating}
+                    type="button"
+                    onClick={() => setReviewRating(rating)}
+                    className="focus:outline-none"
+                  >
+                    <Star
+                      className={`w-8 h-8 cursor-pointer transition-colors ${
+                        rating <= reviewRating
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-gray-300 hover:text-gray-400"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="review-comment">Your Review *</Label>
+              <Textarea
+                id="review-comment"
+                placeholder="Share your experience... (minimum 10 characters)"
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                rows={5}
+                className="resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                {reviewComment.length} characters
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReviewDialogOpen(false)}
+              disabled={isSubmittingReview}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitReview}
+              disabled={isSubmittingReview || reviewRating === 0 || reviewComment.trim().length < 10}
+            >
+              {isSubmittingReview ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Review"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 // Reviews component
 function AccountReviews({ csrfToken }: { csrfToken: string | null }) {
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Mock data for now - will be replaced with real API call
-    setTimeout(() => {
-      setReviews([]);
-      setIsLoading(false);
-    }, 500);
-  }, []);
+  const { reviews, isLoading } = useRewards();
 
   if (isLoading) {
     return (
@@ -789,7 +955,7 @@ function AccountReviews({ csrfToken }: { csrfToken: string | null }) {
             <div className="flex justify-between items-start mb-3">
               <div>
                 <h3 className="font-semibold text-lg">{review.hotelName}</h3>
-                <p className="text-sm text-muted-foreground">{review.date}</p>
+                <p className="text-sm text-muted-foreground">{new Date(review.createdAt).toLocaleDateString()}</p>
               </div>
               <div className="flex items-center gap-1">
                 {[...Array(5)].map((_, i) => (
