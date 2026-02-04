@@ -1,5 +1,6 @@
 import { 
   deals, waitlist, hotelInquiries, hotelOwners, hotels, roomTypes, availability, publishedDeals, ownerSessions, bookings, autoListingRules,
+  userRewards, rewardsTransactions, hotelReviews, promoCodes, promoCodeUsage,
   type Deal, type InsertDeal, type InsertWaitlist, type InsertHotelInquiry, 
   type HotelOwner, type InsertHotelOwner, type HotelProfile, type InsertHotel,
   type RoomTypeRecord, type InsertRoomType, type AvailabilityRecord, type InsertAvailability,
@@ -7,7 +8,7 @@ import {
   type Booking, type InsertBooking, type AutoListingRule, type InsertAutoListingRule
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
+import { eq, and, gte, lte, inArray, sql, desc } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 
@@ -78,6 +79,22 @@ export interface IStorage {
   getAutoListingRule(hotelId: string): Promise<AutoListingRule | undefined>;
   upsertAutoListingRule(data: InsertAutoListingRule): Promise<AutoListingRule>;
   deleteAutoListingRule(hotelId: string): Promise<void>;
+  
+  // Rewards system methods
+  getUserRewards(userId: string): Promise<any | undefined>;
+  createUserRewards(data: any): Promise<any>;
+  updateUserRewards(userId: string, data: Partial<any>): Promise<void>;
+  createRewardsTransaction(data: any): Promise<any>;
+  getRewardsTransactions(userId: string): Promise<any[]>;
+  createHotelReview(data: any): Promise<any>;
+  getUserReviews(userId: string): Promise<any[]>;
+  getPromoCodeByCode(code: string): Promise<any | undefined>;
+  hasUserUsedPromoCode(userId: string, promoCodeId: string): Promise<boolean>;
+  createPromoCodeUsage(data: any): Promise<any>;
+  incrementPromoCodeUsage(promoCodeId: string): Promise<void>;
+  getUserBookings(userId: string): Promise<Booking[]>;
+  markBookingPointsAwarded(bookingId: string): Promise<void>;
+  markBookingReviewSubmitted(bookingId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -556,6 +573,114 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(autoListingRules)
       .where(eq(autoListingRules.hotelId, hotelId));
+  }
+
+  // ========================================
+  // REWARDS SYSTEM METHODS
+  // ========================================
+
+  async getUserRewards(userId: string): Promise<any | undefined> {
+    const [result] = await db
+      .select()
+      .from(userRewards)
+      .where(eq(userRewards.userId, userId))
+      .limit(1);
+    return result;
+  }
+
+  async createUserRewards(data: any): Promise<any> {
+    const [result] = await db.insert(userRewards).values(data).returning();
+    return result;
+  }
+
+  async updateUserRewards(userId: string, data: Partial<any>): Promise<void> {
+    await db
+      .update(userRewards)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(userRewards.userId, userId));
+  }
+
+  async createRewardsTransaction(data: any): Promise<any> {
+    const [result] = await db.insert(rewardsTransactions).values(data).returning();
+    return result;
+  }
+
+  async getRewardsTransactions(userId: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(rewardsTransactions)
+      .where(eq(rewardsTransactions.userId, userId))
+      .orderBy(desc(rewardsTransactions.createdAt));
+  }
+
+  async createHotelReview(data: any): Promise<any> {
+    const [result] = await db.insert(hotelReviews).values(data).returning();
+    return result;
+  }
+
+  async getUserReviews(userId: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(hotelReviews)
+      .where(eq(hotelReviews.userId, userId))
+      .orderBy(desc(hotelReviews.createdAt));
+  }
+
+  async getPromoCodeByCode(code: string): Promise<any | undefined> {
+    const [result] = await db
+      .select()
+      .from(promoCodes)
+      .where(eq(promoCodes.code, code))
+      .limit(1);
+    return result;
+  }
+
+  async hasUserUsedPromoCode(userId: string, promoCodeId: string): Promise<boolean> {
+    const [result] = await db
+      .select()
+      .from(promoCodeUsage)
+      .where(
+        and(
+          eq(promoCodeUsage.userId, userId),
+          eq(promoCodeUsage.promoCodeId, promoCodeId)
+        )
+      )
+      .limit(1);
+    return !!result;
+  }
+
+  async createPromoCodeUsage(data: any): Promise<any> {
+    const [result] = await db.insert(promoCodeUsage).values(data).returning();
+    return result;
+  }
+
+  async incrementPromoCodeUsage(promoCodeId: string): Promise<void> {
+    await db
+      .update(promoCodes)
+      .set({ currentUses: sql`${promoCodes.currentUses} + 1` })
+      .where(eq(promoCodes.id, promoCodeId));
+  }
+
+  async getUserBookings(userId: string): Promise<Booking[]> {
+    return await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.userId, userId))
+      .orderBy(desc(bookings.createdAt));
+  }
+
+  async markBookingPointsAwarded(bookingId: string): Promise<void> {
+    await db
+      .update(bookings)
+      .set({ pointsAwarded: true })
+      .where(eq(bookings.id, bookingId));
+  }
+
+  async markBookingReviewSubmitted(bookingId: string): Promise<void> {
+    await db
+      .update(bookings)
+      .set({ reviewSubmitted: true })
+      .where(eq(bookings.id, bookingId));
   }
 }
 
@@ -1135,6 +1260,63 @@ export class MemStorage implements IStorage {
   }
 
   async deleteAutoListingRule(hotelId: string): Promise<void> {
+    return;
+  }
+
+  // Rewards system stub methods for MemStorage
+  async getUserRewards(userId: string): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async createUserRewards(data: any): Promise<any> {
+    return data;
+  }
+
+  async updateUserRewards(userId: string, data: Partial<any>): Promise<void> {
+    return;
+  }
+
+  async createRewardsTransaction(data: any): Promise<any> {
+    return data;
+  }
+
+  async getRewardsTransactions(userId: string): Promise<any[]> {
+    return [];
+  }
+
+  async createHotelReview(data: any): Promise<any> {
+    return data;
+  }
+
+  async getUserReviews(userId: string): Promise<any[]> {
+    return [];
+  }
+
+  async getPromoCodeByCode(code: string): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async hasUserUsedPromoCode(userId: string, promoCodeId: string): Promise<boolean> {
+    return false;
+  }
+
+  async createPromoCodeUsage(data: any): Promise<any> {
+    return data;
+  }
+
+  async incrementPromoCodeUsage(promoCodeId: string): Promise<void> {
+    return;
+  }
+
+  async getUserBookings(userId: string): Promise<Booking[]> {
+    return [];
+  }
+
+  async markBookingPointsAwarded(bookingId: string): Promise<void> {
+    return;
+  }
+
+  async markBookingReviewSubmitted(bookingId: string): Promise<void> {
     return;
   }
 }

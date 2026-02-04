@@ -282,6 +282,7 @@ export const bookings = pgTable("bookings", {
   userId: text("user_id"), // Optional - linked to user account if logged in
   dealId: text("deal_id").notNull(),
   hotelName: text("hotel_name").notNull(),
+  hotelCity: text("hotel_city"),
   roomType: text("room_type").notNull(),
   checkInDate: text("check_in_date").notNull(),
   checkOutDate: text("check_out_date").notNull(),
@@ -296,6 +297,8 @@ export const bookings = pgTable("bookings", {
   currency: text("currency").notNull().default("$"),
   status: text("status").notNull().default("CONFIRMED"), // CONFIRMED | CANCELLED | COMPLETED
   emailSent: boolean("email_sent").notNull().default(false),
+  pointsAwarded: boolean("points_awarded").notNull().default(false),
+  reviewSubmitted: boolean("review_submitted").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -368,6 +371,62 @@ export const userAlertPreferences = pgTable("user_alert_preferences", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ========================================
+// REWARDS SYSTEM TABLES
+// ========================================
+
+export const userRewards = pgTable("user_rewards", {
+  id: text("id").primaryKey(), // UUID
+  userId: text("user_id").notNull().references(() => users.id).unique(),
+  totalPointsEarned: integer("total_points_earned").notNull().default(0),
+  currentPoints: integer("current_points").notNull().default(0), // Available points
+  creditBalance: integer("credit_balance").notNull().default(0), // In cents (100 = $1)
+  tier: text("tier").notNull().default("Bronze"), // Bronze | Silver | Gold | Platinum
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const rewardsTransactions = pgTable("rewards_transactions", {
+  id: text("id").primaryKey(), // UUID
+  userId: text("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(), // EARN | REDEEM | CONVERT_TO_CREDIT
+  points: integer("points").notNull(), // Positive for earn, negative for redeem
+  description: text("description").notNull(),
+  bookingId: text("booking_id"), // Reference to booking if applicable
+  reviewId: text("review_id"), // Reference to review if applicable
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const hotelReviews = pgTable("hotel_reviews", {
+  id: text("id").primaryKey(), // UUID
+  userId: text("user_id").notNull().references(() => users.id),
+  bookingId: text("booking_id").notNull().references(() => bookings.id),
+  hotelName: text("hotel_name").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment").notNull(),
+  isVerified: boolean("is_verified").notNull().default(true), // Verified stay
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const promoCodes = pgTable("promo_codes", {
+  id: text("id").primaryKey(), // UUID
+  code: text("code").notNull().unique(),
+  type: text("type").notNull(), // PERCENTAGE | FIXED_AMOUNT | POINTS
+  value: integer("value").notNull(), // Percentage (e.g., 10 for 10%) or cents or points
+  maxUses: integer("max_uses"), // null = unlimited
+  currentUses: integer("current_uses").notNull().default(0),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const promoCodeUsage = pgTable("promo_code_usage", {
+  id: text("id").primaryKey(), // UUID
+  userId: text("user_id").notNull().references(() => users.id),
+  promoCodeId: text("promo_code_id").notNull().references(() => promoCodes.id),
+  usedAt: timestamp("used_at").defaultNow().notNull(),
+});
+
 // User relations
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(userSessions),
@@ -402,6 +461,13 @@ export const insertUserSessionSchema = createInsertSchema(userSessions).omit({ c
 export const insertEmailTokenSchema = createInsertSchema(emailTokens).omit({ createdAt: true });
 export const insertUserAlertPreferencesSchema = createInsertSchema(userAlertPreferences).omit({ createdAt: true, updatedAt: true });
 
+// Insert schemas for rewards tables
+export const insertUserRewardsSchema = createInsertSchema(userRewards).omit({ createdAt: true, updatedAt: true });
+export const insertRewardsTransactionSchema = createInsertSchema(rewardsTransactions).omit({ createdAt: true });
+export const insertHotelReviewSchema = createInsertSchema(hotelReviews).omit({ createdAt: true });
+export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({ createdAt: true });
+export const insertPromoCodeUsageSchema = createInsertSchema(promoCodeUsage).omit({ usedAt: true });
+
 // Types for user tables
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -411,6 +477,18 @@ export type EmailToken = typeof emailTokens.$inferSelect;
 export type InsertEmailToken = z.infer<typeof insertEmailTokenSchema>;
 export type UserAlertPreference = typeof userAlertPreferences.$inferSelect;
 export type InsertUserAlertPreference = z.infer<typeof insertUserAlertPreferencesSchema>;
+
+// Types for rewards tables
+export type UserRewards = typeof userRewards.$inferSelect;
+export type InsertUserRewards = z.infer<typeof insertUserRewardsSchema>;
+export type RewardsTransaction = typeof rewardsTransactions.$inferSelect;
+export type InsertRewardsTransaction = z.infer<typeof insertRewardsTransactionSchema>;
+export type HotelReview = typeof hotelReviews.$inferSelect;
+export type InsertHotelReview = z.infer<typeof insertHotelReviewSchema>;
+export type PromoCode = typeof promoCodes.$inferSelect;
+export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
+export type PromoCodeUsage = typeof promoCodeUsage.$inferSelect;
+export type InsertPromoCodeUsage = z.infer<typeof insertPromoCodeUsageSchema>;
 
 // Password validation schema
 export const passwordSchema = z.string()
