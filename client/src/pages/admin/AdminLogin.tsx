@@ -43,17 +43,19 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+      <Card className="w-full max-w-md shadow-2xl border-2 border-primary/20">
+        <CardHeader className="text-center space-y-4">
           <div className="flex justify-center mb-4">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <Shield className="w-12 h-12 text-primary" />
+            <div className="p-4 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full shadow-lg">
+              <Shield className="w-14 h-14 text-primary animate-pulse" />
             </div>
           </div>
-          <CardTitle className="text-2xl">Admin Access</CardTitle>
-          <CardDescription>
-            Secure administrative portal
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">
+            Admin Access
+          </CardTitle>
+          <CardDescription className="text-base">
+            🔒 Secure administrative portal
           </CardDescription>
         </CardHeader>
         <CardContent>

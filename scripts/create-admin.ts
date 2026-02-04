@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { db } from "../server/db";
 import { adminUsers } from "@shared/schema";
 import bcrypt from "bcrypt";
