@@ -1,8 +1,81 @@
 # Gap Night - Recent Updates Log
-# Last Updated: Feb 5, 2026 (2:20 AM)
+# Last Updated: 2026-02-05 02:45 AM UTC+11
 
-## Account Page Redesign - Feb 5, 2026 ✅ COMPLETED
+## Functional Rewards System - Feb 5, 2026 
+### Major Feature: Complete Rewards & Points System
+- **Database Schema** - Added 5 new tables for comprehensive rewards tracking
+  - `user_rewards` - Points balance, tier, credit balance per user
+  - `rewards_transactions` - Complete transaction history (EARN, REDEEM, CONVERT_TO_CREDIT)
+  - `hotel_reviews` - User reviews with ratings and verified status
+  - `promo_codes` - Promotional codes (POINTS, PERCENTAGE, FIXED_AMOUNT types)
+  - `promo_code_usage` - Track code redemptions per user
+  - Updated `bookings` table with `pointsAwarded`, `reviewSubmitted`, `hotelCity` fields
+  
+- **Business Logic** (`server/rewards.ts`) - Balanced points economy
+  - **Points Earning Rate**: 5 points per $1 spent (not overpowered!)
+  - **Review Bonus**: 50 points per verified review
+  - **Tier System**: Bronze (0) → Silver (500) → Gold (2000) → Platinum (5000)
+  - **Credit Conversion**: 100 points = $1 credit (minimum 100 points)
+  - **Functions**: `awardBookingPoints()`, `awardReviewPoints()`, `convertPointsToCredit()`, `applyCreditToBooking()`, `applyPromoCode()`
+  - **Tier Calculation**: Automatic tier upgrades based on total points earned
+  
+- **Storage Layer** (`server/storage.ts`) - 14 new database methods
+  - `getUserRewards()`, `createUserRewards()`, `updateUserRewards()`
+  - `createRewardsTransaction()`, `getRewardsTransactions()`
+  - `createHotelReview()`, `getUserReviews()`
+  - `getPromoCodeByCode()`, `hasUserUsedPromoCode()`, `createPromoCodeUsage()`, `incrementPromoCodeUsage()`
+  - `getUserBookings()`, `markBookingPointsAwarded()`, `markBookingReviewSubmitted()`
+  - Implemented in both DatabaseStorage and MemStorage classes
+  
+- **API Endpoints** (`server/user-routes.ts`) - 6 new authenticated routes
+  - GET `/api/auth/rewards` - Fetch user rewards data with tier info
+  - GET `/api/auth/rewards/transactions` - Transaction history
+  - POST `/api/auth/rewards/convert` - Convert points to credit
+  - POST `/api/auth/promo-code` - Apply promo code (with validation)
+  - POST `/api/auth/reviews` - Submit hotel review (awards 50 points)
+  - GET `/api/auth/reviews` - Fetch user reviews
+  - All routes include comprehensive validation and error handling
+  
+- **Frontend Hook** (`client/src/hooks/useRewards.ts`) - React hook for rewards management
+  - Fetches rewards, transactions, and reviews on mount
+  - `convertPointsToCredit()` - Client-side conversion with validation
+  - `applyPromoCode()` - Promo code redemption
+  - `submitReview()` - Review submission with points award
+  - `refetch()` - Manual data refresh
+  - Loading states and error handling
+  
+- **Account Page Integration** (`client/src/pages/Account.tsx`) - Real data display
+  - **Rewards Overview Card**: Shows tier, points progress bar, next tier info
+  - **Promo Code Section**: Input field with apply button, success/error messages
+  - **Points to Credit Conversion**: Input field, conversion button, real-time balance update
+  - **Credit Balance Display**: Shows available credit in dollars, auto-apply info
+  - **Recent Transactions**: Lists last 10 transactions with icons, descriptions, dates
+  - **How to Earn Points**: Educational section with earning methods
+  - All components use real API data via useRewards hook
+  - Loading states and error handling throughout
 
+### Points Economy Balance
+- **Example**: Book $100 stay → 500 points earned → $5 credit (5% rewards rate)
+- **Industry Standard**: Competitive with hotel loyalty programs (typically 3-10%)
+- **Review Incentive**: 50 points = $0.50 value (encourages quality reviews)
+- **Minimum Conversion**: 100 points prevents micro-transactions
+
+### Files Created
+- `server/rewards.ts` - Complete rewards business logic (310 lines)
+- `client/src/hooks/useRewards.ts` - React hook for rewards management (207 lines)
+
+### Files Modified
+- `shared/schema.ts` - Added 5 rewards tables, updated bookings table
+- `server/storage.ts` - Added 14 rewards storage methods
+- `server/user-routes.ts` - Added 6 rewards API endpoints
+- `client/src/pages/Account.tsx` - Integrated real rewards data display
+
+### Intended Result
+Users can now earn points from bookings and reviews, convert points to credit, apply promo codes, and track their rewards activity. The system is fully functional with real database integration, balanced point economy, and comprehensive transaction tracking. Credit automatically applies at checkout for future bookings.
+
+---
+
+## Account Page Redesign - Feb 5, 2026 
 ### Major Enhancement: Comprehensive Account Dashboard
 - **Account Stats Dashboard** - Added 4 stat cards showing key metrics
   - Total Bookings counter
