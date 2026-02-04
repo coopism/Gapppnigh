@@ -1,5 +1,47 @@
 # Gap Night - Recent Updates Log
-# Last Updated: Feb 3, 2026 (10:10 PM)
+# Last Updated: Feb 5, 2026 (2:20 AM)
+
+## Account Page Redesign - Feb 5, 2026 ✅ COMPLETED
+
+### Major Enhancement: Comprehensive Account Dashboard
+- **Account Stats Dashboard** - Added 4 stat cards showing key metrics
+  - Total Bookings counter
+  - Total Saved (money saved through gap night deals)
+  - Rewards Points balance
+  - Reviews count
+- **Enhanced Bookings Tab** - Complete redesign with modern card layout
+  - Hotel name and location with icons
+  - Status badges (Confirmed, Cancelled, etc.)
+  - Grid layout for check-in/out dates, duration, room type
+  - Large prominent pricing display
+  - "Write Review" button for confirmed bookings
+  - Hover effects and better mobile responsiveness
+- **Reviews Tab** - NEW complete section
+  - Empty state with call-to-action
+  - Star rating display system
+  - Review cards with hotel name, date, and comments
+  - Integration point for future review submission
+- **Rewards Tab** - NEW comprehensive rewards system
+  - Rewards overview card with tier system (Bronze, Silver, Gold)
+  - Points progress bar with visual feedback
+  - Promo code redemption feature
+  - Coupons/vouchers display section
+  - "How to Earn Points" educational section
+  - Points earning methods: bookings (10pts/$), reviews (50pts), referrals (100pts)
+- **Improved Tab Navigation** - Expanded from 4 to 6 tabs
+  - Profile, Bookings, Reviews, Rewards, Alerts, Security
+  - Better organization and feature discoverability
+- **Enhanced Welcome Message** - Personalized greeting with user name
+- **Better Visual Hierarchy** - Improved spacing, cards, and layout
+- **Mobile Responsive** - All new components fully responsive
+
+### Files Modified
+- `client/src/pages/Account.tsx` - Complete redesign (+409 lines, -36 lines)
+
+### Intended Result
+Account page is now engaging, feature-rich, and provides clear value to users. Users can track their bookings, leave reviews, redeem promo codes, earn rewards points, and see their account statistics at a glance. The page now feels like a complete user dashboard rather than just a settings page.
+
+---
 
 ## Automatic Listing Rules Engine - Feb 3, 2026 ✅ COMPLETED
 
