@@ -209,6 +209,42 @@ export const hotelInquiries = pgTable("hotel_inquiries", {
   gapNightsPerWeek: text("gap_nights_per_week").notNull(),
 });
 
+// ========================================
+// ADMIN PANEL TABLES
+// ========================================
+
+export const adminUsers = pgTable("admin_users", {
+  id: text("id").primaryKey(), // UUID
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name").notNull(),
+  role: text("role").notNull().default("admin"), // admin, super_admin
+  isActive: boolean("is_active").notNull().default(true),
+  lastLoginAt: timestamp("last_login_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const adminSessions = pgTable("admin_sessions", {
+  id: text("id").primaryKey(), // Session token
+  adminId: text("admin_id").notNull().references(() => adminUsers.id),
+  expiresAt: timestamp("expires_at").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const adminActivityLogs = pgTable("admin_activity_logs", {
+  id: text("id").primaryKey(), // UUID
+  adminId: text("admin_id").notNull().references(() => adminUsers.id),
+  action: text("action").notNull(), // e.g., "user_banned", "deal_deleted", "promo_created"
+  targetType: text("target_type"), // e.g., "user", "booking", "deal"
+  targetId: text("target_id"),
+  details: jsonb("details"), // Additional context
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Zod Schemas
 export const insertDealSchema = createInsertSchema(deals);
 export const insertWaitlistSchema = createInsertSchema(waitlist).omit({ id: true });

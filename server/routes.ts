@@ -11,6 +11,7 @@ import { createPaymentIntent, confirmPaymentSuccess, isStripeConfigured } from "
 import { registerUserAuthRoutes } from "./user-routes";
 import { optionalUserAuthMiddleware } from "./user-auth";
 import ownerRoutes from "./owner-routes";
+import { registerAdminRoutes } from "./admin-routes";
 
 // ========================================
 // IN-MEMORY DEAL HOLDS (5 minute reservation)
@@ -117,6 +118,11 @@ export async function registerRoutes(
   // OWNER ROUTES (Auto-listing rules, etc.)
   // ========================================
   app.use(ownerRoutes);
+  
+  // ========================================
+  // ADMIN ROUTES (Obfuscated path for security)
+  // ========================================
+  registerAdminRoutes(app);
   
   // ========================================
   // EXISTING PUBLIC ROUTES
