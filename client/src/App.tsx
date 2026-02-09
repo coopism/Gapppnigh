@@ -39,6 +39,7 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import HostLogin from "@/pages/host/HostLogin";
 import HostDashboard from "@/pages/host/HostDashboard";
 import Stays from "@/pages/Stays";
+import PropertyDetail from "@/pages/PropertyDetail";
 import { initAuth } from "@/hooks/useAuth";
 
 function MainRouter() {
@@ -72,6 +73,7 @@ function MainRouter() {
       <Route path="/host/login" component={HostLogin} />
       <Route path="/host/dashboard" component={HostDashboard} />
       <Route path="/stays" component={Stays} />
+      <Route path="/stays/:id" component={PropertyDetail} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -100,6 +102,7 @@ function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
       <Route path="/host/login" component={HostLogin} />
       <Route path="/host/dashboard" component={HostDashboard} />
       <Route path="/stays" component={Stays} />
+      <Route path="/stays/:id" component={PropertyDetail} />
       <Route>
         <ComingSoon onPartnerAccess={onPartnerAccess} />
       </Route>

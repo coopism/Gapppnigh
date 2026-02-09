@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useSearch } from "wouter";
 import { useDeals, type SortOption } from "@/hooks/use-deals";
 import { DealCard } from "@/components/DealCard";
+import { PropertyDealCard } from "@/components/PropertyDealCard";
 import { DealsMap } from "@/components/DealsMap";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -146,6 +147,15 @@ export default function Home() {
   };
 
   const dateFilters = getDateFilterParams();
+
+  // Fetch properties from API
+  const [properties, setProperties] = useState<any[]>([]);
+  useEffect(() => {
+    fetch("/api/properties?limit=50")
+      .then(r => r.ok ? r.json() : { properties: [] })
+      .then(data => setProperties(data.properties || []))
+      .catch(() => {});
+  }, []);
 
   const { data: deals, isLoading, error } = useDeals({
     search: debouncedSearch || undefined,
@@ -758,6 +768,11 @@ export default function Home() {
             {deals?.map((deal) => (
               <div key={deal.id} className="animate-fade-in">
                 <DealCard deal={deal} />
+              </div>
+            ))}
+            {properties.map((prop) => (
+              <div key={`prop-${prop.id}`} className="animate-fade-in">
+                <PropertyDealCard property={prop} />
               </div>
             ))}
           </div>
