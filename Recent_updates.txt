@@ -102,6 +102,13 @@
 ### Intended Result
 Complete AirBnB-style host platform integrated into GapNight. Hosts can register, list properties, manage availability with gap night pricing, approve/decline bookings, and respond to Q&A. Users must verify identity via Stripe before booking. Temporary card holds ensure hosts can approve before payment is captured. Admin approval required for new properties. Example listings seeded for immediate demo.
 
+### Fix: Integrated Properties into Deals Page (Feb 11)
+- **Removed separate /stays page** — properties now appear alongside hotel deals on the existing `/deals` page
+- **PropertyDealCard** (`client/src/components/PropertyDealCard.tsx`) — matches DealCard style exactly (same rounded-2xl cards, badges, amenity icons, pricing layout)
+- **PropertyDetail** (`client/src/pages/PropertyDetail.tsx`) — full property detail page at `/stays/:id` with image gallery, host info, amenities, gap night calendar, Q&A, reviews, and booking card
+- **Home.tsx** — fetches properties from `/api/properties` and renders them in the same grid as hotel deals
+- **App.tsx** — added `/stays/:id` route to both routers
+
 ---
 
 ## Secure Admin Panel - Feb 5, 2026 
