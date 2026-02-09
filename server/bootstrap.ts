@@ -246,6 +246,200 @@ async function createTables() {
     END $$;
   `);
   
+  // ========================================
+  // AIRBNB HOST TABLES
+  // ========================================
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "airbnb_hosts" (
+      "id" text PRIMARY KEY NOT NULL,
+      "email" text NOT NULL UNIQUE,
+      "password_hash" text NOT NULL,
+      "name" text NOT NULL,
+      "phone" text,
+      "country_code" text DEFAULT '+61',
+      "bio" text,
+      "profile_photo" text,
+      "average_response_time" integer DEFAULT 60,
+      "response_rate" integer DEFAULT 100,
+      "is_superhost" boolean DEFAULT false NOT NULL,
+      "stripe_account_id" text,
+      "is_active" boolean DEFAULT true NOT NULL,
+      "email_verified_at" timestamp,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "host_sessions" (
+      "id" text PRIMARY KEY NOT NULL,
+      "host_id" text NOT NULL REFERENCES "airbnb_hosts"("id"),
+      "expires_at" timestamp NOT NULL,
+      "ip_address" text,
+      "user_agent" text,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "properties" (
+      "id" text PRIMARY KEY NOT NULL,
+      "host_id" text NOT NULL REFERENCES "airbnb_hosts"("id"),
+      "title" text NOT NULL,
+      "description" text NOT NULL,
+      "property_type" text DEFAULT 'entire_place' NOT NULL,
+      "category" text DEFAULT 'apartment',
+      "address" text NOT NULL,
+      "city" text NOT NULL,
+      "state" text,
+      "country" text DEFAULT 'Australia' NOT NULL,
+      "postcode" text,
+      "latitude" numeric,
+      "longitude" numeric,
+      "max_guests" integer DEFAULT 2 NOT NULL,
+      "bedrooms" integer DEFAULT 1 NOT NULL,
+      "beds" integer DEFAULT 1 NOT NULL,
+      "bathrooms" numeric DEFAULT '1' NOT NULL,
+      "amenities" text[],
+      "house_rules" text,
+      "check_in_instructions" text,
+      "check_in_time" text DEFAULT '15:00',
+      "check_out_time" text DEFAULT '10:00',
+      "cancellation_policy" text DEFAULT 'moderate',
+      "base_nightly_rate" integer NOT NULL,
+      "cleaning_fee" integer DEFAULT 0,
+      "service_fee" integer DEFAULT 0,
+      "min_nights" integer DEFAULT 1 NOT NULL,
+      "max_nights" integer DEFAULT 30,
+      "instant_book" boolean DEFAULT false NOT NULL,
+      "self_check_in" boolean DEFAULT false NOT NULL,
+      "pet_friendly" boolean DEFAULT false NOT NULL,
+      "smoking_allowed" boolean DEFAULT false NOT NULL,
+      "nearby_highlight" text,
+      "average_rating" numeric DEFAULT '0',
+      "total_reviews" integer DEFAULT 0,
+      "status" text DEFAULT 'pending_approval' NOT NULL,
+      "rejection_reason" text,
+      "approved_at" timestamp,
+      "approved_by" text,
+      "images" text[],
+      "cover_image" text,
+      "is_active" boolean DEFAULT true NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "property_photos" (
+      "id" text PRIMARY KEY NOT NULL,
+      "property_id" text NOT NULL REFERENCES "properties"("id") ON DELETE CASCADE,
+      "url" text NOT NULL,
+      "caption" text,
+      "sort_order" integer DEFAULT 0 NOT NULL,
+      "is_cover" boolean DEFAULT false NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "property_availability" (
+      "id" text PRIMARY KEY NOT NULL,
+      "property_id" text NOT NULL REFERENCES "properties"("id") ON DELETE CASCADE,
+      "date" text NOT NULL,
+      "is_available" boolean DEFAULT true NOT NULL,
+      "is_gap_night" boolean DEFAULT false NOT NULL,
+      "nightly_rate" integer NOT NULL,
+      "gap_night_discount" integer DEFAULT 0,
+      "notes" text,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "property_bookings" (
+      "id" text PRIMARY KEY NOT NULL,
+      "property_id" text NOT NULL REFERENCES "properties"("id"),
+      "host_id" text NOT NULL REFERENCES "airbnb_hosts"("id"),
+      "user_id" text NOT NULL REFERENCES "users"("id"),
+      "check_in_date" text NOT NULL,
+      "check_out_date" text NOT NULL,
+      "nights" integer NOT NULL,
+      "guests" integer DEFAULT 1 NOT NULL,
+      "nightly_rate" integer NOT NULL,
+      "cleaning_fee" integer DEFAULT 0,
+      "service_fee" integer DEFAULT 0,
+      "total_price" integer NOT NULL,
+      "currency" text DEFAULT 'AUD' NOT NULL,
+      "guest_message" text,
+      "special_requests" text,
+      "status" text DEFAULT 'PENDING_APPROVAL' NOT NULL,
+      "host_decision_at" timestamp,
+      "host_decline_reason" text,
+      "stripe_payment_intent_id" text,
+      "stripe_setup_intent_id" text,
+      "payment_captured_at" timestamp,
+      "guest_first_name" text NOT NULL,
+      "guest_last_name" text NOT NULL,
+      "guest_email" text NOT NULL,
+      "guest_phone" text,
+      "email_sent" boolean DEFAULT false NOT NULL,
+      "points_awarded" boolean DEFAULT false NOT NULL,
+      "review_submitted" boolean DEFAULT false NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "property_qa" (
+      "id" text PRIMARY KEY NOT NULL,
+      "property_id" text NOT NULL REFERENCES "properties"("id") ON DELETE CASCADE,
+      "user_id" text NOT NULL REFERENCES "users"("id"),
+      "question" text NOT NULL,
+      "answer" text,
+      "answered_at" timestamp,
+      "is_public" boolean DEFAULT true NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "user_id_verifications" (
+      "id" text PRIMARY KEY NOT NULL,
+      "user_id" text NOT NULL REFERENCES "users"("id") UNIQUE,
+      "stripe_verification_session_id" text,
+      "status" text DEFAULT 'unverified' NOT NULL,
+      "verified_at" timestamp,
+      "failure_reason" text,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "property_reviews" (
+      "id" text PRIMARY KEY NOT NULL,
+      "property_id" text NOT NULL REFERENCES "properties"("id"),
+      "booking_id" text NOT NULL REFERENCES "property_bookings"("id"),
+      "user_id" text NOT NULL REFERENCES "users"("id"),
+      "rating" integer NOT NULL,
+      "cleanliness_rating" integer,
+      "accuracy_rating" integer,
+      "check_in_rating" integer,
+      "communication_rating" integer,
+      "location_rating" integer,
+      "value_rating" integer,
+      "comment" text NOT NULL,
+      "host_response" text,
+      "host_responded_at" timestamp,
+      "is_verified" boolean DEFAULT true NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
   console.log("Tables created!");
 }
 

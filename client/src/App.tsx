@@ -36,6 +36,9 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import Account from "@/pages/Account";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
+import HostLogin from "@/pages/host/HostLogin";
+import HostDashboard from "@/pages/host/HostDashboard";
+import Stays from "@/pages/Stays";
 import { initAuth } from "@/hooks/useAuth";
 
 function MainRouter() {
@@ -66,6 +69,9 @@ function MainRouter() {
       <Route path="/account" component={Account} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/host/login" component={HostLogin} />
+      <Route path="/host/dashboard" component={HostDashboard} />
+      <Route path="/stays" component={Stays} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -91,6 +97,9 @@ function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/account" component={Account} />
+      <Route path="/host/login" component={HostLogin} />
+      <Route path="/host/dashboard" component={HostDashboard} />
+      <Route path="/stays" component={Stays} />
       <Route>
         <ComingSoon onPartnerAccess={onPartnerAccess} />
       </Route>

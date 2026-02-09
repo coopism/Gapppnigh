@@ -1,5 +1,108 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-10 04:00 AM UTC+11
+# Last Updated: 2026-02-11 02:00 AM UTC+11
+
+## AirBnB Host Platform - Feb 11, 2026
+### Major Feature: Complete Short-Term Rental Host System
+
+- **Database Schema** (`shared/schema.ts`) - 8 new tables added
+  - `airbnb_hosts` - Host accounts with profile, superhost status, response metrics
+  - `host_sessions` - Secure session management for host authentication
+  - `properties` - Full property listings with type, category, amenities, pricing, rules
+  - `property_photos` - Photo management with sort ordering and cover image flag
+  - `property_availability` - Date-level availability with gap night detection and pricing
+  - `property_bookings` - Booking management with Stripe payment intent integration
+  - `property_qa` - Q&A platform for user-host communication
+  - `property_reviews` - Detailed reviews with sub-ratings (cleanliness, accuracy, etc.)
+  - `user_id_verifications` - Stripe Identity verification tracking for users
+
+- **Backend: Host Routes** (`server/host-routes.ts`) - 20+ authenticated endpoints
+  - **Authentication**: Register, login, logout, session check (`/api/host/*`)
+  - **Profile**: View/update host profile
+  - **Property CRUD**: Create, list, update, delete properties
+  - **Photo Management**: Upload/delete property photos
+  - **Availability**: Bulk add/update availability dates with gap night pricing
+  - **Booking Management**: View bookings, approve/decline with Stripe capture/cancel
+  - **Q&A**: View questions, post answers
+  - **Dashboard Stats**: Revenue, bookings, occupancy metrics
+  - **Review Responses**: Hosts can respond to guest reviews
+  - All routes protected with host authentication middleware
+
+- **Backend: Property Routes** (`server/property-routes.ts`) - Public + user endpoints
+  - **Public Listings**: `GET /api/properties` with city/type/price/guest filters
+  - **Property Detail**: `GET /api/properties/:id` with host info, photos, availability, Q&A, reviews
+  - **User Q&A**: `POST /api/properties/:id/questions` (requires user auth)
+  - **Stripe ID Verification**: `POST /api/auth/verify-identity` creates Stripe Identity session
+  - **Verification Status**: `GET /api/auth/verify-identity/status` checks verification
+  - **Booking**: `POST /api/properties/:id/book` with full validation:
+    - Requires verified ID via Stripe Identity
+    - Checks date availability and guest limits
+    - Calculates gap night discounts automatically
+    - Creates Stripe PaymentIntent with manual capture (authorization hold)
+    - Host approves → payment captured; Host declines → payment cancelled
+  - **User Bookings**: `GET /api/auth/property-bookings` lists user's property bookings
+
+- **Email Notifications** (`server/email.ts`) - 2 new email functions
+  - `sendPropertyApprovalEmail()` - Notifies info@gapnight.com when new property submitted
+  - `sendPropertyBookingConfirmationEmail()` - Sends guest confirmation with property details
+
+- **Frontend: Host Login** (`client/src/pages/host/HostLogin.tsx`)
+  - Tabbed Sign In / Create Account interface
+  - Separate from hotel owner dashboard
+  - GapNight branded with emerald accent theme
+  - Form validation and error handling
+
+- **Frontend: Host Dashboard** (`client/src/pages/host/HostDashboard.tsx`)
+  - **Overview Tab**: Stats cards (properties, bookings, revenue, unanswered questions)
+  - **Properties Tab**: List properties, create new with full form (type, category, pricing, amenities, rules)
+  - **Bookings Tab**: Filter by status, approve/decline pending bookings
+  - **Availability Tab**: Select property, add dates with gap night toggle and discount %
+  - **Q&A Tab**: View unanswered questions, post answers inline
+  - **Profile Tab**: Update name, phone, bio
+
+- **Frontend: Stays Page** (`client/src/pages/Stays.tsx`)
+  - Public property listings with search by city and guests
+  - Property cards showing gap night count, discount %, host info, ratings
+  - Skeleton loading states
+  - Responsive grid layout
+
+- **Seed Script** (`scripts/seed-properties.ts`)
+  - 3 example hosts (Sarah Mitchell, James Cooper, Emma Chen)
+  - 6 example properties across Sydney, Melbourne, Gold Coast, Byron Bay
+  - Auto-generated 60-day availability with realistic gap night patterns
+  - Gap night discounts of 20-35% between simulated bookings
+  - Properties pre-approved for immediate visibility
+
+- **Route Registration** (`server/routes.ts`, `client/src/App.tsx`)
+  - Host routes and property routes registered in Express server
+  - Frontend routes added: `/host/login`, `/host/dashboard`, `/stays`
+  - Routes accessible in both MainRouter and PublicRouter
+
+### Booking Flow
+1. User browses `/stays` → selects property → views details
+2. User creates account and verifies ID via Stripe Identity (document + selfie)
+3. User submits booking request → card authorized (not charged)
+4. Host receives notification → approves or declines
+5. Approved: payment captured, confirmation email sent to guest
+6. Declined: authorization released, dates re-opened
+
+### Files Created
+- `server/host-routes.ts` - Host API routes (1200+ lines)
+- `server/property-routes.ts` - Public property + booking API (500+ lines)
+- `scripts/seed-properties.ts` - Example data seeding script
+- `client/src/pages/host/HostLogin.tsx` - Host authentication page
+- `client/src/pages/host/HostDashboard.tsx` - Complete host dashboard (600+ lines)
+- `client/src/pages/Stays.tsx` - Public property listings page
+
+### Files Modified
+- `shared/schema.ts` - Added 8 new tables for AirBnB host system
+- `server/email.ts` - Added property approval and booking confirmation emails
+- `server/routes.ts` - Registered host and property route modules
+- `client/src/App.tsx` - Added host and stays routes
+
+### Intended Result
+Complete AirBnB-style host platform integrated into GapNight. Hosts can register, list properties, manage availability with gap night pricing, approve/decline bookings, and respond to Q&A. Users must verify identity via Stripe before booking. Temporary card holds ensure hosts can approve before payment is captured. Admin approval required for new properties. Example listings seeded for immediate demo.
+
+---
 
 ## Secure Admin Panel - Feb 5, 2026 
 ### Major Feature: Comprehensive Administrative Dashboard

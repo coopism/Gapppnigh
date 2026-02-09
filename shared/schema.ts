@@ -245,6 +245,303 @@ export const adminActivityLogs = pgTable("admin_activity_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ========================================
+// AIRBNB / SHORT-TERM RENTAL HOST TABLES
+// ========================================
+
+export const airbnbHosts = pgTable("airbnb_hosts", {
+  id: text("id").primaryKey(), // UUID
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  countryCode: text("country_code").default("+61"),
+  bio: text("bio"),
+  profilePhoto: text("profile_photo"),
+  averageResponseTime: integer("average_response_time").default(60), // minutes
+  responseRate: integer("response_rate").default(100), // percentage
+  isSuperhost: boolean("is_superhost").notNull().default(false),
+  stripeAccountId: text("stripe_account_id"), // for payouts
+  isActive: boolean("is_active").notNull().default(true),
+  emailVerifiedAt: timestamp("email_verified_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const hostSessions = pgTable("host_sessions", {
+  id: text("id").primaryKey(), // Session token
+  hostId: text("host_id").notNull().references(() => airbnbHosts.id),
+  expiresAt: timestamp("expires_at").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const properties = pgTable("properties", {
+  id: text("id").primaryKey(), // UUID
+  hostId: text("host_id").notNull().references(() => airbnbHosts.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  propertyType: text("property_type").notNull().default("entire_place"), // entire_place | private_room | shared_room | unique_stay
+  category: text("category").default("apartment"), // apartment | house | cabin | villa | cottage | loft | studio | townhouse | other
+  address: text("address").notNull(),
+  city: text("city").notNull(),
+  state: text("state"),
+  country: text("country").notNull().default("Australia"),
+  postcode: text("postcode"),
+  latitude: numeric("latitude"),
+  longitude: numeric("longitude"),
+  maxGuests: integer("max_guests").notNull().default(2),
+  bedrooms: integer("bedrooms").notNull().default(1),
+  beds: integer("beds").notNull().default(1),
+  bathrooms: numeric("bathrooms").notNull().default("1"),
+  amenities: text("amenities").array(), // WiFi, Kitchen, Pool, Parking, AC, etc.
+  houseRules: text("house_rules"),
+  checkInInstructions: text("check_in_instructions"),
+  checkInTime: text("check_in_time").default("15:00"),
+  checkOutTime: text("check_out_time").default("10:00"),
+  cancellationPolicy: text("cancellation_policy").default("moderate"), // flexible | moderate | strict
+  baseNightlyRate: integer("base_nightly_rate").notNull(), // in cents
+  cleaningFee: integer("cleaning_fee").default(0), // in cents
+  serviceFee: integer("service_fee").default(0), // in cents (GapNight fee)
+  minNights: integer("min_nights").notNull().default(1),
+  maxNights: integer("max_nights").default(30),
+  instantBook: boolean("instant_book").notNull().default(false),
+  selfCheckIn: boolean("self_check_in").notNull().default(false),
+  petFriendly: boolean("pet_friendly").notNull().default(false),
+  smokingAllowed: boolean("smoking_allowed").notNull().default(false),
+  nearbyHighlight: text("nearby_highlight"), // "5 min walk to beach"
+  averageRating: numeric("average_rating").default("0"),
+  totalReviews: integer("total_reviews").default(0),
+  status: text("status").notNull().default("pending_approval"), // pending_approval | approved | rejected | suspended | archived
+  rejectionReason: text("rejection_reason"),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: text("approved_by"), // admin user ID
+  images: text("images").array(), // URLs
+  coverImage: text("cover_image"), // Primary image URL
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const propertyPhotos = pgTable("property_photos", {
+  id: text("id").primaryKey(), // UUID
+  propertyId: text("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  caption: text("caption"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isCover: boolean("is_cover").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const propertyAvailability = pgTable("property_availability", {
+  id: text("id").primaryKey(), // UUID
+  propertyId: text("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  date: text("date").notNull(), // YYYY-MM-DD
+  isAvailable: boolean("is_available").notNull().default(true),
+  isGapNight: boolean("is_gap_night").notNull().default(false), // true = this is a gap between bookings
+  nightlyRate: integer("nightly_rate").notNull(), // in cents - can override base rate
+  gapNightDiscount: integer("gap_night_discount").default(0), // percentage discount for gap nights
+  notes: text("notes"), // host can add notes like "between two long bookings"
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const propertyBookings = pgTable("property_bookings", {
+  id: text("id").primaryKey(), // Booking reference like "PB-XXXXXXXX"
+  propertyId: text("property_id").notNull().references(() => properties.id),
+  hostId: text("host_id").notNull().references(() => airbnbHosts.id),
+  userId: text("user_id").notNull().references(() => users.id),
+  checkInDate: text("check_in_date").notNull(),
+  checkOutDate: text("check_out_date").notNull(),
+  nights: integer("nights").notNull(),
+  guests: integer("guests").notNull().default(1),
+  nightlyRate: integer("nightly_rate").notNull(), // in cents
+  cleaningFee: integer("cleaning_fee").default(0),
+  serviceFee: integer("service_fee").default(0),
+  totalPrice: integer("total_price").notNull(), // in cents
+  currency: text("currency").notNull().default("AUD"),
+  guestMessage: text("guest_message"), // message to host with booking request
+  specialRequests: text("special_requests"),
+  // Booking flow status
+  status: text("status").notNull().default("PENDING_APPROVAL"),
+  // PENDING_APPROVAL -> APPROVED -> CONFIRMED (paid) -> COMPLETED
+  // PENDING_APPROVAL -> DECLINED
+  // APPROVED -> PAYMENT_FAILED
+  // CONFIRMED -> CANCELLED_BY_GUEST | CANCELLED_BY_HOST
+  hostDecisionAt: timestamp("host_decision_at"),
+  hostDeclineReason: text("host_decline_reason"),
+  // Stripe payment
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeSetupIntentId: text("stripe_setup_intent_id"),
+  paymentCapturedAt: timestamp("payment_captured_at"),
+  // Guest info
+  guestFirstName: text("guest_first_name").notNull(),
+  guestLastName: text("guest_last_name").notNull(),
+  guestEmail: text("guest_email").notNull(),
+  guestPhone: text("guest_phone"),
+  // Meta
+  emailSent: boolean("email_sent").notNull().default(false),
+  pointsAwarded: boolean("points_awarded").notNull().default(false),
+  reviewSubmitted: boolean("review_submitted").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const propertyQA = pgTable("property_qa", {
+  id: text("id").primaryKey(), // UUID
+  propertyId: text("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id),
+  question: text("question").notNull(),
+  answer: text("answer"), // null until host answers
+  answeredAt: timestamp("answered_at"),
+  isPublic: boolean("is_public").notNull().default(true), // public Q&A visible to all
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userIdVerifications = pgTable("user_id_verifications", {
+  id: text("id").primaryKey(), // UUID
+  userId: text("user_id").notNull().references(() => users.id).unique(),
+  stripeVerificationSessionId: text("stripe_verification_session_id"),
+  status: text("status").notNull().default("unverified"), // unverified | pending | verified | failed
+  verifiedAt: timestamp("verified_at"),
+  failureReason: text("failure_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const propertyReviews = pgTable("property_reviews", {
+  id: text("id").primaryKey(), // UUID
+  propertyId: text("property_id").notNull().references(() => properties.id),
+  bookingId: text("booking_id").notNull().references(() => propertyBookings.id),
+  userId: text("user_id").notNull().references(() => users.id),
+  rating: integer("rating").notNull(), // 1-5
+  cleanlinessRating: integer("cleanliness_rating"), // 1-5
+  accuracyRating: integer("accuracy_rating"), // 1-5
+  checkInRating: integer("check_in_rating"), // 1-5
+  communicationRating: integer("communication_rating"), // 1-5
+  locationRating: integer("location_rating"), // 1-5
+  valueRating: integer("value_rating"), // 1-5
+  comment: text("comment").notNull(),
+  hostResponse: text("host_response"),
+  hostRespondedAt: timestamp("host_responded_at"),
+  isVerified: boolean("is_verified").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations for AirBnB host tables
+export const airbnbHostsRelations = relations(airbnbHosts, ({ many }) => ({
+  sessions: many(hostSessions),
+  properties: many(properties),
+  bookings: many(propertyBookings),
+}));
+
+export const hostSessionsRelations = relations(hostSessions, ({ one }) => ({
+  host: one(airbnbHosts, {
+    fields: [hostSessions.hostId],
+    references: [airbnbHosts.id],
+  }),
+}));
+
+export const propertiesRelations = relations(properties, ({ one, many }) => ({
+  host: one(airbnbHosts, {
+    fields: [properties.hostId],
+    references: [airbnbHosts.id],
+  }),
+  photos: many(propertyPhotos),
+  availability: many(propertyAvailability),
+  bookings: many(propertyBookings),
+  qa: many(propertyQA),
+  reviews: many(propertyReviews),
+}));
+
+export const propertyPhotosRelations = relations(propertyPhotos, ({ one }) => ({
+  property: one(properties, {
+    fields: [propertyPhotos.propertyId],
+    references: [properties.id],
+  }),
+}));
+
+export const propertyAvailabilityRelations = relations(propertyAvailability, ({ one }) => ({
+  property: one(properties, {
+    fields: [propertyAvailability.propertyId],
+    references: [properties.id],
+  }),
+}));
+
+export const propertyBookingsRelations = relations(propertyBookings, ({ one }) => ({
+  property: one(properties, {
+    fields: [propertyBookings.propertyId],
+    references: [properties.id],
+  }),
+  host: one(airbnbHosts, {
+    fields: [propertyBookings.hostId],
+    references: [airbnbHosts.id],
+  }),
+  user: one(users, {
+    fields: [propertyBookings.userId],
+    references: [users.id],
+  }),
+}));
+
+export const propertyQARelations = relations(propertyQA, ({ one }) => ({
+  property: one(properties, {
+    fields: [propertyQA.propertyId],
+    references: [properties.id],
+  }),
+  user: one(users, {
+    fields: [propertyQA.userId],
+    references: [users.id],
+  }),
+}));
+
+export const propertyReviewsRelations = relations(propertyReviews, ({ one }) => ({
+  property: one(properties, {
+    fields: [propertyReviews.propertyId],
+    references: [properties.id],
+  }),
+  user: one(users, {
+    fields: [propertyReviews.userId],
+    references: [users.id],
+  }),
+  booking: one(propertyBookings, {
+    fields: [propertyReviews.bookingId],
+    references: [propertyBookings.id],
+  }),
+}));
+
+export const userIdVerificationsRelations = relations(userIdVerifications, ({ one }) => ({
+  user: one(users, {
+    fields: [userIdVerifications.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schemas for host tables
+export const insertAirbnbHostSchema = createInsertSchema(airbnbHosts).omit({ createdAt: true, updatedAt: true });
+export const insertHostSessionSchema = createInsertSchema(hostSessions).omit({ createdAt: true });
+export const insertPropertySchema = createInsertSchema(properties).omit({ createdAt: true, updatedAt: true });
+export const insertPropertyPhotoSchema = createInsertSchema(propertyPhotos).omit({ createdAt: true });
+export const insertPropertyAvailabilitySchema = createInsertSchema(propertyAvailability).omit({ createdAt: true, updatedAt: true });
+export const insertPropertyBookingSchema = createInsertSchema(propertyBookings).omit({ createdAt: true, updatedAt: true });
+export const insertPropertyQASchema = createInsertSchema(propertyQA).omit({ createdAt: true });
+export const insertUserIdVerificationSchema = createInsertSchema(userIdVerifications).omit({ createdAt: true, updatedAt: true });
+export const insertPropertyReviewSchema = createInsertSchema(propertyReviews).omit({ createdAt: true });
+
+// Types for host tables
+export type AirbnbHost = typeof airbnbHosts.$inferSelect;
+export type InsertAirbnbHost = z.infer<typeof insertAirbnbHostSchema>;
+export type HostSession = typeof hostSessions.$inferSelect;
+export type Property = typeof properties.$inferSelect;
+export type InsertProperty = z.infer<typeof insertPropertySchema>;
+export type PropertyPhoto = typeof propertyPhotos.$inferSelect;
+export type PropertyAvailabilityRecord = typeof propertyAvailability.$inferSelect;
+export type PropertyBooking = typeof propertyBookings.$inferSelect;
+export type InsertPropertyBooking = z.infer<typeof insertPropertyBookingSchema>;
+export type PropertyQA = typeof propertyQA.$inferSelect;
+export type UserIdVerification = typeof userIdVerifications.$inferSelect;
+export type PropertyReview = typeof propertyReviews.$inferSelect;
+
 // Zod Schemas
 export const insertDealSchema = createInsertSchema(deals);
 export const insertWaitlistSchema = createInsertSchema(waitlist).omit({ id: true });

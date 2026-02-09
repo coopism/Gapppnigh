@@ -12,6 +12,8 @@ import { registerUserAuthRoutes } from "./user-routes";
 import { optionalUserAuthMiddleware } from "./user-auth";
 import ownerRoutes from "./owner-routes";
 import { registerAdminRoutes } from "./admin-routes";
+import hostRoutes from "./host-routes";
+import propertyRoutes from "./property-routes";
 
 // ========================================
 // IN-MEMORY DEAL HOLDS (5 minute reservation)
@@ -1489,6 +1491,12 @@ export async function registerRoutes(
       sendError(res, 500, "Failed to check availability");
     }
   });
+
+  // Register host routes (AirBnB-style hosts)
+  app.use(hostRoutes);
+
+  // Register property routes (public listings, booking, Q&A, ID verification)
+  app.use(propertyRoutes);
 
   return httpServer;
 }

@@ -211,3 +211,128 @@ export async function sendWaitlistNotification(entry: {
     return false;
   }
 }
+
+// ========================================
+// PROPERTY NOTIFICATION EMAILS
+// ========================================
+
+export async function sendPropertyApprovalEmail(property: any, host: any): Promise<boolean> {
+  try {
+    const { client, fromEmail } = getResendClient();
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h1 style="color: #1a1a1a;">New Property Submission</h1>
+  <p>A new property has been submitted for approval on GapNight.</p>
+
+  <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h3 style="margin-top: 0;">Property Details</h3>
+    <p><strong>Title:</strong> ${property.title}</p>
+    <p><strong>Type:</strong> ${property.propertyType} - ${property.category}</p>
+    <p><strong>Location:</strong> ${property.city}, ${property.state || ''} ${property.country}</p>
+    <p><strong>Address:</strong> ${property.address}</p>
+    <p><strong>Bedrooms:</strong> ${property.bedrooms} | <strong>Beds:</strong> ${property.beds} | <strong>Bathrooms:</strong> ${property.bathrooms}</p>
+    <p><strong>Max Guests:</strong> ${property.maxGuests}</p>
+    <p><strong>Base Rate:</strong> $${(property.baseNightlyRate / 100).toFixed(2)}/night</p>
+    <p><strong>Cleaning Fee:</strong> $${((property.cleaningFee || 0) / 100).toFixed(2)}</p>
+  </div>
+
+  <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h3 style="margin-top: 0;">Host Details</h3>
+    <p><strong>Name:</strong> ${host.name}</p>
+    <p><strong>Email:</strong> <a href="mailto:${host.email}">${host.email}</a></p>
+    <p><strong>Phone:</strong> ${host.phone || 'Not provided'}</p>
+  </div>
+
+  <p style="color: #666; font-size: 14px;">Please review this property in the admin panel at /admin/dashboard</p>
+</body>
+</html>`;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: 'info@gapnight.com',
+      subject: `New Property Submission: ${property.title} - ${property.city}`,
+      html: emailHtml,
+    });
+
+    console.log('Property approval email sent');
+    return true;
+  } catch (error) {
+    console.error('Failed to send property approval email:', error);
+    return false;
+  }
+}
+
+export async function sendPropertyBookingConfirmationEmail(booking: any, property: any, host: any): Promise<boolean> {
+  try {
+    const { client, fromEmail } = getResendClient();
+
+    const checkInDate = format(parseISO(booking.checkInDate), "EEEE, MMMM d, yyyy");
+    const checkOutDate = format(parseISO(booking.checkOutDate), "EEEE, MMMM d, yyyy");
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1 style="color: #1a1a1a; margin-bottom: 5px;">GapNight</h1>
+    <p style="color: #666; font-size: 14px;">Your Booking is Confirmed!</p>
+  </div>
+
+  <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 25px;">
+    <h2 style="margin: 0 0 10px 0;">Booking Confirmed</h2>
+    <p style="margin: 0; font-size: 24px; font-weight: bold;">${booking.id}</p>
+  </div>
+
+  <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+    <h3 style="margin: 0 0 15px 0;">Property Details</h3>
+    <p style="margin: 0 0 8px 0;"><strong>${property.title}</strong></p>
+    <p style="margin: 0 0 8px 0;">${property.address}, ${property.city}</p>
+    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;">
+    <p style="margin: 0 0 5px 0;"><strong>Check-in:</strong> ${checkInDate} (${property.checkInTime || '15:00'})</p>
+    <p style="margin: 0 0 5px 0;"><strong>Check-out:</strong> ${checkOutDate} (${property.checkOutTime || '10:00'})</p>
+    <p style="margin: 0 0 5px 0;"><strong>Nights:</strong> ${booking.nights}</p>
+    <p style="margin: 0 0 5px 0;"><strong>Guests:</strong> ${booking.guests}</p>
+    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;">
+    <p style="margin: 0; font-size: 18px;"><strong>Total Paid: $${(booking.totalPrice / 100).toFixed(2)} AUD</strong></p>
+  </div>
+
+  <div style="background: #f0f9ff; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+    <h3 style="margin: 0 0 15px 0;">Your Host</h3>
+    <p style="margin: 0 0 8px 0;"><strong>${host.name}</strong></p>
+    ${property.checkInInstructions ? `
+    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;">
+    <h4 style="margin: 0 0 8px 0;">Check-in Instructions</h4>
+    <p style="margin: 0;">${property.checkInInstructions}</p>
+    ` : ''}
+    ${property.houseRules ? `
+    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;">
+    <h4 style="margin: 0 0 8px 0;">House Rules</h4>
+    <p style="margin: 0;">${property.houseRules}</p>
+    ` : ''}
+  </div>
+
+  <p style="color: #999; font-size: 12px; text-align: center;">
+    GapNight - Gap Night Deals on Short-Term Rentals
+  </p>
+</body>
+</html>`;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: booking.guestEmail,
+      subject: `Booking Confirmed - ${property.title} | ${booking.id}`,
+      html: emailHtml,
+    });
+
+    console.log('Property booking confirmation email sent to', booking.guestEmail);
+    return true;
+  } catch (error) {
+    console.error('Failed to send property booking confirmation email:', error);
+    return false;
+  }
+}
