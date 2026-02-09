@@ -397,13 +397,27 @@ async function createTables() {
     CREATE TABLE IF NOT EXISTS "property_qa" (
       "id" text PRIMARY KEY NOT NULL,
       "property_id" text NOT NULL REFERENCES "properties"("id") ON DELETE CASCADE,
-      "user_id" text NOT NULL REFERENCES "users"("id"),
+      "user_id" text REFERENCES "users"("id"),
       "question" text NOT NULL,
       "answer" text,
       "answered_at" timestamp,
       "is_public" boolean DEFAULT true NOT NULL,
+      "is_host_faq" boolean DEFAULT false NOT NULL,
       "created_at" timestamp DEFAULT now() NOT NULL
     )
+  `);
+
+  // Migration: add is_host_faq column and make user_id nullable (for existing tables)
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='property_qa' AND column_name='is_host_faq') THEN
+        ALTER TABLE "property_qa" ADD COLUMN "is_host_faq" boolean DEFAULT false NOT NULL;
+      END IF;
+    END $$;
+  `);
+  await db.execute(sql`
+    ALTER TABLE "property_qa" ALTER COLUMN "user_id" DROP NOT NULL;
   `);
 
   await db.execute(sql`

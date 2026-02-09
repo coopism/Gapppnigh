@@ -183,31 +183,35 @@ router.get("/api/properties/:propertyId", async (req: Request, res: Response) =>
       ))
       .orderBy(asc(propertyAvailability.date));
 
-    // Q&A (public only, answered)
-    const qa = await db
-      .select()
-      .from(propertyQA)
-      .where(and(
-        eq(propertyQA.propertyId, propertyId),
-        eq(propertyQA.isPublic, true)
-      ))
-      .orderBy(desc(propertyQA.createdAt));
+    // Q&A (public only) - wrapped in try/catch so property still loads if Q&A table schema is outdated
+    let enrichedQA: any[] = [];
+    try {
+      const qa = await db
+        .select()
+        .from(propertyQA)
+        .where(and(
+          eq(propertyQA.propertyId, propertyId),
+          eq(propertyQA.isPublic, true)
+        ))
+        .orderBy(desc(propertyQA.createdAt));
 
-    // Enrich Q&A with user names
-    const enrichedQA = await Promise.all(
-      qa.map(async (q) => {
-        let userName = "Host FAQ";
-        if (q.userId) {
-          const [user] = await db
-            .select({ name: users.name })
-            .from(users)
-            .where(eq(users.id, q.userId))
-            .limit(1);
-          userName = user?.name || "Guest";
-        }
-        return { ...q, userName };
-      })
-    );
+      enrichedQA = await Promise.all(
+        qa.map(async (q) => {
+          let userName = "Host FAQ";
+          if (q.userId) {
+            const [user] = await db
+              .select({ name: users.name })
+              .from(users)
+              .where(eq(users.id, q.userId))
+              .limit(1);
+            userName = user?.name || "Guest";
+          }
+          return { ...q, userName };
+        })
+      );
+    } catch (qaError) {
+      console.error("Q&A query failed (schema may be outdated):", qaError);
+    }
 
     // Reviews
     const reviews = await db
