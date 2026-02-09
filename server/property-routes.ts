@@ -196,12 +196,16 @@ router.get("/api/properties/:propertyId", async (req: Request, res: Response) =>
     // Enrich Q&A with user names
     const enrichedQA = await Promise.all(
       qa.map(async (q) => {
-        const [user] = await db
-          .select({ name: users.name })
-          .from(users)
-          .where(eq(users.id, q.userId))
-          .limit(1);
-        return { ...q, userName: user?.name || "Guest" };
+        let userName = "Host FAQ";
+        if (q.userId) {
+          const [user] = await db
+            .select({ name: users.name })
+            .from(users)
+            .where(eq(users.id, q.userId))
+            .limit(1);
+          userName = user?.name || "Guest";
+        }
+        return { ...q, userName };
       })
     );
 
@@ -392,7 +396,7 @@ router.get("/api/hosts/:hostId/profile", async (req: Request, res: Response) => 
 // Ask a question (requires user auth - injected via middleware in routes.ts)
 router.post("/api/properties/:propertyId/questions", async (req: any, res: Response) => {
   try {
-    if (!req.userId) {
+    if (!req.user?.id) {
       return res.status(401).json({ error: "You must be logged in to ask a question" });
     }
 
@@ -418,7 +422,7 @@ router.post("/api/properties/:propertyId/questions", async (req: any, res: Respo
       .values({
         id: uuidv4(),
         propertyId,
-        userId: req.userId,
+        userId: req.user?.id,
         question: question.trim(),
         isPublic: true,
       })
@@ -438,7 +442,7 @@ router.post("/api/properties/:propertyId/questions", async (req: any, res: Respo
 // Create verification session
 router.post("/api/auth/verify-identity", async (req: any, res: Response) => {
   try {
-    if (!req.userId) {
+    if (!req.user?.id) {
       return res.status(401).json({ error: "You must be logged in" });
     }
 
@@ -450,7 +454,7 @@ router.post("/api/auth/verify-identity", async (req: any, res: Response) => {
     const [existing] = await db
       .select()
       .from(userIdVerifications)
-      .where(eq(userIdVerifications.userId, req.userId))
+      .where(eq(userIdVerifications.userId, req.user?.id))
       .limit(1);
 
     if (existing?.status === "verified") {
@@ -461,7 +465,7 @@ router.post("/api/auth/verify-identity", async (req: any, res: Response) => {
     const verificationSession = await stripe.identity.verificationSessions.create({
       type: "document",
       metadata: {
-        userId: req.userId,
+        userId: req.user?.id,
       },
       options: {
         document: {
@@ -479,13 +483,13 @@ router.post("/api/auth/verify-identity", async (req: any, res: Response) => {
           status: "pending",
           updatedAt: new Date(),
         })
-        .where(eq(userIdVerifications.userId, req.userId));
+        .where(eq(userIdVerifications.userId, req.user?.id));
     } else {
       await db
         .insert(userIdVerifications)
         .values({
           id: uuidv4(),
-          userId: req.userId,
+          userId: req.user?.id,
           stripeVerificationSessionId: verificationSession.id,
           status: "pending",
         });
@@ -505,14 +509,14 @@ router.post("/api/auth/verify-identity", async (req: any, res: Response) => {
 // Check verification status
 router.get("/api/auth/verify-identity/status", async (req: any, res: Response) => {
   try {
-    if (!req.userId) {
+    if (!req.user?.id) {
       return res.status(401).json({ error: "You must be logged in" });
     }
 
     const [verification] = await db
       .select()
       .from(userIdVerifications)
-      .where(eq(userIdVerifications.userId, req.userId))
+      .where(eq(userIdVerifications.userId, req.user?.id))
       .limit(1);
 
     if (!verification) {
@@ -532,7 +536,7 @@ router.get("/api/auth/verify-identity/status", async (req: any, res: Response) =
           await db
             .update(userIdVerifications)
             .set({ status: "verified", verifiedAt: new Date(), updatedAt: new Date() })
-            .where(eq(userIdVerifications.userId, req.userId));
+            .where(eq(userIdVerifications.userId, req.user?.id));
         } else if (session.status === "requires_input" || session.last_error) {
           newStatus = "failed";
           await db
@@ -542,7 +546,7 @@ router.get("/api/auth/verify-identity/status", async (req: any, res: Response) =
               failureReason: session.last_error?.reason || "Verification failed",
               updatedAt: new Date() 
             })
-            .where(eq(userIdVerifications.userId, req.userId));
+            .where(eq(userIdVerifications.userId, req.user?.id));
         }
 
         return res.json({ status: newStatus, verifiedAt: verification.verifiedAt });
@@ -565,7 +569,7 @@ router.get("/api/auth/verify-identity/status", async (req: any, res: Response) =
 // Request a booking
 router.post("/api/properties/:propertyId/book", async (req: any, res: Response) => {
   try {
-    if (!req.userId) {
+    if (!req.user?.id) {
       return res.status(401).json({ error: "You must be logged in to book" });
     }
 
@@ -573,7 +577,7 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
     const [verification] = await db
       .select()
       .from(userIdVerifications)
-      .where(eq(userIdVerifications.userId, req.userId))
+      .where(eq(userIdVerifications.userId, req.user?.id))
       .limit(1);
 
     if (!verification || verification.status !== "verified") {
@@ -671,7 +675,7 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
           capture_method: "manual", // Hold only, capture when host approves
           metadata: {
             propertyId,
-            userId: req.userId,
+            userId: req.user?.id,
             checkInDate,
             checkOutDate,
           },
@@ -691,7 +695,7 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
         id: bookingId,
         propertyId,
         hostId: property.hostId,
-        userId: req.userId,
+        userId: req.user?.id,
         checkInDate,
         checkOutDate,
         nights,
@@ -751,14 +755,14 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
 // Get user's property bookings
 router.get("/api/auth/property-bookings", async (req: any, res: Response) => {
   try {
-    if (!req.userId) {
+    if (!req.user?.id) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
     const bookingsList = await db
       .select()
       .from(propertyBookings)
-      .where(eq(propertyBookings.userId, req.userId))
+      .where(eq(propertyBookings.userId, req.user?.id))
       .orderBy(desc(propertyBookings.createdAt));
 
     const enriched = await Promise.all(

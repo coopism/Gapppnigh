@@ -415,31 +415,30 @@ export default function PropertyBooking() {
                   </div>
                 </div>
 
-                {/* Login prompt for non-authed users */}
-                {!user && (
-                  <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-5 border border-primary/20">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                        <User className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-foreground mb-1">Sign in to book</h3>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          You need an account with verified ID to book properties. Create one now to continue.
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <Link href={`/login?redirect=/booking/property/${propertyId}?checkIn=${checkInDate}&checkOut=${checkOutDate}&nights=${nightsParam}`}>
-                            <Button size="sm">Sign in</Button>
-                          </Link>
-                          <Link href={`/signup?redirect=/booking/property/${propertyId}?checkIn=${checkInDate}&checkOut=${checkOutDate}&nights=${nightsParam}`}>
-                            <Button size="sm" variant="outline">Create account</Button>
-                          </Link>
-                        </div>
-                      </div>
+                {/* Auth gate - must be logged in to proceed */}
+                {!user ? (
+                  <div className="bg-card rounded-xl p-8 border border-border/50 text-center">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <User className="w-8 h-8 text-primary" />
                     </div>
+                    <h2 className="text-xl font-bold text-foreground mb-2">Sign in to continue booking</h2>
+                    <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+                      To book this property you need a GapNight account. Sign in or create one — it only takes a minute.
+                    </p>
+                    <div className="flex flex-wrap gap-3 justify-center mb-4">
+                      <Link href={`/login?redirect=/booking/property/${propertyId}?checkIn=${checkInDate}&checkOut=${checkOutDate}&nights=${nightsParam}`}>
+                        <Button size="lg" className="px-8">Sign In</Button>
+                      </Link>
+                      <Link href={`/signup?redirect=/booking/property/${propertyId}?checkIn=${checkInDate}&checkOut=${checkOutDate}&nights=${nightsParam}`}>
+                        <Button size="lg" variant="outline" className="px-8">Create Account</Button>
+                      </Link>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      You'll also need to verify your ID before completing payment.
+                    </p>
                   </div>
-                )}
-
+                ) : (
+                <>
                 {/* Guest details - matches Booking.tsx */}
                 <div className="bg-card rounded-xl p-6 border border-border/50">
                   <h2 className="text-xl font-bold text-foreground mb-1 flex items-center gap-2">
@@ -741,6 +740,8 @@ export default function PropertyBooking() {
                   By submitting this request, you agree to our Terms of Service and Privacy Policy.
                   You won't be charged until the host approves your booking.
                 </p>
+                </>
+                )}
               </form>
             </Form>
           </div>

@@ -391,11 +391,12 @@ export const propertyBookings = pgTable("property_bookings", {
 export const propertyQA = pgTable("property_qa", {
   id: text("id").primaryKey(), // UUID
   propertyId: text("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
-  userId: text("user_id").notNull().references(() => users.id),
+  userId: text("user_id").references(() => users.id), // null for host-published FAQs
   question: text("question").notNull(),
   answer: text("answer"), // null until host answers
   answeredAt: timestamp("answered_at"),
   isPublic: boolean("is_public").notNull().default(true), // public Q&A visible to all
+  isHostFaq: boolean("is_host_faq").notNull().default(false), // true = host-published FAQ
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

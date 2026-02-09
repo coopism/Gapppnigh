@@ -1,5 +1,7 @@
 import type { Express, Response } from "express";
 import type { Server } from "http";
+import express from "express";
+import path from "path";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
@@ -115,6 +117,9 @@ export async function registerRoutes(
   // USER AUTHENTICATION ROUTES
   // ========================================
   registerUserAuthRoutes(app);
+
+  // Serve uploaded photos statically
+  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
   
   // ========================================
   // OWNER ROUTES (Auto-listing rules, etc.)
@@ -1496,7 +1501,8 @@ export async function registerRoutes(
   app.use(hostRoutes);
 
   // Register property routes (public listings, booking, Q&A, ID verification)
-  app.use(propertyRoutes);
+  // Apply optional user auth so req.user is available for authenticated endpoints
+  app.use(optionalUserAuthMiddleware, propertyRoutes);
 
   return httpServer;
 }

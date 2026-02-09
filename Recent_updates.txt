@@ -1,5 +1,5 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-11 03:01 AM UTC+11
+# Last Updated: 2026-02-11 03:12 AM UTC+11
 
 ## AirBnB Host Platform - Feb 11, 2026
 ### Major Feature: Complete Short-Term Rental Host System
@@ -116,6 +116,32 @@ Complete AirBnB-style host platform integrated into GapNight. Hosts can register
 - **Host Profile API** — New endpoint `GET /api/hosts/:hostId/profile` returns host info + enriched properties
 - **"Become a Host" link** — Added to main Navigation (desktop + mobile) linking to `/host/login`
 - **"View profile →" link** — Added to PropertyDetail booking card, links to host's public profile
+
+### Bug Fixes + Features: Auth, Dates, Q&A, Photo Upload, Booking Flow (Feb 11)
+**Verify Identity Fix (`property-routes.ts` + `routes.ts`):**
+- **Root cause:** `optionalUserAuthMiddleware` was never applied to property routes, so `req.user` was always undefined
+- **Fix:** Applied `optionalUserAuthMiddleware` before `propertyRoutes` in `routes.ts`
+- **Fix:** Replaced all `req.userId` → `req.user?.id` across property-routes (verify-identity, booking, Q&A, property-bookings)
+
+**Date Display Fix (`PropertyDetail.tsx`):**
+- **Root cause:** `toISOString()` converts to UTC, losing a day for UTC+11 users (Feb 11 midnight AEDT → Feb 10 13:00 UTC)
+- **Fix:** Replaced with local date formatting using `getFullYear()/getMonth()/getDate()` — 1-night stay on Feb 10 now correctly shows "Feb 10th – Feb 11th"
+
+**Booking Flow Auth Gate (`PropertyBooking.tsx`):**
+- **Before:** Small login prompt shown alongside the full booking form (form was usable but would fail)
+- **After:** Full-page auth gate blocks the entire form when not logged in. Shows centered card with "Sign In" + "Create Account" buttons that redirect back after auth
+
+**Host FAQ System (schema + backend + frontend):**
+- **Schema:** `property_qa.userId` now nullable, added `is_host_faq` boolean column
+- **Backend:** `POST /api/host/properties/:id/faq` — host publishes Q&A pair to listing; `DELETE /api/host/qa/:id` — remove FAQ
+- **Host Dashboard QATab:** Split into "Published FAQs" (with add form: property selector, question, answer, publish button, delete) and "Guest Questions" (with reply)
+- **PropertyDetail Q&A:** Shows host FAQs as "Frequently Asked" cards above the guest question form
+
+**Photo Upload System (multer + backend + frontend):**
+- **Backend:** `POST /api/host/properties/:id/photos` (multer, up to 10 files, 10MB, jpg/png/webp), `GET .../photos`, `DELETE .../photos/:id`, `PUT .../photos/:id/cover`
+- **Static serving:** `app.use("/uploads", express.static(...))` in routes.ts
+- **Host Dashboard:** PropertyCard component with "Manage Photos" toggle, photo grid with hover actions (Set Cover / Delete), upload button + empty state drop zone
+- **PropertyDetail:** Gallery now uses real photos from API, falls back to Unsplash placeholders
 
 ### Airbnb-Style Overhaul: Host Dashboard + Property Detail (Feb 11)
 **Host Dashboard (`HostDashboard.tsx`):**

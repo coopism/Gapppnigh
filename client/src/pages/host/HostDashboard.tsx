@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -324,35 +324,188 @@ function PropertiesTab() {
       ) : (
         <div className="grid gap-4">
           {properties.map((prop: any) => (
-            <Card key={prop.id}>
-              <CardContent className="p-4 flex gap-4">
-                {prop.coverImage && (
-                  <img src={prop.coverImage} alt={prop.title} className="w-32 h-24 object-cover rounded-lg" />
-                )}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold">{prop.title}</h3>
-                    <Badge variant={
-                      prop.status === "approved" ? "default" :
-                      prop.status === "pending_approval" ? "secondary" :
-                      "destructive"
-                    }>
-                      {prop.status === "pending_approval" ? "Pending Review" : prop.status}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{prop.city}, {prop.state} - {prop.propertyType}</p>
-                  <p className="text-sm mt-1">
-                    ${((prop.baseNightlyRate || 0) / 100).toFixed(0)}/night
-                    {" · "}{prop.bedrooms} bed{prop.bedrooms !== 1 ? "s" : ""}
-                    {" · "}{prop.maxGuests} guest{prop.maxGuests !== 1 ? "s" : ""}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <PropertyCard key={prop.id} property={prop} onUpdate={loadProperties} />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => void }) {
+  const [showPhotos, setShowPhotos] = useState(false);
+  const [photos, setPhotos] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const loadPhotos = async () => {
+    try {
+      const res = await fetch(`/api/host/properties/${property.id}/photos`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setPhotos(data.photos || []);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (showPhotos) loadPhotos();
+  }, [showPhotos]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach(f => formData.append("photos", f));
+      const res = await fetch(`/api/host/properties/${property.id}/photos`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast({ title: `${data.photos.length} photo(s) uploaded!` });
+        loadPhotos();
+        onUpdate();
+      } else {
+        const data = await res.json();
+        toast({ title: "Upload failed", description: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDelete = async (photoId: string) => {
+    try {
+      const res = await fetch(`/api/host/properties/${property.id}/photos/${photoId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast({ title: "Photo removed" });
+        loadPhotos();
+        onUpdate();
+      }
+    } catch {
+      toast({ title: "Failed to delete", variant: "destructive" });
+    }
+  };
+
+  const handleSetCover = async (photoId: string) => {
+    try {
+      const res = await fetch(`/api/host/properties/${property.id}/photos/${photoId}/cover`, {
+        method: "PUT",
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast({ title: "Cover photo updated" });
+        loadPhotos();
+        onUpdate();
+      }
+    } catch {
+      toast({ title: "Failed to set cover", variant: "destructive" });
+    }
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex gap-4">
+          <div className="w-32 h-24 rounded-lg overflow-hidden bg-muted shrink-0">
+            {property.coverImage ? (
+              <img src={property.coverImage} alt={property.title} className="w-full h-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=200&h=200&fit=crop"; }} />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">No photo</div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold truncate">{property.title}</h3>
+              <Badge variant={
+                property.status === "approved" ? "default" :
+                property.status === "pending_approval" ? "secondary" : "destructive"
+              }>
+                {property.status === "pending_approval" ? "Pending Review" : property.status}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">{property.city}, {property.state} · {property.propertyType}</p>
+            <p className="text-sm mt-1">
+              ${((property.baseNightlyRate || 0) / 100).toFixed(0)}/night
+              {" · "}{property.bedrooms} bed{property.bedrooms !== 1 ? "s" : ""}
+              {" · "}{property.maxGuests} guest{property.maxGuests !== 1 ? "s" : ""}
+            </p>
+            <Button variant="ghost" size="sm" className="mt-1 text-xs px-0 text-primary"
+              onClick={() => setShowPhotos(!showPhotos)}>
+              {showPhotos ? "Hide Photos" : "Manage Photos"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Photo Manager */}
+        {showPhotos && (
+          <div className="mt-4 pt-4 border-t border-border/50">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-foreground">Photos ({photos.length})</h4>
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".jpg,.jpeg,.png,.webp"
+                  className="hidden"
+                  onChange={handleUpload}
+                />
+                <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                  {uploading ? "Uploading..." : "+ Upload Photos"}
+                </Button>
+              </div>
+            </div>
+
+            {photos.length > 0 ? (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                {photos.map((photo: any) => (
+                  <div key={photo.id} className="relative group rounded-lg overflow-hidden aspect-square">
+                    <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                    {photo.isCover && (
+                      <div className="absolute top-1 left-1">
+                        <Badge className="text-[10px] bg-primary/90 px-1.5 py-0.5">Cover</Badge>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                      {!photo.isCover && (
+                        <button onClick={() => handleSetCover(photo.id)}
+                          className="text-white text-[10px] bg-white/20 rounded px-1.5 py-1 hover:bg-white/30">
+                          Set Cover
+                        </button>
+                      )}
+                      <button onClick={() => handleDelete(photo.id)}
+                        className="text-white text-[10px] bg-red-500/60 rounded px-1.5 py-1 hover:bg-red-500/80">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-muted/30 rounded-lg border-2 border-dashed border-border/50 p-6 text-center cursor-pointer hover:border-primary/30 transition-colors"
+                onClick={() => fileInputRef.current?.click()}>
+                <Home className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Click to upload photos</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">JPG, PNG, WebP · Max 10MB each</p>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1008,11 +1161,26 @@ function AvailabilityTab() {
 
 function QATab() {
   const [questions, setQuestions] = useState<any[]>([]);
+  const [properties, setProperties] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [answerText, setAnswerText] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
-  useEffect(() => { loadQuestions(); }, []);
+  // FAQ form
+  const [showFaqForm, setShowFaqForm] = useState(false);
+  const [faqProperty, setFaqProperty] = useState("");
+  const [faqQuestion, setFaqQuestion] = useState("");
+  const [faqAnswer, setFaqAnswer] = useState("");
+
+  useEffect(() => {
+    loadQuestions();
+    fetch("/api/host/properties", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { properties: [] })
+      .then(data => {
+        setProperties(data.properties || []);
+        if (data.properties?.length > 0) setFaqProperty(data.properties[0].id);
+      }).catch(() => {});
+  }, []);
 
   const loadQuestions = async () => {
     try {
@@ -1045,61 +1213,169 @@ function QATab() {
     }
   };
 
+  const handlePublishFaq = async () => {
+    if (!faqQuestion.trim() || !faqAnswer.trim() || !faqProperty) return;
+    try {
+      const res = await fetch(`/api/host/properties/${faqProperty}/faq`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ question: faqQuestion, answer: faqAnswer }),
+      });
+      if (res.ok) {
+        toast({ title: "FAQ published", description: "This will now appear on your listing page." });
+        loadQuestions();
+        setFaqQuestion("");
+        setFaqAnswer("");
+        setShowFaqForm(false);
+      } else {
+        const data = await res.json();
+        toast({ title: "Error", description: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to publish FAQ", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteFaq = async (questionId: string) => {
+    try {
+      const res = await fetch(`/api/host/qa/${questionId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast({ title: "FAQ removed" });
+        loadQuestions();
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+    }
+  };
+
   if (isLoading) return <div className="text-center py-12">Loading questions...</div>;
 
-  const unanswered = questions.filter(q => !q.answer);
-  const answered = questions.filter(q => q.answer);
+  const hostFaqs = questions.filter(q => q.isHostFaq);
+  const guestUnanswered = questions.filter(q => !q.isHostFaq && !q.answer);
+  const guestAnswered = questions.filter(q => !q.isHostFaq && q.answer);
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Questions & Answers</h2>
+    <div className="space-y-8">
+      {/* Publish FAQ Section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Published FAQs</h2>
+            <p className="text-xs text-muted-foreground">These appear on your listing page for guests to see.</p>
+          </div>
+          <Button size="sm" onClick={() => setShowFaqForm(!showFaqForm)} variant={showFaqForm ? "outline" : "default"}>
+            {showFaqForm ? "Cancel" : "+ Add FAQ"}
+          </Button>
+        </div>
 
-      {unanswered.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-3 text-amber-500">Unanswered ({unanswered.length})</h3>
-          <div className="grid gap-4">
-            {unanswered.map((q: any) => (
-              <Card key={q.id}>
-                <CardContent className="p-4">
-                  <p className="text-sm text-muted-foreground mb-1">{q.propertyTitle} · {q.userName}</p>
-                  <p className="font-medium mb-3">"{q.question}"</p>
-                  <div className="flex gap-2">
-                    <Textarea placeholder="Type your answer..."
-                      value={answerText[q.id] || ""}
-                      onChange={e => setAnswerText(prev => ({ ...prev, [q.id]: e.target.value }))}
-                      rows={2} className="flex-1" />
-                    <Button
-                      onClick={() => handleAnswer(q.id)} disabled={!answerText[q.id]?.trim()}>Reply</Button>
-                  </div>
-                </CardContent>
-              </Card>
+        {showFaqForm && (
+          <div className="bg-card rounded-xl border border-border/50 p-5 mb-4">
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Property</label>
+                <select className="w-full rounded-lg border border-border bg-background text-foreground px-3 py-2 text-sm"
+                  value={faqProperty} onChange={e => setFaqProperty(e.target.value)}>
+                  {properties.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Question (what guests commonly ask)</label>
+                <Input value={faqQuestion} onChange={e => setFaqQuestion(e.target.value)}
+                  placeholder="e.g. Do you allow dogs?" className="h-9 text-sm" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Answer</label>
+                <Textarea value={faqAnswer} onChange={e => setFaqAnswer(e.target.value)}
+                  placeholder="e.g. Yes, well-behaved dogs are welcome..." rows={2} className="text-sm" />
+              </div>
+              <Button size="sm" onClick={handlePublishFaq}
+                disabled={!faqQuestion.trim() || !faqAnswer.trim()}>
+                Publish FAQ to Listing
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {hostFaqs.length > 0 ? (
+          <div className="grid gap-3">
+            {hostFaqs.map((q: any) => (
+              <div key={q.id} className="bg-card rounded-xl border border-border/50 p-4 flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-1">{q.propertyTitle}</p>
+                  <p className="font-medium text-sm text-foreground">Q: {q.question}</p>
+                  <p className="text-sm text-primary mt-1">A: {q.answer}</p>
+                </div>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive shrink-0"
+                  onClick={() => handleDeleteFaq(q.id)}>Remove</Button>
+              </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="bg-card rounded-xl border border-border/50 p-6 text-center">
+            <HelpCircle className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No FAQs published yet. Add common questions guests might ask about your property.</p>
+          </div>
+        )}
+      </div>
 
-      {answered.length > 0 && (
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Answered ({answered.length})</h3>
-          <div className="grid gap-4">
-            {answered.map((q: any) => (
-              <Card key={q.id}>
-                <CardContent className="p-4">
-                  <p className="text-sm text-muted-foreground mb-1">{q.propertyTitle} · {q.userName}</p>
-                  <p className="font-medium">Q: "{q.question}"</p>
+      {/* Guest Questions */}
+      <div>
+        <h2 className="text-xl font-bold text-foreground mb-4">Guest Questions</h2>
+
+        {guestUnanswered.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold mb-3 text-amber-500 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Needs Reply ({guestUnanswered.length})
+            </h3>
+            <div className="grid gap-3">
+              {guestUnanswered.map((q: any) => (
+                <Card key={q.id}>
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground mb-1">{q.propertyTitle} · {q.userName}</p>
+                    <p className="font-medium text-sm mb-3">"{q.question}"</p>
+                    <div className="flex gap-2">
+                      <Textarea placeholder="Type your answer..."
+                        value={answerText[q.id] || ""}
+                        onChange={e => setAnswerText(prev => ({ ...prev, [q.id]: e.target.value }))}
+                        rows={2} className="flex-1 text-sm" />
+                      <Button size="sm"
+                        onClick={() => handleAnswer(q.id)} disabled={!answerText[q.id]?.trim()}>Reply</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {guestAnswered.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold mb-3">Answered ({guestAnswered.length})</h3>
+            <div className="grid gap-3">
+              {guestAnswered.map((q: any) => (
+                <div key={q.id} className="bg-card rounded-xl border border-border/50 p-4">
+                  <p className="text-xs text-muted-foreground mb-1">{q.propertyTitle} · {q.userName}</p>
+                  <p className="font-medium text-sm">Q: "{q.question}"</p>
                   <p className="text-sm mt-1 text-primary">A: {q.answer}</p>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {questions.length === 0 && (
-        <Card className="text-center py-12">
-          <CardContent><p className="text-muted-foreground">No questions yet. Questions from potential guests will appear here.</p></CardContent>
-        </Card>
-      )}
+        {guestUnanswered.length === 0 && guestAnswered.length === 0 && (
+          <div className="bg-card rounded-xl border border-border/50 p-6 text-center">
+            <MessageSquare className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No guest questions yet. Questions from potential guests will appear here.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

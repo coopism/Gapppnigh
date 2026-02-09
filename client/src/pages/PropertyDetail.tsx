@@ -77,10 +77,10 @@ function buildRange(dates: any[]): GapNightRange {
     return sum + Math.round(d.nightlyRate * (1 - (d.gapNightDiscount || 0) / 100));
   }, 0);
   const avgDiscount = Math.round(dates.reduce((sum: number, d: any) => sum + (d.gapNightDiscount || 0), 0) / dates.length);
-  // End date is the day AFTER the last night
+  // End date is the day AFTER the last night (checkout day)
   const lastDate = new Date(dates[dates.length - 1].date + "T00:00:00");
   lastDate.setDate(lastDate.getDate() + 1);
-  const endDate = lastDate.toISOString().split("T")[0];
+  const endDate = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, "0")}-${String(lastDate.getDate()).padStart(2, "0")}`;
   return {
     startDate: dates[0].date,
     endDate,
@@ -110,6 +110,7 @@ export default function PropertyDetail() {
   const [property, setProperty] = useState<any>(null);
   const [hostData, setHostData] = useState<any>(null);
   const [availability, setAvailability] = useState<any[]>([]);
+  const [photos, setPhotos] = useState<any[]>([]);
   const [qa, setQa] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,6 +131,7 @@ export default function PropertyDetail() {
           setProperty(data.property);
           setHostData(data.host);
           setAvailability(data.availability || []);
+          setPhotos(data.photos || []);
           setQa(data.qa || []);
           setReviews(data.reviews || []);
         })
@@ -242,15 +244,15 @@ export default function PropertyDetail() {
                 onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop'; }}
               />
             </div>
-            {(property.photos && property.photos.length > 0 ? property.photos.slice(0, 4) : [
-              "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop",
-              "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop",
-              "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=400&h=300&fit=crop",
-              "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400&h=300&fit=crop",
+            {(photos.length > 0 ? photos.slice(0, 4) : [
+              { url: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop" },
+              { url: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop" },
+              { url: "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=400&h=300&fit=crop" },
+              { url: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400&h=300&fit=crop" },
             ]).map((photo: any, i: number) => (
               <div key={i} className="hidden sm:block">
                 <img
-                  src={typeof photo === "string" ? photo : photo.url}
+                  src={photo.url}
                   alt={`${property.title} ${i + 2}`}
                   className="w-full h-full object-cover"
                   onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&h=300&fit=crop'; }}
@@ -600,49 +602,74 @@ export default function PropertyDetail() {
               <MessageCircle className="w-5 h-5" />
               Questions & Answers
             </h2>
-            <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
-              <div className="p-4 border-b border-border/50">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder={user ? "Ask the host a question..." : "Sign in to ask a question"}
-                    value={questionText}
-                    onChange={(e) => setQuestionText(e.target.value)}
-                    disabled={!user || askingQuestion}
-                    className="flex-1"
-                  />
-                  <Button
-                    size="icon"
-                    onClick={handleAskQuestion}
-                    disabled={!questionText.trim() || askingQuestion}
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-                {!user && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    <Link href={`/login?redirect=/stays/${params.id}`} className="text-primary hover:underline">Sign in</Link> to ask a question
-                  </p>
-                )}
-              </div>
-              {qa.length > 0 ? (
-                <div className="divide-y divide-border/50">
-                  {qa.filter((q: any) => q.isPublic).map((q: any) => (
-                    <div key={q.id} className="p-4">
-                      <p className="font-medium text-sm text-foreground">Q: {q.question}</p>
-                      {q.answer ? (
-                        <p className="text-sm text-muted-foreground mt-2">A: {q.answer}</p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground mt-2 italic">Awaiting host response</p>
+
+            {/* Host FAQs */}
+            {(() => {
+              const hostFaqs = qa.filter((q: any) => q.isHostFaq && q.isPublic);
+              const guestQs = qa.filter((q: any) => !q.isHostFaq && q.isPublic);
+              return (
+                <>
+                  {hostFaqs.length > 0 && (
+                    <div className="mb-4">
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-2">Frequently Asked</h3>
+                      <div className="space-y-2">
+                        {hostFaqs.map((q: any) => (
+                          <div key={q.id} className="bg-card rounded-xl border border-border/50 p-4">
+                            <p className="font-medium text-sm text-foreground">Q: {q.question}</p>
+                            <p className="text-sm text-muted-foreground mt-1.5">A: {q.answer}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ask a question form */}
+                  <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+                    <div className="p-4 border-b border-border/50">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder={user ? "Ask the host a question..." : "Sign in to ask a question"}
+                          value={questionText}
+                          onChange={(e) => setQuestionText(e.target.value)}
+                          disabled={!user || askingQuestion}
+                          className="flex-1"
+                        />
+                        <Button
+                          size="icon"
+                          onClick={handleAskQuestion}
+                          disabled={!questionText.trim() || askingQuestion}
+                        >
+                          <Send className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {!user && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          <Link href={`/login?redirect=/stays/${params.id}`} className="text-primary hover:underline">Sign in</Link> to ask a question
+                        </p>
                       )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  No questions yet. Be the first to ask!
-                </div>
-              )}
-            </div>
+                    {guestQs.length > 0 ? (
+                      <div className="divide-y divide-border/50">
+                        {guestQs.map((q: any) => (
+                          <div key={q.id} className="p-4">
+                            <p className="font-medium text-sm text-foreground">Q: {q.question}</p>
+                            {q.answer ? (
+                              <p className="text-sm text-muted-foreground mt-2">A: {q.answer}</p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground mt-2 italic">Awaiting host response</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        {hostFaqs.length > 0 ? "Have another question? Ask above!" : "No questions yet. Be the first to ask!"}
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
 
           {/* Reviews */}

@@ -9,8 +9,39 @@ import { eq, and, desc, gte, lte, count, sql, asc, or, ilike } from "drizzle-orm
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcrypt";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 const router = Router();
+
+// Photo upload config
+const uploadsDir = path.join(process.cwd(), "uploads", "properties");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const photoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `${uuidv4()}${ext}`);
+  },
+});
+
+const photoUpload = multer({
+  storage: photoStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = [".jpg", ".jpeg", ".png", ".webp"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only .jpg, .jpeg, .png, .webp files are allowed"));
+    }
+  },
+});
 const HOST_SESSION_COOKIE = "host_session";
 const SESSION_DURATION_HOURS = 48;
 
@@ -709,6 +740,187 @@ router.delete("/api/host/properties/:propertyId/availability/:availId", requireH
 });
 
 // ========================================
+// PHOTO UPLOAD
+// ========================================
+
+// Upload photos for a property
+router.post("/api/host/properties/:propertyId/photos", requireHostAuth, photoUpload.array("photos", 10), async (req: HostRequest, res: Response) => {
+  try {
+    const propertyId = req.params.propertyId as string;
+
+    // Verify property belongs to host
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.hostId, req.hostId!)))
+      .limit(1);
+
+    if (!property) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: "No files uploaded" });
+    }
+
+    // Get current max sort order
+    const existing = await db
+      .select({ sortOrder: propertyPhotos.sortOrder })
+      .from(propertyPhotos)
+      .where(eq(propertyPhotos.propertyId, propertyId))
+      .orderBy(desc(propertyPhotos.sortOrder))
+      .limit(1);
+
+    let nextSort = (existing[0]?.sortOrder || 0) + 1;
+
+    const inserted = [];
+    for (const file of files) {
+      const url = `/uploads/properties/${file.filename}`;
+      const isCover = nextSort === 1 && !property.coverImage;
+
+      const [photo] = await db
+        .insert(propertyPhotos)
+        .values({
+          id: uuidv4(),
+          propertyId,
+          url,
+          caption: null,
+          isCover,
+          sortOrder: nextSort++,
+        })
+        .returning();
+
+      // Set as cover image if first photo and no cover exists
+      if (isCover) {
+        await db.update(properties)
+          .set({ coverImage: url })
+          .where(eq(properties.id, propertyId));
+      }
+
+      inserted.push(photo);
+    }
+
+    res.json({ photos: inserted, message: `${inserted.length} photo(s) uploaded` });
+  } catch (error) {
+    console.error("Photo upload error:", error);
+    res.status(500).json({ error: "Failed to upload photos" });
+  }
+});
+
+// Get photos for a property
+router.get("/api/host/properties/:propertyId/photos", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const propertyId = req.params.propertyId as string;
+
+    const photos = await db
+      .select()
+      .from(propertyPhotos)
+      .where(eq(propertyPhotos.propertyId, propertyId))
+      .orderBy(asc(propertyPhotos.sortOrder));
+
+    res.json({ photos });
+  } catch (error) {
+    console.error("Get photos error:", error);
+    res.status(500).json({ error: "Failed to fetch photos" });
+  }
+});
+
+// Delete a photo
+router.delete("/api/host/properties/:propertyId/photos/:photoId", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const propertyId = req.params.propertyId as string;
+    const photoId = req.params.photoId as string;
+
+    // Verify property belongs to host
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.hostId, req.hostId!)))
+      .limit(1);
+
+    if (!property) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const [photo] = await db
+      .select()
+      .from(propertyPhotos)
+      .where(and(eq(propertyPhotos.id, photoId), eq(propertyPhotos.propertyId, propertyId)))
+      .limit(1);
+
+    if (!photo) {
+      return res.status(404).json({ error: "Photo not found" });
+    }
+
+    // Delete file from disk
+    const filePath = path.join(process.cwd(), photo.url);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    await db.delete(propertyPhotos).where(eq(propertyPhotos.id, photoId));
+
+    // If this was the cover image, update property
+    if (property.coverImage === photo.url) {
+      const [nextPhoto] = await db
+        .select()
+        .from(propertyPhotos)
+        .where(eq(propertyPhotos.propertyId, propertyId))
+        .orderBy(asc(propertyPhotos.sortOrder))
+        .limit(1);
+
+      await db.update(properties)
+        .set({ coverImage: nextPhoto?.url || null })
+        .where(eq(properties.id, propertyId));
+    }
+
+    res.json({ message: "Photo deleted" });
+  } catch (error) {
+    console.error("Delete photo error:", error);
+    res.status(500).json({ error: "Failed to delete photo" });
+  }
+});
+
+// Set cover photo
+router.put("/api/host/properties/:propertyId/photos/:photoId/cover", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const propertyId = req.params.propertyId as string;
+    const photoId = req.params.photoId as string;
+
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.hostId, req.hostId!)))
+      .limit(1);
+
+    if (!property) return res.status(403).json({ error: "Not authorized" });
+
+    // Unset all covers
+    await db.update(propertyPhotos)
+      .set({ isCover: false })
+      .where(eq(propertyPhotos.propertyId, propertyId));
+
+    // Set new cover
+    const [photo] = await db.update(propertyPhotos)
+      .set({ isCover: true })
+      .where(and(eq(propertyPhotos.id, photoId), eq(propertyPhotos.propertyId, propertyId)))
+      .returning();
+
+    if (photo) {
+      await db.update(properties)
+        .set({ coverImage: photo.url })
+        .where(eq(properties.id, propertyId));
+    }
+
+    res.json({ message: "Cover photo updated" });
+  } catch (error) {
+    console.error("Set cover error:", error);
+    res.status(500).json({ error: "Failed to set cover photo" });
+  }
+});
+
+// ========================================
 // BOOKING MANAGEMENT (HOST SIDE)
 // ========================================
 
@@ -995,16 +1207,20 @@ router.get("/api/host/qa", requireHostAuth, async (req: HostRequest, res: Respon
           .where(eq(properties.id, q.propertyId))
           .limit(1);
 
-        const [user] = await db
-          .select({ name: users.name })
-          .from(users)
-          .where(eq(users.id, q.userId))
-          .limit(1);
+        let userName = "Host FAQ";
+        if (q.userId) {
+          const [user] = await db
+            .select({ name: users.name })
+            .from(users)
+            .where(eq(users.id, q.userId))
+            .limit(1);
+          userName = user?.name || "Anonymous";
+        }
 
         return {
           ...q,
           propertyTitle: property?.title || "Unknown",
-          userName: user?.name || "Anonymous",
+          userName,
         };
       })
     );
@@ -1013,6 +1229,85 @@ router.get("/api/host/qa", requireHostAuth, async (req: HostRequest, res: Respon
   } catch (error) {
     console.error("Get Q&A error:", error);
     res.status(500).json({ error: "Failed to fetch questions" });
+  }
+});
+
+// Publish a host FAQ (host creates a Q&A pair for their listing)
+router.post("/api/host/properties/:propertyId/faq", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const propertyId = req.params.propertyId as string;
+    const { question, answer } = req.body;
+
+    if (!question || question.trim().length < 5) {
+      return res.status(400).json({ error: "Question must be at least 5 characters" });
+    }
+    if (!answer || answer.trim().length < 2) {
+      return res.status(400).json({ error: "Answer is required" });
+    }
+
+    // Verify property belongs to this host
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.hostId, req.hostId!)))
+      .limit(1);
+
+    if (!property) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const [faq] = await db
+      .insert(propertyQA)
+      .values({
+        id: uuidv4(),
+        propertyId,
+        userId: null,
+        question: question.trim(),
+        answer: answer.trim(),
+        answeredAt: new Date(),
+        isPublic: true,
+        isHostFaq: true,
+      })
+      .returning();
+
+    res.json({ faq, message: "FAQ published to listing" });
+  } catch (error) {
+    console.error("Publish FAQ error:", error);
+    res.status(500).json({ error: "Failed to publish FAQ" });
+  }
+});
+
+// Delete a host FAQ
+router.delete("/api/host/qa/:questionId", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const questionId = req.params.questionId as string;
+
+    const [question] = await db
+      .select()
+      .from(propertyQA)
+      .where(eq(propertyQA.id, questionId))
+      .limit(1);
+
+    if (!question) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    // Verify it belongs to host's property
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(and(eq(properties.id, question.propertyId), eq(properties.hostId, req.hostId!)))
+      .limit(1);
+
+    if (!property) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    await db.delete(propertyQA).where(eq(propertyQA.id, questionId));
+    res.json({ message: "Deleted" });
+  } catch (error) {
+    console.error("Delete FAQ error:", error);
+    res.status(500).json({ error: "Failed to delete" });
   }
 });
 
