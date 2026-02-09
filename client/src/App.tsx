@@ -41,6 +41,7 @@ import HostDashboard from "@/pages/host/HostDashboard";
 import Stays from "@/pages/Stays";
 import PropertyDetail from "@/pages/PropertyDetail";
 import HostProfile from "@/pages/HostProfile";
+import PropertyBooking from "@/pages/PropertyBooking";
 import { initAuth } from "@/hooks/useAuth";
 
 function MainRouter() {
@@ -49,6 +50,7 @@ function MainRouter() {
       <Route path="/" component={Landing} />
       <Route path="/deals" component={Deals} />
       <Route path="/deal/:id" component={DealDetail} />
+      <Route path="/booking/property/:propertyId" component={PropertyBooking} />
       <Route path="/booking/:dealId" component={Booking} />
       <Route path="/list-your-hotel" component={ListYourHotel} />
       <Route path="/waitlist" component={Waitlist} />
@@ -101,6 +103,8 @@ function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/account" component={Account} />
+      <Route path="/booking/property/:propertyId" component={PropertyBooking} />
+      <Route path="/booking/:dealId" component={Booking} />
       <Route path="/host/login" component={HostLogin} />
       <Route path="/host/dashboard" component={HostDashboard} />
       <Route path="/stays" component={Stays} />

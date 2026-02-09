@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useSearch } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useDeals, type SortOption } from "@/hooks/use-deals";
 import { DealCard } from "@/components/DealCard";
 import { PropertyDealCard } from "@/components/PropertyDealCard";
@@ -148,16 +149,7 @@ export default function Home() {
 
   const dateFilters = getDateFilterParams();
 
-  // Fetch properties from API
-  const [properties, setProperties] = useState<any[]>([]);
-  useEffect(() => {
-    fetch("/api/properties?limit=50")
-      .then(r => r.ok ? r.json() : { properties: [] })
-      .then(data => setProperties(data.properties || []))
-      .catch(() => {});
-  }, []);
-
-  const { data: deals, isLoading, error } = useDeals({
+  const { data: deals, isLoading: dealsLoading, error } = useDeals({
     search: debouncedSearch || undefined,
     category: activeCategory,
     sort: sortBy,
@@ -166,6 +158,42 @@ export default function Home() {
     nights: nights > 0 ? nights : undefined,
     minGuests: guests > 1 ? guests : undefined,
   });
+
+  // Fetch properties alongside deals
+  const { data: propertiesData, isLoading: propsLoading } = useQuery({
+    queryKey: ["properties", debouncedSearch, guests],
+    queryFn: async () => {
+      const params = new URLSearchParams({ limit: "50" });
+      if (debouncedSearch) params.set("city", debouncedSearch);
+      if (guests > 1) params.set("guests", guests.toString());
+      const res = await fetch(`/api/properties?${params}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.properties || [];
+    },
+  });
+
+  const isLoading = dealsLoading || propsLoading;
+
+  // Interleave deals and properties so properties are mixed in, not appended
+  const combinedItems = useMemo(() => {
+    const dealItems = (deals || []).map((d: any) => ({ ...d, _type: "deal" as const, _key: `deal-${d.id}` }));
+    const propItems = (propertiesData || []).map((p: any) => ({ ...p, _type: "property" as const, _key: `prop-${p.id}` }));
+    // Interleave: insert a property every 3 deals
+    const result: any[] = [];
+    let pi = 0;
+    for (let di = 0; di < dealItems.length; di++) {
+      result.push(dealItems[di]);
+      if ((di + 1) % 3 === 0 && pi < propItems.length) {
+        result.push(propItems[pi++]);
+      }
+    }
+    // Append remaining properties
+    while (pi < propItems.length) {
+      result.push(propItems[pi++]);
+    }
+    return result;
+  }, [deals, propertiesData]);
 
   const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label || "Deal Score";
 
@@ -765,14 +793,13 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {deals?.map((deal) => (
-              <div key={deal.id} className="animate-fade-in">
-                <DealCard deal={deal} />
-              </div>
-            ))}
-            {properties.map((prop) => (
-              <div key={`prop-${prop.id}`} className="animate-fade-in">
-                <PropertyDealCard property={prop} />
+            {combinedItems.map((item, idx) => (
+              <div key={item._key} className="animate-fade-in">
+                {item._type === "deal" ? (
+                  <DealCard deal={item} />
+                ) : (
+                  <PropertyDealCard property={item} />
+                )}
               </div>
             ))}
           </div>

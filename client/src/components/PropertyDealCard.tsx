@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Star, MapPin, Bed, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation, CalendarDays, Wine, Umbrella, Bell, ConciergeBell, Users, Home } from "lucide-react";
+import { Star, MapPin, Bed, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation, CalendarDays, Wine, Umbrella, Bell, ConciergeBell, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
 
@@ -16,14 +16,10 @@ const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "Concierge": ConciergeBell,
   "Kitchen": UtensilsCrossed,
   "Air Conditioning": Sparkles,
-  "Heating": Sparkles,
-  "Washer": Sparkles,
-  "Dryer": Sparkles,
   "TV": Sparkles,
-  "Garden": Sparkles,
-  "BBQ": Sparkles,
-  "Elevator": Sparkles,
   "Balcony": Sparkles,
+  "BBQ": UtensilsCrossed,
+  "Garden": Sparkles,
 };
 
 interface PropertyDealCardProps {
@@ -48,6 +44,33 @@ function calculateDealScore(property: any): number {
   return Math.min(Math.round(score), 99);
 }
 
+function getGapNightRangeLabel(property: any): string {
+  const gapNights = property.gapNights || [];
+  if (gapNights.length === 0) return "Available";
+  // Group consecutive dates into ranges
+  const dates = gapNights.map((gn: any) => gn.date).sort();
+  let ranges = 0;
+  let maxConsecutive = 1;
+  let currentConsecutive = 1;
+  for (let i = 1; i < dates.length; i++) {
+    const prev = new Date(dates[i - 1] + "T00:00:00");
+    const curr = new Date(dates[i] + "T00:00:00");
+    const diff = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+    if (diff === 1) {
+      currentConsecutive++;
+      maxConsecutive = Math.max(maxConsecutive, currentConsecutive);
+    } else {
+      ranges++;
+      currentConsecutive = 1;
+    }
+  }
+  ranges++; // count last range
+  if (maxConsecutive > 1) {
+    return `${gapNights.length} gap nights · up to ${maxConsecutive} consecutive`;
+  }
+  return `${gapNights.length} gap night${gapNights.length !== 1 ? "s" : ""} available`;
+}
+
 export function PropertyDealCard({ property }: PropertyDealCardProps) {
   const lowestGapRate = property.gapNights?.length > 0
     ? Math.min(...property.gapNights.map((gn: any) => gn.discountedRate))
@@ -59,17 +82,12 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
 
   const basePrice = property.baseNightlyRate / 100;
   const dealPrice = lowestGapRate ? lowestGapRate / 100 : basePrice;
-  const gapNightCount = property.gapNightCount || 0;
   const dealScore = calculateDealScore(property);
-
-  const propertyTypeLabel = property.propertyType === "entire_place" ? "Entire place"
-    : property.propertyType === "private_room" ? "Private room"
-    : property.propertyType === "shared_room" ? "Shared room" : "Unique stay";
 
   return (
     <Link href={`/stays/${property.id}`} className="block group" data-testid={`property-card-${property.id}`}>
       <div className="bg-card rounded-2xl overflow-visible border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all duration-300 hover-elevate">
-        {/* Image Section */}
+        {/* Image Section - identical to DealCard */}
         <div className="relative aspect-[4/3] overflow-hidden">
           <img
             src={property.coverImage || "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop"}
@@ -80,14 +98,12 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
             }}
           />
           
-          {/* Top badges */}
+          {/* Top badges - matches DealCard */}
           <div className="absolute top-3 left-3 flex items-center gap-2">
-            {gapNightCount > 0 && (
-              <Badge className="bg-card text-foreground font-semibold shadow-sm flex items-center gap-1.5 px-2.5 py-1">
-                <Heart className="w-3.5 h-3.5 fill-primary text-primary" />
-                <span>Gap Night</span>
-              </Badge>
-            )}
+            <Badge className="bg-card text-foreground font-semibold shadow-sm flex items-center gap-1.5 px-2.5 py-1">
+              <Heart className="w-3.5 h-3.5 fill-primary text-primary" />
+              <span>{property.host?.isSuperhost ? "Superhost" : "Rare Find"}</span>
+            </Badge>
             {maxDiscount > 0 && (
               <Badge className="bg-amber-500 text-white font-bold shadow-sm px-2.5 py-1">
                 {maxDiscount}% OFF
@@ -95,16 +111,7 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
             )}
           </div>
           
-          {/* Superhost badge at bottom left */}
-          {property.host?.isSuperhost && (
-            <div className="absolute bottom-3 left-3">
-              <Badge className="bg-card/90 text-foreground font-semibold shadow-sm px-2.5 py-1">
-                Superhost
-              </Badge>
-            </div>
-          )}
-
-          {/* Score badge at bottom right */}
+          {/* Score badge at bottom right - identical to DealCard */}
           <div className="absolute bottom-3 right-3">
             <div className="bg-primary text-white font-bold rounded-full px-3 py-1.5 text-sm shadow-lg flex items-center gap-1">
               <span className="text-xs font-medium opacity-90">SCORE</span>
@@ -113,20 +120,20 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
           </div>
         </div>
 
-        {/* Content Section */}
+        {/* Content Section - identical structure to DealCard */}
         <div className="p-4 bg-card">
-          {/* Property name + rating */}
+          {/* Name + rating */}
           <div className="flex items-start justify-between gap-2 mb-2">
             <h3 className="font-bold text-foreground text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors">
               {property.title}
             </h3>
-            {Number(property.averageRating) > 0 && (
-              <div className="flex items-center gap-1 shrink-0">
-                <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                <span className="font-bold text-sm">{property.averageRating}</span>
-                <span className="text-xs text-muted-foreground">({property.reviewCount || 0})</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1 shrink-0">
+              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+              <span className="font-bold text-sm">{Number(property.averageRating) > 0 ? property.averageRating : "New"}</span>
+              {Number(property.reviewCount) > 0 && (
+                <span className="text-xs text-muted-foreground">({property.reviewCount})</span>
+              )}
+            </div>
           </div>
 
           {/* Location */}
@@ -143,16 +150,16 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
             </div>
           )}
 
-          {/* Property type + capacity */}
+          {/* Room type + capacity - matches DealCard */}
           <div className="flex items-center text-muted-foreground text-sm mb-1.5">
             <Bed className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-            <span>{propertyTypeLabel}</span>
+            <span>{property.bedrooms} bed{property.bedrooms !== 1 ? "s" : ""} · {property.bathrooms} bath</span>
             <span className="mx-1.5 text-border">•</span>
             <Users className="w-3.5 h-3.5 mr-1 shrink-0" />
             <span>{property.maxGuests || 2}</span>
           </div>
 
-          {/* Amenities icons */}
+          {/* Amenities icons - identical to DealCard */}
           {property.amenities && property.amenities.length > 0 && (
             <div className="flex items-center gap-2 mb-3">
               {property.amenities.slice(0, 4).map((amenity: string) => {
@@ -170,13 +177,11 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
             </div>
           )}
 
-          {/* Availability hint + Price */}
+          {/* Availability hint + Price - identical layout to DealCard */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs text-primary">
               <CalendarDays className="w-3.5 h-3.5" />
-              <span className="font-medium">
-                {gapNightCount > 0 ? `${gapNightCount} gap nights` : "Available"}
-              </span>
+              <span className="font-medium">{getGapNightRangeLabel(property)}</span>
             </div>
             <div className="text-right">
               {lowestGapRate && lowestGapRate < property.baseNightlyRate ? (

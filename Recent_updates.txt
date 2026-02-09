@@ -1,5 +1,5 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-11 02:00 AM UTC+11
+# Last Updated: 2026-02-11 02:50 AM UTC+11
 
 ## AirBnB Host Platform - Feb 11, 2026
 ### Major Feature: Complete Short-Term Rental Host System
@@ -116,6 +116,36 @@ Complete AirBnB-style host platform integrated into GapNight. Hosts can register
 - **Host Profile API** — New endpoint `GET /api/hosts/:hostId/profile` returns host info + enriched properties
 - **"Become a Host" link** — Added to main Navigation (desktop + mobile) linking to `/host/login`
 - **"View profile →" link** — Added to PropertyDetail booking card, links to host's public profile
+
+### OVERHAUL: Full Property Integration into GapNight (Feb 11)
+**Problem:** Properties felt alienated from hotel deals — separate loading, forced to bottom, no booking flow, no real features.
+
+**What changed:**
+- **PropertyDealCard** — Complete rewrite to be structurally identical to DealCard (same badges, same layout, same CSS, same SCORE badge). Gap night labels now show consecutive ranges ("14 gap nights · up to 3 consecutive").
+- **Home.tsx (Deals page)** — Properties now fetched with `useQuery` (same pattern as deals), interleaved every 3 deals in the grid. Same GapNightLogoLoader, same loading state, same filters.
+- **PropertyDetail** — Complete rewrite matching DealDetail layout exactly:
+  - Same GapNightLogoLoader loading screen
+  - Same 2-column layout (image left, details right)
+  - Same "Back to deals" link style
+  - **Gap Night RANGES** — Consecutive gap nights grouped into selectable ranges (e.g. "Feb 15th - Feb 18th, 3 nights") — gap nights can now be PLURAL
+  - Same availability selector with radio buttons, pricing, discount %
+  - Real "Request Booking" button → navigates to `/booking/property/:id`
+  - **Q&A submission** — Users can ask questions directly (with real API call to `POST /api/properties/:id/questions`)
+  - Host profile card with link to `/host-profile/:id`
+- **PropertyBooking** (`client/src/pages/PropertyBooking.tsx`) — Full booking page matching Booking.tsx exactly:
+  - Same step indicator (1 Your Selection → 2 Your Details → 3 Confirmation)
+  - Same guest details form (name, email, phone with country code)
+  - Message to host field
+  - Special requests (collapsible)
+  - **StripePaymentForm** integration — card authorization hold (not charged until host approves)
+  - Price breakdown sidebar (nightly rate × nights + cleaning fee + 8% service fee)
+  - Booking confirmation screen with reference number
+  - Calls real `POST /api/properties/:id/book` API endpoint
+- **Navigation** — "Become a Host" link in both desktop and mobile nav
+- **App.tsx** — Route ordering fixed: `/booking/property/:propertyId` before `/booking/:dealId` for correct wouter matching
+
+### Intended Result
+Properties are now indistinguishable from hotel deals in the UI — same cards, same grid, same loading, same booking flow. Gap nights support consecutive ranges (2-3+ days between bookings, not just 1). Full end-to-end: browse → detail → select dates → book with Stripe → confirmation. Q&A is live. Host profiles are accessible.
 
 ---
 
