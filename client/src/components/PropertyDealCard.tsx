@@ -30,6 +30,24 @@ interface PropertyDealCardProps {
   property: any;
 }
 
+function calculateDealScore(property: any): number {
+  let score = 50;
+  const maxDiscount = property.gapNights?.length > 0
+    ? Math.max(...property.gapNights.map((gn: any) => gn.gapNightDiscount || 0))
+    : 0;
+  score += Math.min(maxDiscount * 0.8, 25);
+  const gapCount = property.gapNightCount || 0;
+  score += Math.min(gapCount * 0.5, 8);
+  if (property.host?.isSuperhost) score += 5;
+  const rating = Number(property.averageRating || 0);
+  if (rating >= 4.5) score += 7;
+  else if (rating >= 4.0) score += 4;
+  else if (rating >= 3.5) score += 2;
+  if (property.instantBook) score += 3;
+  if (property.selfCheckIn) score += 2;
+  return Math.min(Math.round(score), 99);
+}
+
 export function PropertyDealCard({ property }: PropertyDealCardProps) {
   const lowestGapRate = property.gapNights?.length > 0
     ? Math.min(...property.gapNights.map((gn: any) => gn.discountedRate))
@@ -42,6 +60,7 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
   const basePrice = property.baseNightlyRate / 100;
   const dealPrice = lowestGapRate ? lowestGapRate / 100 : basePrice;
   const gapNightCount = property.gapNightCount || 0;
+  const dealScore = calculateDealScore(property);
 
   const propertyTypeLabel = property.propertyType === "entire_place" ? "Entire place"
     : property.propertyType === "private_room" ? "Private room"
@@ -76,19 +95,21 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
             )}
           </div>
           
-          {/* Superhost / type badge at bottom right */}
+          {/* Superhost badge at bottom left */}
+          {property.host?.isSuperhost && (
+            <div className="absolute bottom-3 left-3">
+              <Badge className="bg-card/90 text-foreground font-semibold shadow-sm px-2.5 py-1">
+                Superhost
+              </Badge>
+            </div>
+          )}
+
+          {/* Score badge at bottom right */}
           <div className="absolute bottom-3 right-3">
-            {property.host?.isSuperhost ? (
-              <div className="bg-primary text-white font-bold rounded-full px-3 py-1.5 text-sm shadow-lg flex items-center gap-1">
-                <span className="text-xs font-medium opacity-90">SUPER</span>
-                <span className="text-base">HOST</span>
-              </div>
-            ) : (
-              <div className="bg-primary text-white font-bold rounded-full px-3 py-1.5 text-sm shadow-lg flex items-center gap-1">
-                <Home className="w-3.5 h-3.5" />
-                <span className="text-xs">STAY</span>
-              </div>
-            )}
+            <div className="bg-primary text-white font-bold rounded-full px-3 py-1.5 text-sm shadow-lg flex items-center gap-1">
+              <span className="text-xs font-medium opacity-90">SCORE</span>
+              <span className="text-base">{dealScore}</span>
+            </div>
           </div>
         </div>
 

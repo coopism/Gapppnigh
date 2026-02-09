@@ -281,6 +281,111 @@ router.get("/api/properties/:propertyId", async (req: Request, res: Response) =>
 });
 
 // ========================================
+// PUBLIC HOST PROFILE
+// ========================================
+
+router.get("/api/hosts/:hostId/profile", async (req: Request, res: Response) => {
+  try {
+    const hostId = req.params.hostId as string;
+
+    const [host] = await db
+      .select({
+        id: airbnbHosts.id,
+        name: airbnbHosts.name,
+        profilePhoto: airbnbHosts.profilePhoto,
+        bio: airbnbHosts.bio,
+        isSuperhost: airbnbHosts.isSuperhost,
+        averageResponseTime: airbnbHosts.averageResponseTime,
+        responseRate: airbnbHosts.responseRate,
+        createdAt: airbnbHosts.createdAt,
+      })
+      .from(airbnbHosts)
+      .where(and(eq(airbnbHosts.id, hostId), eq(airbnbHosts.isActive, true)))
+      .limit(1);
+
+    if (!host) {
+      return res.status(404).json({ error: "Host not found" });
+    }
+
+    // Get host's approved properties with gap night info
+    const hostProperties = await db
+      .select()
+      .from(properties)
+      .where(and(
+        eq(properties.hostId, hostId),
+        eq(properties.status, "approved"),
+        eq(properties.isActive, true)
+      ))
+      .orderBy(desc(properties.createdAt));
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const enrichedProperties = await Promise.all(
+      hostProperties.map(async (prop) => {
+        const gapNights = await db
+          .select()
+          .from(propertyAvailability)
+          .where(and(
+            eq(propertyAvailability.propertyId, prop.id),
+            eq(propertyAvailability.isAvailable, true),
+            eq(propertyAvailability.isGapNight, true),
+            gte(propertyAvailability.date, today)
+          ))
+          .orderBy(asc(propertyAvailability.date))
+          .limit(30);
+
+        const [reviewStats] = await db
+          .select({
+            count: count(),
+            avgRating: sql<number>`COALESCE(AVG(${propertyReviews.rating}), 0)`,
+          })
+          .from(propertyReviews)
+          .where(eq(propertyReviews.propertyId, prop.id));
+
+        return {
+          ...prop,
+          host: {
+            name: host.name,
+            profilePhoto: host.profilePhoto,
+            isSuperhost: host.isSuperhost,
+            averageResponseTime: host.averageResponseTime,
+            responseRate: host.responseRate,
+          },
+          gapNights: gapNights.map(gn => ({
+            date: gn.date,
+            nightlyRate: gn.nightlyRate,
+            gapNightDiscount: gn.gapNightDiscount,
+            discountedRate: Math.round(gn.nightlyRate * (1 - (gn.gapNightDiscount || 0) / 100)),
+          })),
+          gapNightCount: gapNights.length,
+          reviewCount: reviewStats?.count || 0,
+          averageRating: Number(reviewStats?.avgRating || 0).toFixed(1),
+        };
+      })
+    );
+
+    // Aggregate stats
+    const totalReviews = enrichedProperties.reduce((sum, p) => sum + (p.reviewCount || 0), 0);
+    const avgRating = enrichedProperties.length > 0
+      ? (enrichedProperties.reduce((sum, p) => sum + Number(p.averageRating || 0), 0) / enrichedProperties.length).toFixed(1)
+      : null;
+
+    res.json({
+      host: {
+        ...host,
+        totalProperties: enrichedProperties.length,
+        totalReviews,
+        averageRating: avgRating,
+      },
+      properties: enrichedProperties,
+    });
+  } catch (error) {
+    console.error("Get host profile error:", error);
+    res.status(500).json({ error: "Failed to fetch host profile" });
+  }
+});
+
+// ========================================
 // Q&A - USER SIDE (requires user auth)
 // ========================================
 

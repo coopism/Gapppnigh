@@ -109,6 +109,14 @@ Complete AirBnB-style host platform integrated into GapNight. Hosts can register
 - **Home.tsx** — fetches properties from `/api/properties` and renders them in the same grid as hotel deals
 - **App.tsx** — added `/stays/:id` route to both routers
 
+### Enhancement: Deal Score, Date Format, Host Profile, Nav Links (Feb 11)
+- **AI Deal Score** — Property cards now show a SCORE badge (bottom-right, matching hotel DealCard). Score is calculated from discount %, gap night count, superhost status, rating, instant book, and self check-in.
+- **Readable dates** — Gap night availability dates now display as "10th February 2026" instead of "2026-02-10"
+- **Host Profile page** (`client/src/pages/HostProfile.tsx`) — Public host profile at `/host-profile/:id` showing bio, stats (listings, reviews, rating, response rate), and all their property listings
+- **Host Profile API** — New endpoint `GET /api/hosts/:hostId/profile` returns host info + enriched properties
+- **"Become a Host" link** — Added to main Navigation (desktop + mobile) linking to `/host/login`
+- **"View profile →" link** — Added to PropertyDetail booking card, links to host's public profile
+
 ---
 
 ## Secure Admin Panel - Feb 5, 2026 

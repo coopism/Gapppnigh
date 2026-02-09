@@ -15,6 +15,17 @@ import {
   MessageCircle, ChevronLeft, Calendar, Home, Check,
 } from "lucide-react";
 
+function formatReadableDate(dateStr: string): string {
+  const date = new Date(dateStr + "T00:00:00");
+  const day = date.getDate();
+  const suffix = day === 1 || day === 21 || day === 31 ? "st"
+    : day === 2 || day === 22 ? "nd"
+    : day === 3 || day === 23 ? "rd" : "th";
+  const month = date.toLocaleDateString("en-AU", { month: "long" });
+  const year = date.getFullYear();
+  return `${day}${suffix} ${month} ${year}`;
+}
+
 const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "WiFi": Wifi, "Gym": Dumbbell, "Parking": Car, "Restaurant": UtensilsCrossed,
   "Pool": Waves, "Spa": Sparkles, "Bar": Wine, "Beach Access": Umbrella,
@@ -244,7 +255,7 @@ export default function PropertyDetail() {
                     const discounted = Math.round(gn.nightlyRate * (1 - (gn.gapNightDiscount || 0) / 100));
                     return (
                       <div key={gn.id} className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-center">
-                        <div className="font-semibold text-sm">{gn.date}</div>
+                        <div className="font-semibold text-sm">{formatReadableDate(gn.date)}</div>
                         <div className="text-xs line-through text-muted-foreground">{formatPrice(gn.nightlyRate / 100, "AUD")}</div>
                         <div className="font-bold text-primary">{formatPrice(discounted / 100, "AUD")}</div>
                         <Badge className="bg-primary/10 text-primary text-[10px] mt-1">-{gn.gapNightDiscount}%</Badge>
@@ -382,7 +393,7 @@ export default function PropertyDetail() {
                 {/* Host info */}
                 {property.host && (
                   <div className="mt-6 pt-4 border-t">
-                    <div className="flex items-center gap-3">
+                    <a href={`/host-profile/${property.host.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
                         {property.host.name.charAt(0)}
                       </div>
@@ -394,8 +405,9 @@ export default function PropertyDetail() {
                             ? `${property.host.averageResponseTime}min`
                             : `${Math.round(property.host.averageResponseTime / 60)}hr`}
                         </p>
+                        <p className="text-xs text-primary font-medium mt-0.5">View profile →</p>
                       </div>
-                    </div>
+                    </a>
                   </div>
                 )}
               </CardContent>

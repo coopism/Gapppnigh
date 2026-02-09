@@ -48,6 +48,9 @@ export function Navigation() {
             <Link href="/list-your-hotel" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/list-your-hotel") ? "text-primary" : "text-muted-foreground"}`}>
               For Hotels
             </Link>
+            <Link href="/host/login" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/host/login") || isActive("/host/dashboard") ? "text-primary" : "text-muted-foreground"}`}>
+              Become a Host
+            </Link>
             {!isLoading && (
               user ? (
                 <DropdownMenu>
@@ -108,6 +111,11 @@ export function Navigation() {
                   <Link href="/list-your-hotel">
                     <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
                       <Hotel className="w-5 h-5 mr-3" /> For Hotels
+                    </Button>
+                  </Link>
+                  <Link href="/host/login">
+                    <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
+                      <Home className="w-5 h-5 mr-3" /> Become a Host
                     </Button>
                   </Link>
                   {!isLoading && (
