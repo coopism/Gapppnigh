@@ -11,7 +11,7 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import {
-  Home, CalendarDays, MessageSquare, UserCircle, ChevronLeft, ChevronRight,
+  Home, CalendarDays, Calendar, MessageSquare, UserCircle, ChevronLeft, ChevronRight,
   BookOpen, TrendingUp, Clock, CheckCircle2, HelpCircle, DollarSign, LogOut
 } from "lucide-react";
 
@@ -104,11 +104,21 @@ export default function HostDashboard() {
 
 function OverviewTab() {
   const [stats, setStats] = useState<any>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [properties, setProperties] = useState<any[]>([]);
 
   useEffect(() => {
     fetch("/api/host/stats", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(data => data && setStats(data.stats))
+      .catch(() => {});
+    fetch("/api/host/bookings", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { bookings: [] })
+      .then(data => setBookings(data.bookings || []))
+      .catch(() => {});
+    fetch("/api/host/properties", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { properties: [] })
+      .then(data => setProperties(data.properties || []))
       .catch(() => {});
   }, []);
 
@@ -121,26 +131,154 @@ function OverviewTab() {
     );
   }
 
-  const cards = [
-    { label: "Active Properties", value: stats.totalProperties, icon: Home },
+  // Today's data
+  const today = new Date().toISOString().split("T")[0];
+  const pendingBookings = bookings.filter(b => b.status === "PENDING_APPROVAL");
+  const upcomingCheckins = bookings.filter(b => b.status === "CONFIRMED" && b.checkInDate >= today).sort((a, b) => a.checkInDate.localeCompare(b.checkInDate)).slice(0, 3);
+  const currentlyHosting = bookings.filter(b => b.status === "CONFIRMED" && b.checkInDate <= today && b.checkOutDate >= today);
+
+  // Performance metrics
+  const totalBookingsCount = bookings.length;
+  const approvedCount = bookings.filter(b => b.status === "CONFIRMED" || b.status === "COMPLETED").length;
+  const acceptanceRate = totalBookingsCount > 0 ? Math.round((approvedCount / totalBookingsCount) * 100) : 100;
+
+  const statCards = [
+    { label: "Active Listings", value: stats.totalProperties, icon: Home },
     { label: "Total Bookings", value: stats.totalBookings, icon: BookOpen },
-    { label: "Pending Approval", value: stats.pendingBookings, icon: Clock, accent: stats.pendingBookings > 0 ? "text-amber-500" : undefined },
-    { label: "Confirmed", value: stats.confirmedBookings, icon: CheckCircle2, accent: "text-primary" },
-    { label: "Total Revenue", value: `$${stats.totalRevenue?.toLocaleString() || 0}`, icon: DollarSign },
-    { label: "Unanswered Q's", value: stats.unansweredQuestions, icon: HelpCircle, accent: stats.unansweredQuestions > 0 ? "text-amber-500" : undefined },
+    { label: "Revenue", value: `$${stats.totalRevenue?.toLocaleString() || 0}`, icon: DollarSign },
+    { label: "Acceptance Rate", value: `${acceptanceRate}%`, icon: CheckCircle2, accent: acceptanceRate >= 90 ? "text-primary" : "text-amber-500" },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-      {cards.map((c) => (
-        <div key={c.label} className="bg-card rounded-xl border border-border/50 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <c.icon className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">{c.label}</span>
+    <div className="space-y-6">
+      {/* Stat cards row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {statCards.map((c) => (
+          <div key={c.label} className="bg-card rounded-xl border border-border/50 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <c.icon className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">{c.label}</span>
+            </div>
+            <p className={`text-2xl font-bold ${c.accent || "text-foreground"}`}>{c.value}</p>
           </div>
-          <p className={`text-2xl font-bold ${c.accent || "text-foreground"}`}>{c.value}</p>
+        ))}
+      </div>
+
+      {/* Today section - Airbnb style */}
+      <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+        <div className="px-5 py-4 border-b border-border/50">
+          <h2 className="text-lg font-bold text-foreground">Today</h2>
+          <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
         </div>
-      ))}
+        <div className="divide-y divide-border/50">
+          {/* Pending actions */}
+          {pendingBookings.length > 0 && (
+            <div className="px-5 py-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span className="text-sm font-semibold text-foreground">Pending Approval ({pendingBookings.length})</span>
+              </div>
+              <div className="space-y-2">
+                {pendingBookings.slice(0, 3).map(b => (
+                  <div key={b.id} className="flex items-center justify-between bg-amber-500/5 rounded-lg p-3 border border-amber-500/10">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{b.guestFirstName} {b.guestLastName}</p>
+                      <p className="text-xs text-muted-foreground">{b.propertyTitle} · {b.checkInDate} → {b.checkOutDate}</p>
+                    </div>
+                    <Badge variant="secondary" className="text-amber-600 text-xs">Review</Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Currently hosting */}
+          {currentlyHosting.length > 0 && (
+            <div className="px-5 py-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2 h-2 rounded-full bg-primary" />
+                <span className="text-sm font-semibold text-foreground">Currently Hosting ({currentlyHosting.length})</span>
+              </div>
+              {currentlyHosting.map(b => (
+                <div key={b.id} className="flex items-center gap-3 bg-primary/5 rounded-lg p-3 border border-primary/10">
+                  <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold text-sm">
+                    {(b.guestFirstName || "G").charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{b.guestFirstName} {b.guestLastName}</p>
+                    <p className="text-xs text-muted-foreground">{b.propertyTitle} · Check-out {b.checkOutDate}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upcoming check-ins */}
+          {upcomingCheckins.length > 0 && (
+            <div className="px-5 py-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">Upcoming Check-ins</span>
+              </div>
+              <div className="space-y-2">
+                {upcomingCheckins.map(b => (
+                  <div key={b.id} className="flex items-center justify-between rounded-lg p-3 bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-foreground font-bold text-sm">
+                        {(b.guestFirstName || "G").charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{b.guestFirstName} {b.guestLastName}</p>
+                        <p className="text-xs text-muted-foreground">{b.propertyTitle}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground">{b.checkInDate}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Nothing happening */}
+          {pendingBookings.length === 0 && currentlyHosting.length === 0 && upcomingCheckins.length === 0 && (
+            <div className="px-5 py-8 text-center">
+              <CheckCircle2 className="w-8 h-8 text-primary mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">You're all caught up! No pending actions.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Your listings quick view */}
+      {properties.length > 0 && (
+        <div>
+          <h2 className="text-lg font-bold text-foreground mb-3">Your Listings</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {properties.slice(0, 4).map(prop => (
+              <div key={prop.id} className="bg-card rounded-xl border border-border/50 overflow-hidden flex">
+                <div className="w-20 h-20 shrink-0">
+                  <img
+                    src={prop.coverImage || "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=200&h=200&fit=crop"}
+                    alt={prop.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=200&h=200&fit=crop"; }}
+                  />
+                </div>
+                <div className="p-3 flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-foreground truncate">{prop.title}</h3>
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${prop.status === "approved" ? "bg-primary" : prop.status === "pending_approval" ? "bg-amber-500" : "bg-destructive"}`} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">{prop.city}, {prop.state}</p>
+                  <p className="text-xs text-foreground font-medium mt-1">
+                    ${((prop.baseNightlyRate || 0) / 100).toFixed(0)}/night · {prop.bedrooms} bed{prop.bedrooms !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
