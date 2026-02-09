@@ -1,5 +1,5 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-11 02:50 AM UTC+11
+# Last Updated: 2026-02-11 02:57 AM UTC+11
 
 ## AirBnB Host Platform - Feb 11, 2026
 ### Major Feature: Complete Short-Term Rental Host System
@@ -116,6 +116,14 @@ Complete AirBnB-style host platform integrated into GapNight. Hosts can register
 - **Host Profile API** — New endpoint `GET /api/hosts/:hostId/profile` returns host info + enriched properties
 - **"Become a Host" link** — Added to main Navigation (desktop + mobile) linking to `/host/login`
 - **"View profile →" link** — Added to PropertyDetail booking card, links to host's public profile
+
+### Fix: HostLogin page redesigned to match ListYourHotel style (Feb 11)
+- **Before:** Plain centered card on blank background, no nav/footer, no value props, basic unstyled form
+- **After:** Full site layout (Navigation + Footer), 2-column hero matching ListYourHotel exactly:
+  - Left column: "Become a Host" badge, hero headline, pitch copy, 3 value props (Maximize Occupancy, You Set the Terms, Verified Guests Only) with icons
+  - Right column: Card with decorative gradient blob, tabbed Sign In / Create Account forms with input icons (Mail, Lock, User, Phone)
+  - Same `bg-secondary/30` background, same `font-display`, same `shadow-lg shadow-primary/25` button styling
+- **Intended Result:** Host sign-up page now visually matches the hotel sign-up page in quality and structure
 
 ### OVERHAUL: Full Property Integration into GapNight (Feb 11)
 **Problem:** Properties felt alienated from hotel deals — separate loading, forced to bottom, no booking flow, no real features.
