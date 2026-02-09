@@ -7,7 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   ArrowLeft, Star, MapPin, Calendar, CreditCard, User, Mail, Phone,
-  MessageSquare, ChevronDown, ChevronUp, Check, Shield, Clock, AlertCircle, Loader, Users, Heart
+  MessageSquare, ChevronDown, ChevronUp, Check, Shield, Clock, AlertCircle, Loader, Users, Heart,
+  ScanFace, ExternalLink, RefreshCw, CheckCircle2, XCircle
 } from "lucide-react";
 import { StripePaymentForm } from "@/components/StripePaymentForm";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,11 @@ export default function PropertyBooking() {
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [guestDetailsValid, setGuestDetailsValid] = useState(false);
 
+  // ID Verification state
+  const [idStatus, setIdStatus] = useState<"loading" | "unverified" | "pending" | "verified" | "failed">("loading");
+  const [verifyingId, setVerifyingId] = useState(false);
+  const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
+
   // Parse query params for dates
   const urlParams = new URLSearchParams(window.location.search);
   const checkInDate = urlParams.get("checkIn") || "";
@@ -88,6 +94,66 @@ export default function PropertyBooking() {
         .finally(() => setIsLoading(false));
     }
   }, [propertyId]);
+
+  // Check ID verification status on load
+  useEffect(() => {
+    if (!user) {
+      setIdStatus("unverified");
+      return;
+    }
+    fetch("/api/auth/verify-identity/status", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { status: "unverified" })
+      .then(data => {
+        setIdStatus(data.status === "verified" ? "verified" : data.status === "pending" ? "pending" : data.status === "failed" ? "failed" : "unverified");
+      })
+      .catch(() => setIdStatus("unverified"));
+  }, [user]);
+
+  const handleStartVerification = async () => {
+    if (!user) return;
+    setVerifyingId(true);
+    try {
+      const res = await fetch("/api/auth/verify-identity", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to start verification");
+
+      if (data.status === "verified") {
+        setIdStatus("verified");
+        toast({ title: "Already Verified", description: "Your ID has already been verified." });
+      } else if (data.clientSecret) {
+        // Stripe Identity uses a hosted verification page
+        setIdStatus("pending");
+        setVerificationUrl(data.clientSecret);
+        toast({
+          title: "Verification Started",
+          description: "Please complete the ID verification. This page will update once done.",
+        });
+      }
+    } catch (err: any) {
+      toast({ title: "Verification Error", description: err.message, variant: "destructive" });
+    } finally {
+      setVerifyingId(false);
+    }
+  };
+
+  const handleRefreshVerification = async () => {
+    try {
+      const res = await fetch("/api/auth/verify-identity/status", { credentials: "include" });
+      const data = await res.json();
+      const newStatus = data.status === "verified" ? "verified" : data.status === "pending" ? "pending" : data.status === "failed" ? "failed" : "unverified";
+      setIdStatus(newStatus);
+      if (newStatus === "verified") {
+        toast({ title: "ID Verified!", description: "You can now proceed with your booking." });
+      } else if (newStatus === "pending") {
+        toast({ title: "Still Processing", description: "Your verification is still being reviewed. Please check back in a moment." });
+      }
+    } catch {
+      toast({ title: "Error", description: "Could not check verification status.", variant: "destructive" });
+    }
+  };
 
   const form = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
@@ -312,21 +378,26 @@ export default function PropertyBooking() {
           <span className="text-sm font-medium">Back to property</span>
         </Link>
 
-        {/* Step indicator - matches Booking.tsx */}
-        <div className="flex items-center gap-3 mb-8">
+        {/* Step indicator */}
+        <div className="flex items-center gap-3 mb-8 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">1</div>
-            <span className="text-sm font-medium text-primary">Your Selection</span>
-          </div>
-          <div className="h-px w-8 bg-primary" />
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">2</div>
             <span className="text-sm font-medium text-primary">Your Details</span>
           </div>
-          <div className="h-px w-8 bg-border" />
+          <div className={`h-px w-8 ${idStatus === "verified" ? "bg-primary" : "bg-border"}`} />
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-bold">3</div>
-            <span className="text-sm font-medium text-muted-foreground">Confirmation</span>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${idStatus === "verified" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>2</div>
+            <span className={`text-sm font-medium ${idStatus === "verified" ? "text-primary" : "text-muted-foreground"}`}>Verify ID</span>
+          </div>
+          <div className={`h-px w-8 ${paymentComplete ? "bg-primary" : "bg-border"}`} />
+          <div className="flex items-center gap-2">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${paymentComplete ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>3</div>
+            <span className={`text-sm font-medium ${paymentComplete ? "text-primary" : "text-muted-foreground"}`}>Payment</span>
+          </div>
+          <div className={`h-px w-8 ${bookingComplete ? "bg-primary" : "bg-border"}`} />
+          <div className="flex items-center gap-2">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${bookingComplete ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>4</div>
+            <span className={`text-sm font-medium ${bookingComplete ? "text-primary" : "text-muted-foreground"}`}>Confirmation</span>
           </div>
         </div>
 
@@ -483,7 +554,125 @@ export default function PropertyBooking() {
                   )}
                 </div>
 
-                {/* Payment - matches Booking.tsx */}
+                {/* ID Verification Step */}
+                <div className="bg-card rounded-xl p-6 border border-border/50">
+                  <h2 className="text-xl font-bold text-foreground mb-1 flex items-center gap-2">
+                    <ScanFace className="w-5 h-5 text-primary" />
+                    Identity Verification
+                  </h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    For the safety of our hosts and guests, ID verification is required before booking a property.
+                  </p>
+
+                  {idStatus === "loading" && (
+                    <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+                      <Loader className="w-5 h-5 animate-spin text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Checking verification status...</span>
+                    </div>
+                  )}
+
+                  {idStatus === "verified" && (
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-primary">
+                        <CheckCircle2 className="w-5 h-5" />
+                        <span className="font-semibold">Identity Verified</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Your identity has been verified. You're all set to proceed with payment.
+                      </p>
+                    </div>
+                  )}
+
+                  {idStatus === "unverified" && user && (
+                    <div className="space-y-3">
+                      <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-2">
+                          <Shield className="w-5 h-5" />
+                          <span className="font-semibold">Verification Required</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          You'll need to verify your identity with a government-issued photo ID and a selfie. This is a one-time process that protects both hosts and guests.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleStartVerification}
+                        disabled={verifyingId}
+                        className="w-full h-11"
+                        variant="outline"
+                      >
+                        {verifyingId ? (
+                          <><Loader className="w-4 h-4 mr-2 animate-spin" /> Starting Verification...</>
+                        ) : (
+                          <><ScanFace className="w-4 h-4 mr-2" /> Verify My Identity</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+
+                  {idStatus === "unverified" && !user && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-2">
+                        <Shield className="w-5 h-5" />
+                        <span className="font-semibold">Sign In Required</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Please sign in first, then verify your identity to book this property.
+                      </p>
+                    </div>
+                  )}
+
+                  {idStatus === "pending" && (
+                    <div className="space-y-3">
+                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-2">
+                          <Clock className="w-5 h-5" />
+                          <span className="font-semibold">Verification In Progress</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Your ID verification is being processed. This usually takes a few minutes. Click refresh to check the latest status.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleRefreshVerification}
+                        variant="outline"
+                        className="w-full h-11"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" /> Refresh Verification Status
+                      </Button>
+                    </div>
+                  )}
+
+                  {idStatus === "failed" && (
+                    <div className="space-y-3">
+                      <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-destructive mb-2">
+                          <XCircle className="w-5 h-5" />
+                          <span className="font-semibold">Verification Failed</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Your previous verification attempt was unsuccessful. Please try again with a clear photo of your ID.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleStartVerification}
+                        disabled={verifyingId}
+                        className="w-full h-11"
+                        variant="outline"
+                      >
+                        {verifyingId ? (
+                          <><Loader className="w-4 h-4 mr-2 animate-spin" /> Starting Verification...</>
+                        ) : (
+                          <><ScanFace className="w-4 h-4 mr-2" /> Try Again</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Payment - gated behind ID verification */}
                 <div className="bg-card rounded-xl p-6 border border-border/50">
                   <h2 className="text-xl font-bold text-foreground mb-1 flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-primary" />
@@ -493,7 +682,16 @@ export default function PropertyBooking() {
                     A temporary hold is placed on your card. You are only charged when the host approves.
                   </p>
 
-                  {!guestDetailsValid && (
+                  {idStatus !== "verified" && (
+                    <div className="bg-muted/50 border border-border rounded-lg p-4 mb-4">
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Shield className="w-4 h-4" />
+                        Please complete ID verification above before proceeding to payment.
+                      </p>
+                    </div>
+                  )}
+
+                  {idStatus === "verified" && !guestDetailsValid && (
                     <div className="bg-muted/50 border border-border rounded-lg p-4 mb-4">
                       <p className="text-sm text-muted-foreground flex items-center gap-2">
                         <AlertCircle className="w-4 h-4" />
@@ -512,7 +710,7 @@ export default function PropertyBooking() {
                         Your card has been authorized. Click below to submit your booking request.
                       </p>
                     </div>
-                  ) : (
+                  ) : idStatus === "verified" ? (
                     <StripePaymentForm
                       amount={grandTotal}
                       currency="AUD"
@@ -526,7 +724,7 @@ export default function PropertyBooking() {
                       onPaymentError={handlePaymentError}
                       disabled={!guestDetailsValid}
                     />
-                  )}
+                  ) : null}
                 </div>
 
                 {paymentComplete && (

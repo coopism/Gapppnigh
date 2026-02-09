@@ -1,5 +1,5 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-11 02:57 AM UTC+11
+# Last Updated: 2026-02-11 02:58 AM UTC+11
 
 ## AirBnB Host Platform - Feb 11, 2026
 ### Major Feature: Complete Short-Term Rental Host System
@@ -116,6 +116,17 @@ Complete AirBnB-style host platform integrated into GapNight. Hosts can register
 - **Host Profile API** — New endpoint `GET /api/hosts/:hostId/profile` returns host info + enriched properties
 - **"Become a Host" link** — Added to main Navigation (desktop + mobile) linking to `/host/login`
 - **"View profile →" link** — Added to PropertyDetail booking card, links to host's public profile
+
+### Feature: ID Verification required during property booking (Feb 11)
+- **PropertyBooking.tsx** — Added full ID verification step into the booking flow:
+  - Checks verification status on page load via `GET /api/auth/verify-identity/status`
+  - Shows contextual UI for each state: loading, unverified, pending, verified, failed
+  - "Verify My Identity" button triggers `POST /api/auth/verify-identity` (Stripe Identity - government photo ID + selfie)
+  - "Refresh Verification Status" button for pending verifications
+  - "Try Again" button for failed attempts
+  - Payment form is **gated behind verified status** — Stripe card form only renders when `idStatus === "verified"`
+  - Step indicator updated to 4 steps: Your Details → Verify ID → Payment → Confirmation (with dynamic highlighting)
+- **Intended Result:** Users must verify their identity (one-time) before they can pay for and book a property stay. Matches the backend requirement already enforced by `POST /api/properties/:id/book`.
 
 ### Fix: HostLogin page redesigned to match ListYourHotel style (Feb 11)
 - **Before:** Plain centered card on blank background, no nav/footer, no value props, basic unstyled form
