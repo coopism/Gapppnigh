@@ -84,6 +84,14 @@
   #root {
     @apply min-h-screen flex flex-col;
   }
+
+  /* Force any page wrapper containing a footer to be a flex column
+     that fills the viewport, so Footer's mt-auto pushes it to the bottom */
+  .min-h-screen:has(footer) {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+  }
   
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
