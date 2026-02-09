@@ -1,9 +1,9 @@
-import type { Express, Request, Response } from "express";
+import { Router, type Request, Response } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
-import { adminUsers, adminSessions, adminActivityLogs, users, bookings, deals, hotels, hotelReviews, promoCodes, userRewards } from "@shared/schema";
+import { adminUsers, adminSessions, adminActivityLogs, users, bookings, deals, hotels, hotelReviews, promoCodes } from "@shared/schema";
 import { eq, desc, sql, and, gte, lte, count } from "drizzle-orm";
 
 const ADMIN_SESSION_COOKIE = "admin_session";
@@ -82,13 +82,13 @@ async function logAdminActivity(
   }
 }
 
-export function registerAdminRoutes(app: Express) {
+export function registerAdminRoutes(app: Router) {
   // ========================================
   // ADMIN AUTHENTICATION
   // ========================================
 
   // Admin login
-  app.post(`${ADMIN_PREFIX}/login`, async (req: Request, res: Response) => {
+  app.post(`${ADMIN_PREFIX}/login`, async (req, res) => {
     try {
       const { email, password } = req.body;
       const ip = getClientIP(req);
@@ -155,7 +155,7 @@ export function registerAdminRoutes(app: Express) {
   });
 
   // Admin logout
-  app.post(`${ADMIN_PREFIX}/logout`, adminAuthMiddleware, async (req: Request, res: Response) => {
+  app.post(`${ADMIN_PREFIX}/logout`, adminAuthMiddleware, async (req, res) => {
     const sessionToken = req.cookies?.[ADMIN_SESSION_COOKIE];
     const admin = (req as any).admin;
 
@@ -169,7 +169,7 @@ export function registerAdminRoutes(app: Express) {
   });
 
   // Get current admin
-  app.get(`${ADMIN_PREFIX}/me`, adminAuthMiddleware, (req: Request, res: Response) => {
+  app.get(`${ADMIN_PREFIX}/me`, adminAuthMiddleware, (req, res) => {
     const admin = (req as any).admin;
     res.json({
       admin: {
@@ -186,7 +186,7 @@ export function registerAdminRoutes(app: Express) {
   // DASHBOARD STATISTICS
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/stats/overview`, adminAuthMiddleware, async (req: Request, res: Response) => {
+  app.get(`${ADMIN_PREFIX}/stats/overview`, adminAuthMiddleware, async (req, res) => {
     try {
       const admin = (req as any).admin;
 
@@ -257,7 +257,7 @@ export function registerAdminRoutes(app: Express) {
   });
 
   // Revenue analytics
-  app.get(`${ADMIN_PREFIX}/stats/revenue`, adminAuthMiddleware, async (req: Request, res: Response) => {
+  app.get(`${ADMIN_PREFIX}/stats/revenue`, adminAuthMiddleware, async (req, res) => {
     try {
       const { period = "30d" } = req.query;
       let daysAgo = 30;
@@ -302,16 +302,20 @@ export function registerAdminRoutes(app: Express) {
   // USER MANAGEMENT
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/users`, adminAuthMiddleware, async (req: Request, res: Response) => {
+  app.get(`${ADMIN_PREFIX}/users`, adminAuthMiddleware, async (req, res) => {
     try {
-      const { page = "1", limit = "10", search } = req.query;
+      const { page = "1", limit = "50", search = "" } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-      const searchStr = typeof search === 'string' ? search : '';
-      const allUsers = await db
-        .select()
-        .from(users)
-        .where(searchStr ? sql`${users.email} ILIKE ${`%${searchStr}%`} OR ${users.name} ILIKE ${`%${searchStr}%`}` : undefined)
+      let query = db.select().from(users);
+
+      if (search) {
+        query = query.where(
+          sql`${users.email} ILIKE ${"%" + search + "%"} OR ${users.name} ILIKE ${"%" + search + "%"}`
+        );
+      }
+
+      const allUsers = await query
         .orderBy(desc(users.createdAt))
         .limit(parseInt(limit as string))
         .offset(offset);
@@ -323,7 +327,7 @@ export function registerAdminRoutes(app: Express) {
           id: u.id,
           email: u.email,
           name: u.name,
-          emailVerifiedAt: u.emailVerifiedAt,
+          emailVerified: u.emailVerified,
           createdAt: u.createdAt,
         })),
         total: totalCount.count,
@@ -336,14 +340,14 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
-  app.get(`${ADMIN_PREFIX}/users/:userId`, adminAuthMiddleware, async (req: Request, res: Response) => {
+  app.get(`${ADMIN_PREFIX}/users/:userId`, adminAuthMiddleware, async (req, res) => {
     try {
       const { userId } = req.params;
 
       const [user] = await db
         .select()
         .from(users)
-        .where(eq(users.id, userId as string))
+        .where(eq(users.id, userId))
         .limit(1);
 
       if (!user) {
@@ -354,34 +358,32 @@ export function registerAdminRoutes(app: Express) {
       const userBookings = await db
         .select()
         .from(bookings)
-        .where(eq(bookings.userId, userId as string))
+        .where(eq(bookings.userId, userId))
         .orderBy(desc(bookings.createdAt));
 
       // Get user's reviews
       const userReviews = await db
         .select()
         .from(hotelReviews)
-        .where(eq(hotelReviews.userId, userId as string))
+        .where(eq(hotelReviews.userId, userId))
         .orderBy(desc(hotelReviews.createdAt));
 
       // Get user's rewards
-      const [userRewardsData] = await db
-        .select()
-        .from(userRewards)
-        .where(eq(userRewards.userId, userId as string))
-        .limit(1);
+      const userRewards = await storage.getUserRewards(userId);
 
       res.json({
         user: {
           id: user.id,
           email: user.email,
           name: user.name,
-          emailVerifiedAt: user.emailVerifiedAt,
+          emailVerified: user.emailVerified,
+          googleId: user.googleId,
+          appleId: user.appleId,
           createdAt: user.createdAt,
         },
         bookings: userBookings,
         reviews: userReviews,
-        rewards: userRewardsData,
+        rewards: userRewards,
       });
     } catch (error) {
       console.error("Get user details error:", error);
@@ -393,15 +395,16 @@ export function registerAdminRoutes(app: Express) {
   // BOOKING MANAGEMENT
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/bookings`, adminAuthMiddleware, async (req: Request, res: Response) => {
+  app.get(`${ADMIN_PREFIX}/bookings`, adminAuthMiddleware, async (req, res) => {
     try {
-      const { status, page = "1", limit = "10" } = req.query;
+      const { page = "1", limit = "50", status = "" } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-      const statusStr = typeof status === 'string' ? status : undefined;
-      const query = statusStr 
-        ? db.select().from(bookings).where(eq(bookings.status, statusStr))
-        : db.select().from(bookings);
+      let query = db.select().from(bookings);
+
+      if (status) {
+        query = query.where(eq(bookings.status, status as string));
+      }
 
       const allBookings = await query
         .orderBy(desc(bookings.createdAt))
@@ -426,7 +429,7 @@ export function registerAdminRoutes(app: Express) {
   // PROMO CODE MANAGEMENT
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/promo-codes`, adminAuthMiddleware, async (req: Request, res: Response) => {
+  app.get(`${ADMIN_PREFIX}/promo-codes`, adminAuthMiddleware, async (req, res) => {
     try {
       const codes = await db
         .select()
@@ -440,10 +443,10 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
-  app.post(`${ADMIN_PREFIX}/promo-codes`, adminAuthMiddleware, async (req: Request, res: Response) => {
+  app.post(`${ADMIN_PREFIX}/promo-codes`, adminAuthMiddleware, async (req, res) => {
     try {
       const admin = (req as any).admin;
-      const { code, type, value, description, maxUses, expiresAt, hotelId } = req.body;
+      const { code, type, value, description, maxUses, expiresAt } = req.body;
 
       if (!code || !type || value === undefined) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -455,7 +458,6 @@ export function registerAdminRoutes(app: Express) {
         type,
         value,
         description: description || null,
-        hotelId: (typeof hotelId === 'string' ? hotelId : null),
         maxUses: maxUses || null,
         currentUses: 0,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
@@ -480,18 +482,18 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
-  app.delete(`${ADMIN_PREFIX}/promo-codes/:codeId`, adminAuthMiddleware, async (req: Request, res: Response) => {
+  app.delete(`${ADMIN_PREFIX}/promo-codes/:codeId`, adminAuthMiddleware, async (req, res) => {
     try {
       const admin = (req as any).admin;
       const { codeId } = req.params;
 
-      await db.delete(promoCodes).where(eq(promoCodes.id, codeId as string));
+      await db.delete(promoCodes).where(eq(promoCodes.id, codeId));
 
       await logAdminActivity(
         admin.id,
         "promo_code_deleted",
         "promo_code",
-        codeId as string,
+        codeId,
         {},
         getClientIP(req)
       );
@@ -507,7 +509,7 @@ export function registerAdminRoutes(app: Express) {
   // ACTIVITY LOGS
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/activity-logs`, adminAuthMiddleware, async (req: Request, res: Response) => {
+  app.get(`${ADMIN_PREFIX}/activity-logs`, adminAuthMiddleware, async (req, res) => {
     try {
       const { page = "1", limit = "100" } = req.query;
       const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -537,7 +539,7 @@ export function registerAdminRoutes(app: Express) {
   // SYSTEM HEALTH
   // ========================================
 
-  app.get(`${ADMIN_PREFIX}/system/health`, adminAuthMiddleware, async (req: Request, res: Response) => {
+  app.get(`${ADMIN_PREFIX}/system/health`, adminAuthMiddleware, async (req, res) => {
     try {
       // Database connection check
       const dbHealthy = await db.select({ count: count() }).from(users).then(() => true).catch(() => false);

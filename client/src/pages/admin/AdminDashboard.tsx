@@ -343,10 +343,14 @@ function UsersTab() {
 
       if (res.ok) {
         const data = await res.json();
-        setUsers(data.users);
+        setUsers(data.users || []);
+      } else {
+        console.error("Failed to load users:", res.status, res.statusText);
+        setUsers([]);
       }
     } catch (error) {
       console.error("Failed to load users:", error);
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
@@ -393,6 +397,10 @@ function UsersTab() {
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : users.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No users found
             </div>
           ) : (
             <Table>
@@ -504,10 +512,14 @@ function BookingsTab() {
 
       if (res.ok) {
         const data = await res.json();
-        setBookings(data.bookings);
+        setBookings(data.bookings || []);
+      } else {
+        console.error("Failed to load bookings:", res.status, res.statusText);
+        setBookings([]);
       }
     } catch (error) {
       console.error("Failed to load bookings:", error);
+      setBookings([]);
     } finally {
       setIsLoading(false);
     }
@@ -539,6 +551,10 @@ function BookingsTab() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
+        ) : bookings.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            No bookings found
+          </div>
         ) : (
           <Table>
             <TableHeader>
@@ -555,12 +571,12 @@ function BookingsTab() {
               {bookings.slice(0, 50).map((booking) => (
                 <TableRow key={booking.id}>
                   <TableCell className="font-mono text-xs">
-                    {booking.id.substring(0, 8)}...
+                    {booking.id?.substring(0, 8) || 'N/A'}...
                   </TableCell>
-                  <TableCell>{booking.hotelName}</TableCell>
-                  <TableCell>{booking.guestEmail}</TableCell>
-                  <TableCell>{booking.checkInDate}</TableCell>
-                  <TableCell>${(booking.totalPrice / 100).toFixed(2)}</TableCell>
+                  <TableCell>{booking.hotelName || 'N/A'}</TableCell>
+                  <TableCell>{booking.guestEmail || 'N/A'}</TableCell>
+                  <TableCell>{booking.checkInDate || 'N/A'}</TableCell>
+                  <TableCell>${((booking.totalPrice || 0) / 100).toFixed(2)}</TableCell>
                   <TableCell>
                     <Badge
                       variant={
@@ -571,7 +587,7 @@ function BookingsTab() {
                           : "secondary"
                       }
                     >
-                      {booking.status}
+                      {booking.status || 'UNKNOWN'}
                     </Badge>
                   </TableCell>
                 </TableRow>
@@ -610,10 +626,14 @@ function PromoCodesTab() {
 
       if (res.ok) {
         const data = await res.json();
-        setPromoCodes(data.promoCodes);
+        setPromoCodes(data.promoCodes || []);
+      } else {
+        console.error("Failed to load promo codes:", res.status, res.statusText);
+        setPromoCodes([]);
       }
     } catch (error) {
       console.error("Failed to load promo codes:", error);
+      setPromoCodes([]);
     } finally {
       setIsLoading(false);
     }
@@ -748,6 +768,10 @@ function PromoCodesTab() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
+          ) : promoCodes.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No promo codes found
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -815,10 +839,14 @@ function ActivityLogsTab() {
 
       if (res.ok) {
         const data = await res.json();
-        setLogs(data.logs);
+        setLogs(data.logs || []);
+      } else {
+        console.error("Failed to load activity logs:", res.status, res.statusText);
+        setLogs([]);
       }
     } catch (error) {
       console.error("Failed to load activity logs:", error);
+      setLogs([]);
     } finally {
       setIsLoading(false);
     }
@@ -835,13 +863,18 @@ function ActivityLogsTab() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
+        ) : logs.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            No activity logs found
+          </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Timestamp</TableHead>
+                <TableHead>Admin</TableHead>
                 <TableHead>Action</TableHead>
                 <TableHead>Target</TableHead>
+                <TableHead>Time</TableHead>
                 <TableHead>IP Address</TableHead>
               </TableRow>
             </TableHeader>
@@ -890,9 +923,13 @@ function SystemTab() {
       if (res.ok) {
         const data = await res.json();
         setHealth(data);
+      } else {
+        console.error("Failed to load system health:", res.status, res.statusText);
+        setHealth(null);
       }
     } catch (error) {
       console.error("Failed to load system health:", error);
+      setHealth(null);
     } finally {
       setIsLoading(false);
     }
