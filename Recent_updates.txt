@@ -1,5 +1,5 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-11 02:58 AM UTC+11
+# Last Updated: 2026-02-11 03:00 AM UTC+11
 
 ## AirBnB Host Platform - Feb 11, 2026
 ### Major Feature: Complete Short-Term Rental Host System
@@ -116,6 +116,23 @@ Complete AirBnB-style host platform integrated into GapNight. Hosts can register
 - **Host Profile API** — New endpoint `GET /api/hosts/:hostId/profile` returns host info + enriched properties
 - **"Become a Host" link** — Added to main Navigation (desktop + mobile) linking to `/host/login`
 - **"View profile →" link** — Added to PropertyDetail booking card, links to host's public profile
+
+### Redesign: Host Dashboard - clean color scheme + Airbnb-style calendar (Feb 11)
+- **Color scheme overhaul** — Removed all `bg-emerald-*` / `hover:bg-emerald-*` hardcoded colors across every tab. Now uses theme `primary` consistently (buttons, badges, accents). Background changed from `bg-gray-50 dark:bg-gray-900` to `bg-background`.
+- **Header** — Replaced plain text header with proper Navigation-style header: GapNight logo with "Host" pill badge, Superhost badge, ghost-style Sign Out with icon.
+- **Tab bar** — Added Lucide icons to each tab (TrendingUp, Home, BookOpen, CalendarDays, MessageSquare, UserCircle). "Availability" renamed to "Calendar".
+- **Overview** — Cards redesigned with icons and cleaner layout, accent colors only for actionable items (pending = amber, confirmed = primary).
+- **Loading states** — All tabs now use GapNightLogoLoader instead of plain spinners.
+- **Availability → Calendar tab** — **Complete rewrite:**
+  - Replaced the clunky 3-column date grid with a **compact Airbnb-style 2-month calendar** (side by side, with prev/next arrows)
+  - Gap night dates shown as **solid primary circles** (like Airbnb's selected dates)
+  - Available (non-gap) dates shown as **light primary/15 circles**
+  - Today has a **ring indicator**
+  - Past dates are dimmed
+  - **Hover tooltips** — hovering any availability date shows a floating tooltip with: formatted date, gap night status, discount %, rate, discounted rate, and notes
+  - **Legend** — color key below property selector showing Gap Night / Available / Today indicators with counts
+  - **Add form** — collapsed by default behind "+ Add Gap Night" button, compact 4-column grid when open
+- **Intended Result:** Host dashboard looks clean and professional, matches the rest of the GapNight UI. Calendar is compact and intuitive for hosts with 1-2 gap nights/month.
 
 ### Feature: ID Verification required during property booking (Feb 11)
 - **PropertyBooking.tsx** — Added full ID verification step into the booking flow:

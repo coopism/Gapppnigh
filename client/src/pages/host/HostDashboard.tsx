@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect, useMemo } from "react";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,6 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { Navigation } from "@/components/Navigation";
+import { Footer } from "@/components/Footer";
+import { GapNightLogoLoader } from "@/components/GapNightLogo";
+import {
+  Home, CalendarDays, MessageSquare, UserCircle, ChevronLeft, ChevronRight,
+  BookOpen, TrendingUp, Clock, CheckCircle2, HelpCircle, DollarSign, LogOut
+} from "lucide-react";
 
 export default function HostDashboard() {
   const [, setLocation] = useLocation();
@@ -41,8 +48,9 @@ export default function HostDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <GapNightLogoLoader size={48} className="mb-3" />
+        <p className="text-sm text-muted-foreground animate-pulse">Loading dashboard...</p>
       </div>
     );
   }
@@ -50,33 +58,36 @@ export default function HostDashboard() {
   if (!host) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">
-              Gap<span className="text-emerald-500">Night</span>
-              <span className="text-sm font-normal text-muted-foreground ml-2">Host Dashboard</span>
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border/50 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <h1 className="text-xl font-bold font-display text-foreground">
+              Gap<span className="text-primary">Night</span>
             </h1>
-          </div>
+            <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Host</span>
+          </Link>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {host.name} {host.isSuperhost && <Badge variant="secondary" className="ml-1">Superhost</Badge>}
+            <span className="text-sm text-foreground font-medium hidden sm:inline">
+              {host.name}
             </span>
-            <Button variant="outline" size="sm" onClick={handleLogout}>Sign Out</Button>
+            {host.isSuperhost && <Badge variant="secondary" className="text-xs">Superhost</Badge>}
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
+              <LogOut className="w-4 h-4 mr-1" /> Sign Out
+            </Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <Tabs defaultValue="overview">
-          <TabsList className="mb-6">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="properties">Properties</TabsTrigger>
-            <TabsTrigger value="bookings">Bookings</TabsTrigger>
-            <TabsTrigger value="availability">Availability</TabsTrigger>
-            <TabsTrigger value="qa">Q&A</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsList className="mb-6 bg-muted/50">
+            <TabsTrigger value="overview" className="gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> Overview</TabsTrigger>
+            <TabsTrigger value="properties" className="gap-1.5"><Home className="w-3.5 h-3.5" /> Properties</TabsTrigger>
+            <TabsTrigger value="bookings" className="gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Bookings</TabsTrigger>
+            <TabsTrigger value="availability" className="gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Calendar</TabsTrigger>
+            <TabsTrigger value="qa" className="gap-1.5"><MessageSquare className="w-3.5 h-3.5" /> Q&A</TabsTrigger>
+            <TabsTrigger value="profile" className="gap-1.5"><UserCircle className="w-3.5 h-3.5" /> Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>
@@ -102,35 +113,34 @@ function OverviewTab() {
   }, []);
 
   if (!stats) {
-    return <div className="text-center py-12 text-muted-foreground">Loading stats...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <GapNightLogoLoader size={40} className="mb-3" />
+        <p className="text-sm text-muted-foreground animate-pulse">Loading stats...</p>
+      </div>
+    );
   }
 
+  const cards = [
+    { label: "Active Properties", value: stats.totalProperties, icon: Home },
+    { label: "Total Bookings", value: stats.totalBookings, icon: BookOpen },
+    { label: "Pending Approval", value: stats.pendingBookings, icon: Clock, accent: stats.pendingBookings > 0 ? "text-amber-500" : undefined },
+    { label: "Confirmed", value: stats.confirmedBookings, icon: CheckCircle2, accent: "text-primary" },
+    { label: "Total Revenue", value: `$${stats.totalRevenue?.toLocaleString() || 0}`, icon: DollarSign },
+    { label: "Unanswered Q's", value: stats.unansweredQuestions, icon: HelpCircle, accent: stats.unansweredQuestions > 0 ? "text-amber-500" : undefined },
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Active Properties</CardTitle></CardHeader>
-        <CardContent><p className="text-3xl font-bold">{stats.totalProperties}</p></CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Bookings</CardTitle></CardHeader>
-        <CardContent><p className="text-3xl font-bold">{stats.totalBookings}</p></CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Pending Approval</CardTitle></CardHeader>
-        <CardContent><p className="text-3xl font-bold text-amber-500">{stats.pendingBookings}</p></CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Confirmed Bookings</CardTitle></CardHeader>
-        <CardContent><p className="text-3xl font-bold text-emerald-500">{stats.confirmedBookings}</p></CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle></CardHeader>
-        <CardContent><p className="text-3xl font-bold">${stats.totalRevenue?.toLocaleString() || 0}</p></CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Unanswered Questions</CardTitle></CardHeader>
-        <CardContent><p className="text-3xl font-bold text-blue-500">{stats.unansweredQuestions}</p></CardContent>
-      </Card>
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {cards.map((c) => (
+        <div key={c.label} className="bg-card rounded-xl border border-border/50 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <c.icon className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">{c.label}</span>
+          </div>
+          <p className={`text-2xl font-bold ${c.accent || "text-foreground"}`}>{c.value}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -159,7 +169,7 @@ function PropertiesTab() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Your Properties</h2>
-        <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowForm(!showForm)}>
+        <Button onClick={() => setShowForm(!showForm)}>
           {showForm ? "Cancel" : "+ Add Property"}
         </Button>
       </div>
@@ -170,7 +180,7 @@ function PropertiesTab() {
         <Card className="text-center py-12">
           <CardContent>
             <p className="text-muted-foreground mb-4">No properties yet. List your first property to start receiving bookings!</p>
-            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowForm(true)}>List Your Property</Button>
+            <Button onClick={() => setShowForm(true)}>List Your Property</Button>
           </CardContent>
         </Card>
       ) : (
@@ -398,7 +408,7 @@ function NewPropertyForm({ onCreated }: { onCreated: () => void }) {
             </label>
           </div>
 
-          <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Submitting..." : "Submit Property for Review"}
           </Button>
         </form>
@@ -480,7 +490,7 @@ function BookingsTab() {
                         b.status === "PENDING_APPROVAL" ? "secondary" :
                         b.status === "DECLINED" ? "destructive" : "outline"
                       }>{b.status}</Badge>
-                      {b.idVerified && <Badge variant="outline" className="text-emerald-500">ID Verified</Badge>}
+                      {b.idVerified && <Badge variant="outline" className="text-primary">ID Verified</Badge>}
                     </div>
                     <p className="font-semibold">{b.propertyTitle}</p>
                     <p className="text-sm text-muted-foreground">
@@ -493,13 +503,13 @@ function BookingsTab() {
                     </p>
                     <p className="text-sm font-medium mt-1">${((b.totalPrice || 0) / 100).toFixed(2)} AUD</p>
                     {b.guestMessage && (
-                      <p className="text-sm mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded italic">"{b.guestMessage}"</p>
+                      <p className="text-sm mt-2 p-2 bg-muted rounded italic">"{b.guestMessage}"</p>
                     )}
                   </div>
 
                   {b.status === "PENDING_APPROVAL" && (
                     <div className="flex gap-2">
-                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700"
+                      <Button size="sm"
                         onClick={() => handleAction(b.id, "approve")}>Approve</Button>
                       <Button size="sm" variant="destructive"
                         onClick={() => handleAction(b.id, "decline", "Not available for these dates")}>Decline</Button>
@@ -522,14 +532,23 @@ function AvailabilityTab() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // New availability entry
-  const [newDates, setNewDates] = useState<{ date: string; isGapNight: boolean; nightlyRate: string; gapNightDiscount: string; notes: string }[]>([]);
+  // Add form
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [isGap, setIsGap] = useState(true);
   const [rate, setRate] = useState("");
   const [discount, setDiscount] = useState("25");
   const [notes, setNotes] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  // Calendar state
+  const [calendarBase, setCalendarBase] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
+
+  // Tooltip
+  const [tooltip, setTooltip] = useState<{ date: string; x: number; y: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/host/properties", { credentials: "include" })
@@ -555,6 +574,13 @@ function AvailabilityTab() {
     } catch { }
   };
 
+  // Build a lookup map: date string -> availability record
+  const availMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    availability.forEach(a => { map[a.date] = a; });
+    return map;
+  }, [availability]);
+
   const handleAddAvailability = async () => {
     if (!startDate || !selectedProp) {
       toast({ title: "Error", description: "Select a property and start date", variant: "destructive" });
@@ -562,8 +588,8 @@ function AvailabilityTab() {
     }
 
     const dates: any[] = [];
-    const start = new Date(startDate);
-    const end = endDate ? new Date(endDate) : start;
+    const start = new Date(startDate + "T00:00:00");
+    const end = endDate ? new Date(endDate + "T00:00:00") : start;
 
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       dates.push({
@@ -585,11 +611,12 @@ function AvailabilityTab() {
       });
 
       if (res.ok) {
-        toast({ title: "Success", description: `${dates.length} dates added` });
+        toast({ title: "Dates added", description: `${dates.length} date${dates.length > 1 ? "s" : ""} marked as available` });
         loadAvailability();
         setStartDate("");
         setEndDate("");
         setNotes("");
+        setShowAddForm(false);
       } else {
         const data = await res.json();
         toast({ title: "Error", description: data.error, variant: "destructive" });
@@ -599,100 +626,242 @@ function AvailabilityTab() {
     }
   };
 
-  if (isLoading) return <div className="text-center py-12">Loading...</div>;
+  // Calendar helpers
+  const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  function getDaysInMonth(year: number, month: number) {
+    return new Date(year, month + 1, 0).getDate();
+  }
+
+  function getFirstDayOfWeek(year: number, month: number) {
+    return new Date(year, month, 1).getDay();
+  }
+
+  function nextMonth(y: number, m: number): { year: number; month: number } {
+    return m === 11 ? { year: y + 1, month: 0 } : { year: y, month: m + 1 };
+  }
+
+  function prevMonth(y: number, m: number): { year: number; month: number } {
+    return m === 0 ? { year: y - 1, month: 11 } : { year: y, month: m - 1 };
+  }
+
+  function renderMonth(year: number, month: number) {
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = getFirstDayOfWeek(year, month);
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    const cells: JSX.Element[] = [];
+    // Empty leading cells
+    for (let i = 0; i < firstDay; i++) {
+      cells.push(<div key={`empty-${i}`} className="w-9 h-9" />);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const avail = availMap[dateStr];
+      const isToday = dateStr === todayStr;
+      const isPast = dateStr < todayStr;
+
+      let bgClass = "bg-transparent text-foreground";
+      let ringClass = "";
+
+      if (avail) {
+        if (avail.isGapNight) {
+          bgClass = "bg-primary text-primary-foreground font-semibold";
+        } else if (avail.isAvailable) {
+          bgClass = "bg-primary/15 text-foreground font-medium";
+        } else {
+          bgClass = "bg-muted text-muted-foreground line-through";
+        }
+      }
+
+      if (isToday) {
+        ringClass = "ring-2 ring-foreground ring-offset-1 ring-offset-background";
+      }
+
+      if (isPast && !avail) {
+        bgClass = "text-muted-foreground/40";
+      }
+
+      cells.push(
+        <div
+          key={dateStr}
+          className={`w-9 h-9 rounded-full flex items-center justify-center text-sm cursor-default transition-colors relative ${bgClass} ${ringClass}`}
+          onMouseEnter={(e) => {
+            if (avail) {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setTooltip({ date: dateStr, x: rect.left + rect.width / 2, y: rect.top - 8 });
+            }
+          }}
+          onMouseLeave={() => setTooltip(null)}
+        >
+          {day}
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex-1 min-w-[260px]">
+        <h3 className="text-sm font-semibold text-foreground text-center mb-3">
+          {MONTH_NAMES[month]} {year}
+        </h3>
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {DAYS.map(d => (
+            <div key={d} className="w-9 h-7 flex items-center justify-center text-xs font-medium text-muted-foreground">
+              {d}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {cells}
+        </div>
+      </div>
+    );
+  }
+
+  const month2 = nextMonth(calendarBase.year, calendarBase.month);
+
+  // Gap night count summary
+  const gapNightCount = availability.filter(a => a.isGapNight).length;
+  const availableCount = availability.filter(a => a.isAvailable && !a.isGapNight).length;
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <GapNightLogoLoader size={40} className="mb-3" />
+        <p className="text-sm text-muted-foreground animate-pulse">Loading calendar...</p>
+      </div>
+    );
+  }
 
   const selectedProperty = properties.find(p => p.id === selectedProp);
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Manage Availability</h2>
-
       {properties.length === 0 ? (
-        <Card className="text-center py-12">
-          <CardContent><p className="text-muted-foreground">Add a property first to manage availability.</p></CardContent>
-        </Card>
+        <div className="bg-card rounded-xl border border-border/50 text-center py-16">
+          <CalendarDays className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">Add a property first to manage availability.</p>
+        </div>
       ) : (
         <>
-          <div className="mb-4">
-            <select className="rounded-md border p-2 text-sm" value={selectedProp}
-              onChange={e => setSelectedProp(e.target.value)}>
+          {/* Property selector + add button */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-6 items-start sm:items-center justify-between">
+            <select
+              className="rounded-lg border border-border bg-card text-foreground px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50"
+              value={selectedProp}
+              onChange={e => setSelectedProp(e.target.value)}
+            >
               {properties.map((p: any) => (
-                <option key={p.id} value={p.id}>{p.title} - {p.city}</option>
+                <option key={p.id} value={p.id}>{p.title} — {p.city}</option>
               ))}
             </select>
+            <Button size="sm" onClick={() => setShowAddForm(!showAddForm)} variant={showAddForm ? "outline" : "default"}>
+              {showAddForm ? "Cancel" : "+ Add Gap Night"}
+            </Button>
           </div>
 
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-lg">Add Available Dates</CardTitle>
-              <CardDescription>Mark dates as available for booking. Toggle "Gap Night" to offer discounts on gap nights between existing bookings.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          {/* Add availability form - compact */}
+          {showAddForm && (
+            <div className="bg-card rounded-xl border border-border/50 p-5 mb-6">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Add Available Dates</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 <div>
-                  <label className="text-sm font-medium">Start Date</label>
-                  <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                  <label className="text-xs font-medium text-muted-foreground">Start Date</label>
+                  <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">End Date (optional)</label>
-                  <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                  <label className="text-xs font-medium text-muted-foreground">End Date</label>
+                  <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Rate Override ($/night)</label>
-                  <Input type="number" step="0.01" placeholder={selectedProperty ? `${(selectedProperty.baseNightlyRate / 100).toFixed(0)} (base)` : ""}
-                    value={rate} onChange={e => setRate(e.target.value)} />
+                  <label className="text-xs font-medium text-muted-foreground">Rate ($/night)</label>
+                  <Input type="number" step="0.01" placeholder={selectedProperty ? `${(selectedProperty.baseNightlyRate / 100).toFixed(0)}` : ""}
+                    value={rate} onChange={e => setRate(e.target.value)} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Gap Night Discount %</label>
-                  <Input type="number" value={discount} onChange={e => setDiscount(e.target.value)} disabled={!isGap} />
+                  <label className="text-xs font-medium text-muted-foreground">Discount %</label>
+                  <Input type="number" value={discount} onChange={e => setDiscount(e.target.value)} disabled={!isGap} className="h-9 text-sm" />
                 </div>
               </div>
-              <div className="flex items-center gap-4 mb-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={isGap} onChange={e => setIsGap(e.target.checked)} />
-                  Mark as Gap Night (discounted)
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <label className="flex items-center gap-2 text-sm shrink-0">
+                  <input type="checkbox" checked={isGap} onChange={e => setIsGap(e.target.checked)} className="rounded" />
+                  Gap Night
                 </label>
-                <Input placeholder="Notes (e.g., 'Between two bookings')" value={notes} onChange={e => setNotes(e.target.value)} className="flex-1" />
+                <Input placeholder="Notes (optional)" value={notes} onChange={e => setNotes(e.target.value)} className="h-9 text-sm flex-1" />
+                <Button size="sm" onClick={handleAddAvailability} className="shrink-0">Save Dates</Button>
               </div>
-              <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleAddAvailability}>
-                Add Availability
-              </Button>
-            </CardContent>
-          </Card>
+            </div>
+          )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Current Availability ({availability.length} dates)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {availability.length === 0 ? (
-                <p className="text-muted-foreground">No availability set. Add dates above.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {availability.slice(0, 60).map((a: any) => (
-                    <div key={a.id} className={`p-3 rounded-lg border text-sm ${
-                      a.isGapNight ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200" :
-                      a.isAvailable ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200" :
-                      "bg-gray-100 dark:bg-gray-800 border-gray-200"
-                    }`}>
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">{a.date}</span>
-                        {a.isGapNight && <Badge className="bg-emerald-500">Gap Night</Badge>}
-                        {!a.isAvailable && <Badge variant="destructive">Booked</Badge>}
+          {/* Legend + summary */}
+          <div className="flex flex-wrap items-center gap-4 mb-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3.5 h-3.5 rounded-full bg-primary" />
+              <span>Gap Night ({gapNightCount})</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3.5 h-3.5 rounded-full bg-primary/15 border border-primary/30" />
+              <span>Available ({availableCount})</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3.5 h-3.5 rounded-full ring-2 ring-foreground ring-offset-1 ring-offset-background" />
+              <span>Today</span>
+            </div>
+          </div>
+
+          {/* Calendar - 2 months side by side */}
+          <div className="bg-card rounded-xl border border-border/50 p-6">
+            <div className="flex items-center justify-between mb-5">
+              <button
+                onClick={() => setCalendarBase(prevMonth(calendarBase.year, calendarBase.month))}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setCalendarBase(nextMonth(calendarBase.year, calendarBase.month))}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex gap-8 flex-col sm:flex-row">
+              {renderMonth(calendarBase.year, calendarBase.month)}
+              {renderMonth(month2.year, month2.month)}
+            </div>
+          </div>
+
+          {/* Tooltip */}
+          {tooltip && availMap[tooltip.date] && (
+            <div
+              className="fixed z-50 pointer-events-none"
+              style={{ left: tooltip.x, top: tooltip.y, transform: "translate(-50%, -100%)" }}
+            >
+              <div className="bg-foreground text-background rounded-lg px-3 py-2 text-xs shadow-lg max-w-[200px]">
+                {(() => {
+                  const a = availMap[tooltip.date];
+                  const rateDisplay = ((a.nightlyRate || 0) / 100).toFixed(0);
+                  return (
+                    <>
+                      <div className="font-semibold mb-0.5">
+                        {new Date(tooltip.date + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
                       </div>
-                      <p className="text-xs mt-1">
-                        ${((a.nightlyRate || 0) / 100).toFixed(0)}/night
-                        {a.isGapNight && a.gapNightDiscount > 0 && (
-                          <span className="text-emerald-600 ml-1">(-{a.gapNightDiscount}% = ${(Math.round(a.nightlyRate * (1 - a.gapNightDiscount / 100)) / 100).toFixed(0)})</span>
-                        )}
-                      </p>
-                      {a.notes && <p className="text-xs text-muted-foreground mt-1">{a.notes}</p>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      {a.isGapNight && <div className="text-primary-foreground/80">Gap Night · -{a.gapNightDiscount}% off</div>}
+                      <div>${rateDisplay}/night{a.isGapNight && a.gapNightDiscount > 0 && ` → $${(Math.round(a.nightlyRate * (1 - a.gapNightDiscount / 100)) / 100).toFixed(0)}`}</div>
+                      {a.notes && <div className="mt-0.5 opacity-75">{a.notes}</div>}
+                      {!a.isAvailable && <div className="text-red-300 mt-0.5">Booked</div>}
+                    </>
+                  );
+                })()}
+                <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-foreground" />
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -761,7 +930,7 @@ function QATab() {
                       value={answerText[q.id] || ""}
                       onChange={e => setAnswerText(prev => ({ ...prev, [q.id]: e.target.value }))}
                       rows={2} className="flex-1" />
-                    <Button className="bg-emerald-600 hover:bg-emerald-700"
+                    <Button
                       onClick={() => handleAnswer(q.id)} disabled={!answerText[q.id]?.trim()}>Reply</Button>
                   </div>
                 </CardContent>
@@ -780,7 +949,7 @@ function QATab() {
                 <CardContent className="p-4">
                   <p className="text-sm text-muted-foreground mb-1">{q.propertyTitle} · {q.userName}</p>
                   <p className="font-medium">Q: "{q.question}"</p>
-                  <p className="text-sm mt-1 text-emerald-600">A: {q.answer}</p>
+                  <p className="text-sm mt-1 text-primary">A: {q.answer}</p>
                 </CardContent>
               </Card>
             ))}
@@ -853,7 +1022,7 @@ function ProfileTab({ host, onUpdate }: { host: any; onUpdate: () => void }) {
             <p>Response Rate: {host.responseRate || 100}%</p>
             <p>Member since: {host.createdAt ? new Date(host.createdAt).toLocaleDateString() : "N/A"}</p>
           </div>
-          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving}>
             {isSaving ? "Saving..." : "Save Profile"}
           </Button>
         </CardContent>
