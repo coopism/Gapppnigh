@@ -117,6 +117,13 @@ Complete AirBnB-style host platform integrated into GapNight. Hosts can register
 - **"Become a Host" link** — Added to main Navigation (desktop + mobile) linking to `/host/login`
 - **"View profile →" link** — Added to PropertyDetail booking card, links to host's public profile
 
+### Critical Fix: Property not loading due to missing is_host_faq DB column (Feb 11)
+**Root cause:** `bootstrap.ts` creates `property_qa` table via `CREATE TABLE IF NOT EXISTS` which never updates existing tables. The `is_host_faq` column and nullable `user_id` were in the Drizzle schema but never added to the actual production DB.
+**Fix 1 (`bootstrap.ts`):** Added `ALTER TABLE` migration that runs on every server start — adds `is_host_faq` column if missing, makes `user_id` nullable.
+**Fix 2 (`property-routes.ts`):** Wrapped Q&A query in try/catch so property detail loads even if Q&A query fails (belt-and-suspenders).
+**Fix 3 (`index.css`):** Global footer anchoring via `.min-h-screen:has(footer)` CSS rule — forces flex-col + flex:1 on any page wrapper containing a footer.
+**Fix 4 (`Footer.tsx`):** Added `mt-auto` class to push footer to bottom of flex container.
+
 ### Bug Fixes + Features: Auth, Dates, Q&A, Photo Upload, Booking Flow (Feb 11)
 **Verify Identity Fix (`property-routes.ts` + `routes.ts`):**
 - **Root cause:** `optionalUserAuthMiddleware` was never applied to property routes, so `req.user` was always undefined
