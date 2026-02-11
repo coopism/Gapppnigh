@@ -455,6 +455,51 @@ async function createTables() {
   `);
 
   console.log("Tables created!");
+
+  // ========================================
+  // CREATE INDEXES FOR PERFORMANCE
+  // ========================================
+  console.log("Creating indexes...");
+
+  // Property-related indexes
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_properties_host_id ON "properties"("host_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_properties_status ON "properties"("status")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_properties_city ON "properties"("city")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_properties_is_active ON "properties"("is_active")`);
+
+  // Property photos index
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_photos_property_id ON "property_photos"("property_id")`);
+
+  // Property availability indexes
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_availability_property_id ON "property_availability"("property_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_availability_date ON "property_availability"("date")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_availability_is_available ON "property_availability"("is_available")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_availability_is_gap_night ON "property_availability"("is_gap_night")`);
+
+  // Property bookings indexes
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_bookings_property_id ON "property_bookings"("property_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_bookings_host_id ON "property_bookings"("host_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_bookings_user_id ON "property_bookings"("user_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_bookings_status ON "property_bookings"("status")`);
+
+  // Property Q&A indexes
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_qa_property_id ON "property_qa"("property_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_qa_user_id ON "property_qa"("user_id")`);
+
+  // Property reviews indexes
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_reviews_property_id ON "property_reviews"("property_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_reviews_user_id ON "property_reviews"("user_id")`);
+
+  // Host sessions index
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_host_sessions_host_id ON "host_sessions"("host_id")`);
+
+  // User verification index
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_user_id_verifications_user_id ON "user_id_verifications"("user_id")`);
+
+  // User sessions index
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON "user_sessions"("user_id")`);
+
+  console.log("Indexes created!");
 }
 
 export async function bootstrapDatabase() {

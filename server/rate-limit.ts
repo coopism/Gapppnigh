@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { RATE_LIMITS } from "./config";
 
 interface RateLimitStore {
   [key: string]: {
@@ -61,8 +62,42 @@ export function rateLimit(name: string, maxAttempts: number, windowMs: number) {
   };
 }
 
-// Pre-configured rate limiters
-export const authRateLimit = rateLimit("auth", 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
-export const bookingRateLimit = rateLimit("booking", 10, 60 * 60 * 1000); // 10 bookings per hour
-export const paymentRateLimit = rateLimit("payment", 30, 60 * 60 * 1000); // 30 payment intents per hour
-export const apiRateLimit = rateLimit("api", 100, 60 * 1000); // 100 requests per minute
+// Pre-configured rate limiters using config constants (Fix #21)
+export const authRateLimit = rateLimit("auth", RATE_LIMITS.AUTH_ATTEMPTS, RATE_LIMITS.AUTH_WINDOW_MS);
+export const bookingRateLimit = rateLimit("booking", RATE_LIMITS.BOOKING_ATTEMPTS, RATE_LIMITS.BOOKING_WINDOW_MS);
+export const paymentRateLimit = rateLimit("payment", RATE_LIMITS.PAYMENT_ATTEMPTS, RATE_LIMITS.PAYMENT_WINDOW_MS);
+export const apiRateLimit = rateLimit("api", RATE_LIMITS.API_ATTEMPTS, RATE_LIMITS.API_WINDOW_MS);
+export const uploadRateLimit = rateLimit("upload", RATE_LIMITS.UPLOAD_ATTEMPTS, RATE_LIMITS.UPLOAD_WINDOW_MS);
+
+// Fix #38: UTC Date Helper Functions
+export function getUTCDate(): Date {
+  return new Date();
+}
+
+export function toUTCDateString(date: Date): string {
+  return date.toISOString().split("T")[0];
+}
+
+export function getUTCToday(): string {
+  return toUTCDateString(getUTCDate());
+}
+
+// Fix #39: Email retry wrapper
+export async function sendEmailWithRetry(
+  emailFn: () => Promise<void>,
+  maxRetries: number = 3,
+  delayMs: number = 5000
+): Promise<boolean> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await emailFn();
+      return true;
+    } catch (error) {
+      console.error(`Email attempt ${attempt} failed:`, error);
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  return false;
+}

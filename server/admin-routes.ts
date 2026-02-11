@@ -4,7 +4,8 @@ import { db } from "./db";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import { adminUsers, adminSessions, adminActivityLogs, users, bookings, deals, hotels, hotelReviews, promoCodes } from "@shared/schema";
-import { eq, desc, sql, and, gte, lte, count } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lte, count, ilike, or } from "drizzle-orm";
+import { LOG_RETENTION_DAYS } from "./config";
 
 const ADMIN_SESSION_COOKIE = "admin_session";
 const ADMIN_SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
@@ -305,19 +306,28 @@ export function registerAdminRoutes(app: Router) {
   app.get(`${ADMIN_PREFIX}/users`, adminAuthMiddleware, async (req, res) => {
     try {
       const { page = "1", limit = "50", search = "" } = req.query;
-      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+      // Cap limit to prevent abuse (max 100 per request)
+      const requestedLimit = parseInt(limit as string);
+      const validatedLimit = Math.min(Math.max(requestedLimit, 1), 100);
+      const validatedPage = Math.max(parseInt(page as string), 1);
+      const offset = (validatedPage - 1) * validatedLimit;
 
       let query = db.select().from(users);
 
       if (search) {
+        // Sanitize search input to prevent SQL injection
+        const sanitizedSearch = search.replace(/[%_\\]/g, "\\$&");
         query = query.where(
-          sql`${users.email} ILIKE ${"%" + search + "%"} OR ${users.name} ILIKE ${"%" + search + "%"}`
+          or(
+            ilike(users.email, `%${sanitizedSearch}%`),
+            ilike(users.name, `%${sanitizedSearch}%`)
+          )
         );
       }
 
       const allUsers = await query
         .orderBy(desc(users.createdAt))
-        .limit(parseInt(limit as string))
+        .limit(validatedLimit)
         .offset(offset);
 
       const [totalCount] = await db.select({ count: count() }).from(users);
@@ -331,8 +341,8 @@ export function registerAdminRoutes(app: Router) {
           createdAt: u.createdAt,
         })),
         total: totalCount.count,
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
+        page: validatedPage,
+        limit: validatedLimit,
       });
     } catch (error) {
       console.error("Get users error:", error);
@@ -398,7 +408,11 @@ export function registerAdminRoutes(app: Router) {
   app.get(`${ADMIN_PREFIX}/bookings`, adminAuthMiddleware, async (req, res) => {
     try {
       const { page = "1", limit = "50", status = "" } = req.query;
-      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+      // Cap limit to prevent abuse (max 100 per request)
+      const requestedLimit = parseInt(limit as string);
+      const validatedLimit = Math.min(Math.max(requestedLimit, 1), 100);
+      const validatedPage = Math.max(parseInt(page as string), 1);
+      const offset = (validatedPage - 1) * validatedLimit;
 
       let query = db.select().from(bookings);
 
@@ -408,7 +422,7 @@ export function registerAdminRoutes(app: Router) {
 
       const allBookings = await query
         .orderBy(desc(bookings.createdAt))
-        .limit(parseInt(limit as string))
+        .limit(validatedLimit)
         .offset(offset);
 
       const [totalCount] = await db.select({ count: count() }).from(bookings);
@@ -416,8 +430,8 @@ export function registerAdminRoutes(app: Router) {
       res.json({
         bookings: allBookings,
         total: totalCount.count,
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
+        page: validatedPage,
+        limit: validatedLimit,
       });
     } catch (error) {
       console.error("Get bookings error:", error);
@@ -452,9 +466,21 @@ export function registerAdminRoutes(app: Router) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
+      // Fix #32: Check for duplicate promo codes
+      const normalizedCode = code.toUpperCase().trim();
+      const [existingCode] = await db
+        .select()
+        .from(promoCodes)
+        .where(eq(promoCodes.code, normalizedCode))
+        .limit(1);
+
+      if (existingCode) {
+        return res.status(409).json({ message: "Promo code already exists" });
+      }
+
       const newCode = {
         id: uuidv4(),
-        code: code.toUpperCase(),
+        code: normalizedCode,
         type,
         value,
         description: description || null,
@@ -485,7 +511,7 @@ export function registerAdminRoutes(app: Router) {
   app.delete(`${ADMIN_PREFIX}/promo-codes/:codeId`, adminAuthMiddleware, async (req, res) => {
     try {
       const admin = (req as any).admin;
-      const { codeId } = req.params;
+      const codeId = req.params.codeId as string;
 
       await db.delete(promoCodes).where(eq(promoCodes.id, codeId));
 
@@ -512,13 +538,17 @@ export function registerAdminRoutes(app: Router) {
   app.get(`${ADMIN_PREFIX}/activity-logs`, adminAuthMiddleware, async (req, res) => {
     try {
       const { page = "1", limit = "100" } = req.query;
-      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+      // Fix #33: Cap limit to prevent abuse (max 500 records per request)
+      const requestedLimit = parseInt(limit as string);
+      const validatedLimit = Math.min(Math.max(requestedLimit, 1), 500);
+      const validatedPage = Math.max(parseInt(page as string), 1);
+      const offset = (validatedPage - 1) * validatedLimit;
 
       const logs = await db
         .select()
         .from(adminActivityLogs)
         .orderBy(desc(adminActivityLogs.createdAt))
-        .limit(parseInt(limit as string))
+        .limit(validatedLimit)
         .offset(offset);
 
       const [totalCount] = await db.select({ count: count() }).from(adminActivityLogs);
@@ -526,8 +556,9 @@ export function registerAdminRoutes(app: Router) {
       res.json({
         logs,
         total: totalCount.count,
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
+        page: validatedPage,
+        limit: validatedLimit,
+        totalPages: Math.ceil(totalCount.count / validatedLimit),
       });
     } catch (error) {
       console.error("Get activity logs error:", error);
@@ -562,6 +593,35 @@ export function registerAdminRoutes(app: Router) {
     } catch (error) {
       console.error("System health check error:", error);
       res.status(500).json({ message: "Health check failed" });
+    }
+  });
+
+  // Fix #34: Activity Log Retention - Cleanup old logs
+  app.post(`${ADMIN_PREFIX}/system/cleanup-logs`, adminAuthMiddleware, async (req, res) => {
+    try {
+      const admin = (req as any).admin;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - LOG_RETENTION_DAYS);
+      const deleted = await db
+        .delete(adminActivityLogs)
+        .where(lte(adminActivityLogs.createdAt, cutoffDate))
+        .returning();
+      await logAdminActivity(
+        admin.id,
+        "cleanup_logs",
+        "system",
+        null,
+        { deletedCount: deleted.length, retentionDays: LOG_RETENTION_DAYS },
+        getClientIP(req)
+      );
+      res.json({
+        message: `Cleaned up ${deleted.length} old activity logs`,
+        deletedCount: deleted.length,
+        retentionDays: LOG_RETENTION_DAYS,
+      });
+    } catch (error) {
+      console.error("Cleanup logs error:", error);
+      res.status(500).json({ message: "Failed to cleanup logs" });
     }
   });
 

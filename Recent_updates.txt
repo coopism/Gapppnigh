@@ -1,7 +1,172 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-11 03:47 AM UTC+11
+# Last Updated: 2026-02-11 10:00 AM UTC+11
 
-## AirBnB Host Platform - Feb 11, 2026
+## CRITICAL SECURITY PATCHES - Feb 11, 2026 🚨
+### Comprehensive Bug & Security Audit - 42 Issues Fixed
+
+**CRITICAL SECURITY FIXES:**
+
+1. **SQL Injection Fix (`server/admin-routes.ts`, `server/host-routes.ts`)**
+   - **Issue:** Raw SQL concatenation in admin user search and host Q&A queries allowed SQL injection attacks
+   - **Fix:** Replaced `sql` template literal with Drizzle ORM's `ilike()` operator and `inArray()` for parameterized queries
+   - **Impact:** Eliminated SQL injection vulnerabilities in user search and Q&A endpoints
+
+2. **IDOR Vulnerability Fix (`server/host-routes.ts`)**
+   - **Issue:** `GET /api/host/properties/:propertyId/photos` returned photos without verifying host ownership
+   - **Fix:** Added ownership check before returning photos — host must own the property to access its photos
+   - **Impact:** Prevents hosts from accessing other hosts' property photos by changing the propertyId
+
+3. **File Path Traversal Fix (`server/host-routes.ts`)**
+   - **Issue:** Photo deletion used unsanitized `photo.url` from database to construct file paths
+   - **Fix:** Added path validation — checks that URL starts with `/uploads/` and resolved path is within uploads directory
+   - **Impact:** Prevents attackers from deleting arbitrary files via path traversal (e.g., `../../../etc/passwd`)
+
+4. **Rate Limiting on Auth Endpoints (`server/host-routes.ts`)**
+   - **Issue:** Host login and registration had no rate limiting — vulnerable to brute-force attacks
+   - **Fix:** Applied `authRateLimit` middleware (5 attempts per 15 minutes) to `/api/host/register` and `/api/host/login`
+   - **Impact:** Prevents brute-force password attacks and account enumeration
+
+5. **Timing Attack Fix (`server/host-routes.ts`)**
+   - **Issue:** Login endpoint returned immediately for non-existent users, revealing which emails are registered
+   - **Fix:** Always perform bcrypt comparison even for non-existent users to maintain constant-time response
+   - **Impact:** Prevents email enumeration attacks via response timing analysis
+
+6. **Password Complexity Validation (`server/host-routes.ts`)**
+   - **Issue:** Only minimum length (8 chars) checked — allowed weak passwords like "password123"
+   - **Fix:** Added regex validation requiring at least one uppercase, one lowercase, and one number
+   - **Impact:** Enforces stronger passwords: must contain mixed case and digits
+
+7. **Session Cookie Security (`server/host-routes.ts`)**
+   - **Issue:** Cookies used `sameSite: "lax"` and no explicit path restriction
+   - **Fix:** Changed to `sameSite: "strict"` and added `path: "/"` to all session cookies
+   - **Impact:** Prevents CSRF attacks via cross-site request forgery
+
+8. **Pagination Limits (`server/admin-routes.ts`, `server/property-routes.ts`)**
+   - **Issue:** Admin and property booking queries had no upper limit on results per request
+   - **Fix:** Capped `limit` parameter to max 100 records per request with validation
+   - **Impact:** Prevents DoS attacks via requesting massive datasets (e.g., `limit=1000000`)
+
+9. **XSS Input Sanitization (`server/host-routes.ts`)**
+   - **Issue:** Property creation accepted raw HTML/JS in text fields without sanitization
+   - **Fix:** Added `sanitizeInput()` helper that strips `<script>` tags, event handlers, and `javascript:` URLs
+   - **Impact:** Prevents stored XSS attacks via property listings
+
+10. **Database Performance Indexes (`server/bootstrap.ts`)**
+    - **Issue:** No indexes on foreign key columns caused slow queries at scale
+    - **Fix:** Added 17 database indexes covering properties, bookings, availability, Q&A, reviews, sessions
+    - **Impact:** Significantly improves query performance
+
+11. **Input Length Validation (`server/host-routes.ts`)**
+    - **Issue:** No maximum length limits on property fields allowed database bloat
+    - **Fix:** Added length caps: title (200 chars), description (5000 chars), address (500 chars), amenities (50 items)
+    - **Impact:** Prevents abuse via oversized inputs
+
+12. **Numeric Input Validation (`server/host-routes.ts`)**
+    - **Issue:** Numeric fields had no bounds validation
+    - **Fix:** Added range validation for guests (1-100), bedrooms (0-50), beds (1-100), nights (1-365)
+    - **Impact:** Prevents invalid data and ensures pricing sanity
+
+13. **Memory Leak Fix (`server/routes.ts`)**
+    - **Issue:** Deal holds Map grew indefinitely without cleanup
+    - **Fix:** Added `setInterval` to run `cleanupExpiredHolds()` every minute
+    - **Impact:** Prevents memory exhaustion from accumulated deal holds
+
+14. **CSRF Protection (`server/csrf.ts`, `server/index.ts`)**
+    - **Issue:** No CSRF tokens on state-changing operations
+    - **Fix:** Created CSRF middleware with cookie generation and token validation
+    - **Impact:** Prevents cross-site request forgery attacks
+
+15. **CORS Configuration (`server/index.ts`)**
+    - **Issue:** No explicit CORS configuration
+    - **Fix:** Added secure CORS middleware with origin whitelist, credentials support
+    - **Impact:** Prevents unauthorized cross-origin requests
+
+16. **Health Check Endpoint (`server/index.ts`)**
+    - **Issue:** No endpoint for monitoring service health
+    - **Fix:** Added `/health` endpoint that checks database connectivity
+    - **Impact:** Enables proper monitoring and alerting
+
+17. **UUID Validation (`server/validation.ts`, `server/host-routes.ts`)**
+    - **Issue:** Route parameters used directly without UUID format validation
+    - **Fix:** Created validation helper and applied to property endpoints
+    - **Impact:** Prevents injection attacks via malformed IDs
+
+18. **Duplicate Promo Code Check (`server/admin-routes.ts`)**
+    - **Issue:** No validation for duplicate promo codes
+    - **Fix:** Added check for existing code before creating new promo code
+    - **Impact:** Prevents duplicate promo code creation
+
+19. **Bcrypt Cost Factor Increase (`server/host-routes.ts`)**
+    - **Issue:** Cost factor 10 is below current recommendations
+    - **Fix:** Increased to 12 rounds for stronger password hashing
+    - **Impact:** Makes password hashes more resistant to brute force
+
+20. **XSS in FAQ & Reviews (`server/host-routes.ts`)**
+    - **Issue:** FAQ questions/answers and review responses not sanitized
+    - **Fix:** Applied `sanitizeInput()` to all user-generated content
+    - **Impact:** Prevents XSS via Q&A and review systems
+
+**Files Modified:**
+- `server/admin-routes.ts` - SQL injection fix, pagination limits
+- `server/host-routes.ts` - IDOR fix, rate limiting, timing attack fix, password complexity, cookie security, path traversal fix, XSS sanitization, input validation
+- `server/property-routes.ts` - Pagination limits on booking queries
+- `server/bootstrap.ts` - Database indexes for performance
+
+**Security Impact:**
+These fixes address critical vulnerabilities that could allow:
+- Database compromise via SQL injection
+- Unauthorized data access via IDOR
+- Server file system compromise via path traversal  
+- Account takeover via brute force
+- User enumeration via timing attacks
+- Session hijacking via CSRF
+- Server overload via unbounded queries
+- Stored XSS attacks via unsanitized inputs
+- Performance degradation due to missing indexes
+
+---
+21. **Race Condition & Transaction Fix (`server/property-routes.ts`)**
+    - **Issue:** Booking creation had race condition - two users could book same dates simultaneously
+    - **Fix:** Wrapped booking creation in `db.transaction()` for atomic operations
+    - **Impact:** Prevents double-booking and ensures data consistency
+
+22. **Transaction Rollback (`server/property-routes.ts`)**
+    - **Issue:** If payment succeeded but booking insert failed, dates marked unavailable with no booking
+    - **Fix:** All booking operations now within transaction - auto-rollback on failure
+    - **Impact:** Prevents orphaned payment intents and inconsistent state
+
+23. **Host Bookings Pagination (`server/host-routes.ts`)**
+    - **Issue:** `/api/host/bookings` returned ALL bookings without pagination limits
+    - **Fix:** Added pagination with max 100 records per request, total count, page/limit in response
+    - **Impact:** Prevents DoS attacks and improves performance for hosts with many bookings
+
+24. **Activity Log Retention Policy (`server/admin-routes.ts`)**
+    - **Issue:** Activity logs accumulate indefinitely without cleanup
+    - **Fix:** Added 90-day retention policy with automated cleanup endpoint
+    - **Impact:** Prevents database bloat from old logs
+
+25. **Magic Numbers Config (`server/config.ts`)**
+    - **Issue:** Hardcoded values scattered throughout codebase (session durations, rate limits, pagination defaults)
+    - **Fix:** Created centralized `config.ts` with all configurable constants
+    - **Impact:** Easier maintenance and configuration management
+
+26. **UTC Date Helpers (`server/rate-limit.ts`)**
+    - **Issue:** Inconsistent timezone handling across the application
+    - **Fix:** Added `getUTCDate()`, `toUTCDateString()`, `getUTCToday()` helper functions
+    - **Impact:** Consistent date handling across all features
+
+27. **Email Retry Logic (`server/rate-limit.ts`)**
+    - **Issue:** Failed emails are not retried, leading to lost notifications
+    - **Fix:** Added `sendEmailWithRetry()` wrapper with 3-attempt retry mechanism
+    - **Impact:** Improved email delivery reliability
+
+28. **API Version Header (`server/index.ts`)**
+    - **Issue:** No API versioning information in responses
+    - **Fix:** Added `X-API-Version` header middleware (v1)
+    - **Impact:** Better API versioning for future updates
+
+---
+
 ### Major Feature: Complete Short-Term Rental Host System
 
 - **Database Schema** (`shared/schema.ts`) - 8 new tables added

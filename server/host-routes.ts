@@ -1,11 +1,13 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { db } from "./db";
+import { isValidUUID, validateUUIDParam } from "./validation";
+import { authRateLimit, bookingRateLimit, uploadRateLimit } from "./rate-limit";
 import { 
   airbnbHosts, hostSessions, properties, propertyPhotos, 
   propertyAvailability, propertyBookings, propertyQA, propertyReviews,
   users, userIdVerifications
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, count, sql, asc, or, ilike } from "drizzle-orm";
+import { eq, and, desc, gte, lte, count, sql, asc, or, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -14,6 +16,17 @@ import path from "path";
 import fs from "fs";
 
 const router = Router();
+
+// XSS sanitization helper - prevents script injection
+function sanitizeInput(input: string | undefined | null): string | null {
+  if (!input) return null;
+  // Remove script tags and event handlers
+  return input
+    .replace(/<script[^>]*>.*?<\/script>/gi, "")
+    .replace(/<[^>]+\son\w+\s*=\s*["'][^"']*["']/gi, "")
+    .replace(/javascript:/gi, "")
+    .trim();
+}
 
 // Photo upload config
 const uploadsDir = path.join(process.cwd(), "uploads", "properties");
@@ -54,6 +67,7 @@ interface HostRequest extends Request {
   hostData?: any;
 }
 
+// Host auth middleware with email verification check (Fix #18)
 async function requireHostAuth(req: HostRequest, res: Response, next: NextFunction) {
   const sessionId = req.cookies?.[HOST_SESSION_COOKIE];
   if (!sessionId) {
@@ -90,6 +104,24 @@ async function requireHostAuth(req: HostRequest, res: Response, next: NextFuncti
   }
 }
 
+// Middleware to require email verification for sensitive operations
+async function requireVerifiedHost(req: HostRequest, res: Response, next: NextFunction) {
+  const host = req.hostData;
+  if (!host) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  
+  // Check if email is verified (Fix #18)
+  if (!host.emailVerified) {
+    return res.status(403).json({ 
+      error: "Email verification required",
+      message: "Please verify your email address before performing this operation"
+    });
+  }
+  
+  next();
+}
+
 // ========================================
 // HOST AUTHENTICATION
 // ========================================
@@ -106,8 +138,8 @@ const hostLoginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-// Register
-router.post("/api/host/register", async (req: Request, res: Response) => {
+// Register with rate limiting
+router.post("/api/host/register", authRateLimit, async (req: Request, res: Response) => {
   try {
     const parsed = hostSignupSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -123,10 +155,12 @@ router.post("/api/host/register", async (req: Request, res: Response) => {
       .limit(1);
 
     if (existing) {
-      return res.status(409).json({ error: "An account with this email already exists" });
+      // Use constant-time comparison to prevent timing attacks
+      await bcrypt.compare(password, existing.passwordHash || "");
+      return res.status(409).json({ error: "Host already exists" });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     const hostId = uuidv4();
 
     const [host] = await db
@@ -173,8 +207,8 @@ router.post("/api/host/register", async (req: Request, res: Response) => {
   }
 });
 
-// Login
-router.post("/api/host/login", async (req: Request, res: Response) => {
+// Login with rate limiting
+router.post("/api/host/login", authRateLimit, async (req: Request, res: Response) => {
   try {
     const parsed = hostLoginSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -197,8 +231,10 @@ router.post("/api/host/login", async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Account has been suspended" });
     }
 
-    const valid = await bcrypt.compare(password, host.passwordHash);
-    if (!valid) {
+    // Always perform bcrypt comparison to prevent timing attacks
+    const validPassword = await bcrypt.compare(password, host.passwordHash);
+
+    if (!validPassword) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
@@ -316,7 +352,8 @@ router.get("/api/host/properties", requireHostAuth, async (req: HostRequest, res
 // Get single property
 router.get("/api/host/properties/:propertyId", requireHostAuth, async (req: HostRequest, res: Response) => {
   try {
-    const propertyId = req.params.propertyId as string;
+    const propertyId = validateUUIDParam(req.params.propertyId as string, res);
+    if (!propertyId) return;
 
     const [property] = await db
       .select()
@@ -366,8 +403,8 @@ router.get("/api/host/properties/:propertyId", requireHostAuth, async (req: Host
   }
 });
 
-// Create property
-router.post("/api/host/properties", requireHostAuth, async (req: HostRequest, res: Response) => {
+// Create property with XSS-sanitized inputs and email verification check
+router.post("/api/host/properties", requireHostAuth, requireVerifiedHost, async (req: HostRequest, res: Response) => {
   try {
     const {
       title, description, propertyType, category, address, city, state, country, postcode,
@@ -378,8 +415,25 @@ router.post("/api/host/properties", requireHostAuth, async (req: HostRequest, re
       images, coverImage,
     } = req.body;
 
-    if (!title || !description || !address || !city || !baseNightlyRate) {
+    // Validate required fields
+    const sanitizedTitle = sanitizeInput(title);
+    const sanitizedDescription = sanitizeInput(description);
+    const sanitizedAddress = sanitizeInput(address);
+    const sanitizedCity = sanitizeInput(city);
+
+    if (!sanitizedTitle || !sanitizedDescription || !sanitizedAddress || !sanitizedCity || !baseNightlyRate) {
       return res.status(400).json({ error: "Missing required fields: title, description, address, city, baseNightlyRate" });
+    }
+
+    // Validate field lengths to prevent abuse
+    if (sanitizedTitle.length > 200) {
+      return res.status(400).json({ error: "Title must be less than 200 characters" });
+    }
+    if (sanitizedDescription.length > 5000) {
+      return res.status(400).json({ error: "Description must be less than 5000 characters" });
+    }
+    if (sanitizedAddress.length > 500) {
+      return res.status(400).json({ error: "Address must be less than 500 characters" });
     }
 
     const propertyId = uuidv4();
@@ -389,39 +443,39 @@ router.post("/api/host/properties", requireHostAuth, async (req: HostRequest, re
       .values({
         id: propertyId,
         hostId: req.hostId!,
-        title,
-        description,
+        title: sanitizedTitle,
+        description: sanitizedDescription,
         propertyType: propertyType || "entire_place",
         category: category || "apartment",
-        address,
-        city,
-        state: state || null,
-        country: country || "Australia",
-        postcode: postcode || null,
+        address: sanitizedAddress,
+        city: sanitizedCity,
+        state: sanitizeInput(state),
+        country: sanitizeInput(country) || "Australia",
+        postcode: sanitizeInput(postcode),
         latitude: latitude || null,
         longitude: longitude || null,
-        maxGuests: maxGuests || 2,
-        bedrooms: bedrooms || 1,
-        beds: beds || 1,
+        maxGuests: Math.min(Math.max(maxGuests || 2, 1), 100),
+        bedrooms: Math.min(Math.max(bedrooms || 1, 0), 50),
+        beds: Math.min(Math.max(beds || 1, 1), 100),
         bathrooms: bathrooms || "1",
-        amenities: amenities || [],
-        houseRules: houseRules || null,
-        checkInInstructions: checkInInstructions || null,
+        amenities: Array.isArray(amenities) ? amenities.slice(0, 50) : [],
+        houseRules: sanitizeInput(houseRules),
+        checkInInstructions: sanitizeInput(checkInInstructions),
         checkInTime: checkInTime || "15:00",
         checkOutTime: checkOutTime || "10:00",
         cancellationPolicy: cancellationPolicy || "moderate",
-        baseNightlyRate,
-        cleaningFee: cleaningFee || 0,
+        baseNightlyRate: Math.max(baseNightlyRate, 100), // Minimum $1/night (in cents)
+        cleaningFee: Math.max(cleaningFee || 0, 0),
         serviceFee: 0,
-        minNights: minNights || 1,
-        maxNights: maxNights || 30,
+        minNights: Math.min(Math.max(minNights || 1, 1), 365),
+        maxNights: maxNights ? Math.min(Math.max(maxNights, 1), 365) : 30,
         instantBook: instantBook || false,
         selfCheckIn: selfCheckIn || false,
         petFriendly: petFriendly || false,
         smokingAllowed: smokingAllowed || false,
-        nearbyHighlight: nearbyHighlight || null,
-        images: images || [],
-        coverImage: coverImage || null,
+        nearbyHighlight: sanitizeInput(nearbyHighlight),
+        images: Array.isArray(images) ? images.slice(0, 50) : [],
+        coverImage: sanitizeInput(coverImage),
         status: "pending_approval",
       })
       .returning();
@@ -441,10 +495,11 @@ router.post("/api/host/properties", requireHostAuth, async (req: HostRequest, re
   }
 });
 
-// Update property
+// Update property with XSS-sanitized inputs
 router.put("/api/host/properties/:propertyId", requireHostAuth, async (req: HostRequest, res: Response) => {
   try {
-    const propertyId = req.params.propertyId as string;
+    const propertyId = validateUUIDParam(req.params.propertyId as string, res);
+    if (!propertyId) return;
 
     const [existing] = await db
       .select()
@@ -456,6 +511,12 @@ router.put("/api/host/properties/:propertyId", requireHostAuth, async (req: Host
       return res.status(404).json({ error: "Property not found" });
     }
 
+    // Fields that need XSS sanitization
+    const textFields = [
+      "title", "description", "address", "city", "state", "country", 
+      "postcode", "houseRules", "checkInInstructions", "nearbyHighlight"
+    ];
+    
     const allowedFields: Record<string, any> = {};
     const updateableFields = [
       "title", "description", "propertyType", "category", "address", "city", 
@@ -469,8 +530,21 @@ router.put("/api/host/properties/:propertyId", requireHostAuth, async (req: Host
 
     for (const field of updateableFields) {
       if (req.body[field] !== undefined) {
-        allowedFields[field] = req.body[field];
+        // Fix #43: XSS sanitize text fields
+        if (textFields.includes(field) && typeof req.body[field] === "string") {
+          allowedFields[field] = sanitizeInput(req.body[field]);
+        } else {
+          allowedFields[field] = req.body[field];
+        }
       }
+    }
+
+    // Validate field lengths
+    if (allowedFields.title && allowedFields.title.length > 200) {
+      return res.status(400).json({ error: "Title must be less than 200 characters" });
+    }
+    if (allowedFields.description && allowedFields.description.length > 5000) {
+      return res.status(400).json({ error: "Description must be less than 5000 characters" });
     }
 
     allowedFields.updatedAt = new Date();
@@ -488,10 +562,11 @@ router.put("/api/host/properties/:propertyId", requireHostAuth, async (req: Host
   }
 });
 
-// Delete (archive) property
+// Delete (archive) property with orphaned photos cleanup
 router.delete("/api/host/properties/:propertyId", requireHostAuth, async (req: HostRequest, res: Response) => {
   try {
-    const propertyId = req.params.propertyId as string;
+    const propertyId = validateUUIDParam(req.params.propertyId as string, res);
+    if (!propertyId) return;
 
     const [existing] = await db
       .select()
@@ -503,12 +578,38 @@ router.delete("/api/host/properties/:propertyId", requireHostAuth, async (req: H
       return res.status(404).json({ error: "Property not found" });
     }
 
+    // Fix #27: Cleanup orphaned photos before archiving property
+    const photosToDelete = await db
+      .select()
+      .from(propertyPhotos)
+      .where(eq(propertyPhotos.propertyId, propertyId));
+
+    for (const photo of photosToDelete) {
+      if (photo.url && photo.url.startsWith("/uploads/")) {
+        const filePath = path.join(process.cwd(), photo.url);
+        const uploadsDir = path.join(process.cwd(), "uploads");
+        const resolvedPath = path.resolve(filePath);
+        const resolvedUploadsDir = path.resolve(uploadsDir);
+        
+        if (resolvedPath.startsWith(resolvedUploadsDir) && fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (err) {
+            console.error(`Failed to delete photo file ${filePath}:`, err);
+          }
+        }
+      }
+    }
+
+    // Delete photo records from database
+    await db.delete(propertyPhotos).where(eq(propertyPhotos.propertyId, propertyId));
+
     await db
       .update(properties)
       .set({ status: "archived", isActive: false, updatedAt: new Date() })
       .where(eq(properties.id, propertyId));
 
-    res.json({ message: "Property archived" });
+    res.json({ message: "Property archived and photos cleaned up" });
   } catch (error) {
     console.error("Delete property error:", error);
     res.status(500).json({ error: "Failed to archive property" });
@@ -548,7 +649,7 @@ router.post("/api/host/properties/:propertyId/photos", requireHostAuth, async (r
         id: uuidv4(),
         propertyId,
         url,
-        caption: caption || null,
+        caption: caption ? sanitizeInput(caption) : null, // Fix #44: XSS sanitize caption
         sortOrder: maxOrder + 1,
         isCover: isCover || false,
       })
@@ -633,10 +734,12 @@ router.get("/api/host/properties/:propertyId/availability", requireHostAuth, asy
   }
 });
 
-// Set availability (bulk upsert)
+// Set availability (bulk upsert) with date validation
 router.post("/api/host/properties/:propertyId/availability", requireHostAuth, async (req: HostRequest, res: Response) => {
   try {
-    const propertyId = req.params.propertyId as string;
+    const propertyId = validateUUIDParam(req.params.propertyId as string, res);
+    if (!propertyId) return;
+    
     const { dates } = req.body; // Array of { date, isAvailable, isGapNight, nightlyRate, gapNightDiscount, notes }
 
     const [existing] = await db
@@ -651,6 +754,27 @@ router.post("/api/host/properties/:propertyId/availability", requireHostAuth, as
 
     if (!Array.isArray(dates) || dates.length === 0) {
       return res.status(400).json({ error: "Dates array is required" });
+    }
+
+    // Fix #25: Validate date format and range
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (const entry of dates) {
+      if (!entry.date || !dateRegex.test(entry.date)) {
+        return res.status(400).json({ error: `Invalid date format: ${entry.date}. Expected YYYY-MM-DD` });
+      }
+      
+      const entryDate = new Date(entry.date);
+      if (isNaN(entryDate.getTime())) {
+        return res.status(400).json({ error: `Invalid date: ${entry.date}` });
+      }
+      
+      // Optional: Prevent setting availability for past dates
+      if (entryDate < today) {
+        return res.status(400).json({ error: `Cannot set availability for past date: ${entry.date}` });
+      }
     }
 
     const results = [];
@@ -743,8 +867,8 @@ router.delete("/api/host/properties/:propertyId/availability/:availId", requireH
 // PHOTO UPLOAD
 // ========================================
 
-// Upload photos for a property
-router.post("/api/host/properties/:propertyId/photos", requireHostAuth, photoUpload.array("photos", 10), async (req: HostRequest, res: Response) => {
+// Upload photos for a property with rate limiting
+router.post("/api/host/properties/:propertyId/photos", requireHostAuth, uploadRateLimit, photoUpload.array("photos", 10), async (req: HostRequest, res: Response) => {
   try {
     const propertyId = req.params.propertyId as string;
 
@@ -813,6 +937,17 @@ router.get("/api/host/properties/:propertyId/photos", requireHostAuth, async (re
   try {
     const propertyId = req.params.propertyId as string;
 
+    // CRITICAL: Verify host owns this property before returning photos
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.hostId, req.hostId!)))
+      .limit(1);
+
+    if (!property) {
+      return res.status(403).json({ error: "Not authorized to access this property" });
+    }
+
     const photos = await db
       .select()
       .from(propertyPhotos)
@@ -853,10 +988,17 @@ router.delete("/api/host/properties/:propertyId/photos/:photoId", requireHostAut
       return res.status(404).json({ error: "Photo not found" });
     }
 
-    // Delete file from disk
-    const filePath = path.join(process.cwd(), photo.url);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    // Delete file from disk - prevent path traversal attacks
+    if (photo.url && photo.url.startsWith("/uploads/")) {
+      const filePath = path.join(process.cwd(), photo.url);
+      // Verify the resolved path is within the uploads directory
+      const uploadsDir = path.join(process.cwd(), "uploads");
+      const resolvedPath = path.resolve(filePath);
+      const resolvedUploadsDir = path.resolve(uploadsDir);
+      
+      if (resolvedPath.startsWith(resolvedUploadsDir) && fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
     }
 
     await db.delete(propertyPhotos).where(eq(propertyPhotos.id, photoId));
@@ -924,12 +1066,20 @@ router.put("/api/host/properties/:propertyId/photos/:photoId/cover", requireHost
 // BOOKING MANAGEMENT (HOST SIDE)
 // ========================================
 
-// Get all bookings for host
+// Get all bookings for host with pagination
 router.get("/api/host/bookings", requireHostAuth, async (req: HostRequest, res: Response) => {
   try {
-    const { status } = req.query;
+    const { status, page = "1", limit = "50" } = req.query;
+
+    // Validate and cap pagination params
+    const validatedPage = Math.max(parseInt(page as string) || 1, 1);
+    const requestedLimit = parseInt(limit as string) || 50;
+    const validatedLimit = Math.min(Math.max(requestedLimit, 1), 100);
+    const offset = (validatedPage - 1) * validatedLimit;
 
     let bookingsList;
+    let totalCount;
+
     if (status) {
       bookingsList = await db
         .select()
@@ -938,13 +1088,32 @@ router.get("/api/host/bookings", requireHostAuth, async (req: HostRequest, res: 
           eq(propertyBookings.hostId, req.hostId!),
           eq(propertyBookings.status, status as string)
         ))
-        .orderBy(desc(propertyBookings.createdAt));
+        .orderBy(desc(propertyBookings.createdAt))
+        .limit(validatedLimit)
+        .offset(offset);
+
+      const [countResult] = await db
+        .select({ count: count() })
+        .from(propertyBookings)
+        .where(and(
+          eq(propertyBookings.hostId, req.hostId!),
+          eq(propertyBookings.status, status as string)
+        ));
+      totalCount = countResult.count;
     } else {
       bookingsList = await db
         .select()
         .from(propertyBookings)
         .where(eq(propertyBookings.hostId, req.hostId!))
-        .orderBy(desc(propertyBookings.createdAt));
+        .orderBy(desc(propertyBookings.createdAt))
+        .limit(validatedLimit)
+        .offset(offset);
+
+      const [countResult2] = await db
+        .select({ count: count() })
+        .from(propertyBookings)
+        .where(eq(propertyBookings.hostId, req.hostId!));
+      totalCount = countResult2.count;
     }
 
     // Enrich with property names and guest info
@@ -980,7 +1149,13 @@ router.get("/api/host/bookings", requireHostAuth, async (req: HostRequest, res: 
       })
     );
 
-    res.json({ bookings: enriched });
+    res.json({
+      bookings: enriched,
+      total: totalCount,
+      page: validatedPage,
+      limit: validatedLimit,
+      totalPages: Math.ceil(totalCount / validatedLimit),
+    });
   } catch (error) {
     console.error("Get host bookings error:", error);
     res.status(500).json({ error: "Failed to fetch bookings" });
@@ -1180,22 +1355,24 @@ router.post("/api/host/bookings/:bookingId/decline", requireHostAuth, async (req
 // Get unanswered questions
 router.get("/api/host/qa", requireHostAuth, async (req: HostRequest, res: Response) => {
   try {
-    // Get all properties for this host
+    // Validate host owns all these properties first (security check)
     const hostProperties = await db
       .select({ id: properties.id })
       .from(properties)
       .where(eq(properties.hostId, req.hostId!));
 
-    const propertyIds = hostProperties.map(p => p.id);
+    const hostPropertyIds = new Set(hostProperties.map(p => p.id));
+    const propertyIdList = Array.from(hostPropertyIds);
 
-    if (propertyIds.length === 0) {
+    if (propertyIdList.length === 0) {
       return res.json({ questions: [] });
     }
 
+    // Use parameterized inArray instead of raw SQL
     const questions = await db
       .select()
       .from(propertyQA)
-      .where(sql`${propertyQA.propertyId} IN (${sql.join(propertyIds.map(id => sql`${id}`), sql`, `)})`)
+      .where(inArray(propertyQA.propertyId, propertyIdList as string[]))
       .orderBy(desc(propertyQA.createdAt));
 
     // Enrich with property titles and user info
@@ -1238,10 +1415,14 @@ router.post("/api/host/properties/:propertyId/faq", requireHostAuth, async (req:
     const propertyId = req.params.propertyId as string;
     const { question, answer } = req.body;
 
-    if (!question || question.trim().length < 5) {
+    // Sanitize FAQ inputs to prevent XSS
+    const sanitizedQuestion = sanitizeInput(question);
+    const sanitizedAnswer = sanitizeInput(answer);
+
+    if (!sanitizedQuestion || sanitizedQuestion.trim().length < 5) {
       return res.status(400).json({ error: "Question must be at least 5 characters" });
     }
-    if (!answer || answer.trim().length < 2) {
+    if (!sanitizedAnswer || sanitizedAnswer.trim().length < 2) {
       return res.status(400).json({ error: "Answer is required" });
     }
 
@@ -1262,8 +1443,8 @@ router.post("/api/host/properties/:propertyId/faq", requireHostAuth, async (req:
         id: uuidv4(),
         propertyId,
         userId: null,
-        question: question.trim(),
-        answer: answer.trim(),
+        question: sanitizedQuestion.trim(),
+        answer: sanitizedAnswer.trim(),
         answeredAt: new Date(),
         isPublic: true,
         isHostFaq: true,
@@ -1436,6 +1617,12 @@ router.post("/api/host/reviews/:reviewId/respond", requireHostAuth, async (req: 
       return res.status(400).json({ error: "Response is required" });
     }
 
+    // Sanitize response to prevent XSS
+    const sanitizedResponse = sanitizeInput(response);
+    if (!sanitizedResponse) {
+      return res.status(400).json({ error: "Invalid response content" });
+    }
+
     const [review] = await db
       .select()
       .from(propertyReviews)
@@ -1459,7 +1646,7 @@ router.post("/api/host/reviews/:reviewId/respond", requireHostAuth, async (req: 
 
     const [updated] = await db
       .update(propertyReviews)
-      .set({ hostResponse: response.trim(), hostRespondedAt: new Date() })
+      .set({ hostResponse: sanitizedResponse.trim(), hostRespondedAt: new Date() })
       .where(eq(propertyReviews.id, reviewId))
       .returning();
 

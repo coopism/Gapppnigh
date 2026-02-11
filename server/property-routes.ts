@@ -4,11 +4,145 @@ import {
   properties, propertyAvailability, propertyBookings, propertyQA, 
   propertyReviews, propertyPhotos, airbnbHosts, users, userIdVerifications
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, count, sql, asc, or } from "drizzle-orm";
+import { eq, and, desc, gte, lte, count, sql, asc, or, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { stripe, createPaymentIntent } from "./stripe";
 
 const router = Router();
+
+// ========================================
+// BATCH QUERY HELPERS (Fix #26: N+1 Query Optimization)
+// ========================================
+
+interface PropertyDetails {
+  host: any;
+  gapNights: any[];
+  reviewStats: { count: number; avgRating: number };
+}
+
+async function batchGetPropertyDetails(propertyIds: string[]): Promise<Map<string, PropertyDetails>> {
+  if (propertyIds.length === 0) return new Map();
+  
+  // Batch fetch all hosts
+  const propertyData = await db
+    .select({
+      propertyId: properties.id,
+      hostId: properties.hostId,
+      hostName: airbnbHosts.name,
+      hostProfilePhoto: airbnbHosts.profilePhoto,
+      hostIsSuperhost: airbnbHosts.isSuperhost,
+      hostAvgResponseTime: airbnbHosts.averageResponseTime,
+      hostResponseRate: airbnbHosts.responseRate,
+    })
+    .from(properties)
+    .leftJoin(airbnbHosts, eq(properties.hostId, airbnbHosts.id))
+    .where(inArray(properties.id, propertyIds));
+  
+  // Batch fetch all gap nights
+  const today = new Date().toISOString().split("T")[0];
+  const allGapNights = await db
+    .select()
+    .from(propertyAvailability)
+    .where(and(
+      inArray(propertyAvailability.propertyId, propertyIds),
+      eq(propertyAvailability.isAvailable, true),
+      eq(propertyAvailability.isGapNight, true),
+      gte(propertyAvailability.date, today)
+    ));
+  
+  // Batch fetch all review stats
+  const allReviewStats = await db
+    .select({
+      propertyId: propertyReviews.propertyId,
+      count: count(),
+      avgRating: sql<number>`COALESCE(AVG(${propertyReviews.rating}), 0)`,
+    })
+    .from(propertyReviews)
+    .where(inArray(propertyReviews.propertyId, propertyIds))
+    .groupBy(propertyReviews.propertyId);
+  
+  // Build result map
+  const result = new Map<string, PropertyDetails>();
+  for (const pd of propertyData) {
+    const gapNights = allGapNights.filter(gn => gn.propertyId === pd.propertyId);
+    const reviewStats = allReviewStats.find(rs => rs.propertyId === pd.propertyId);
+    
+    result.set(pd.propertyId, {
+      host: pd.hostId ? {
+        id: pd.hostId,
+        name: pd.hostName,
+        profilePhoto: pd.hostProfilePhoto,
+        isSuperhost: pd.hostIsSuperhost,
+        averageResponseTime: pd.hostAvgResponseTime,
+        responseRate: pd.hostResponseRate,
+      } : null,
+      gapNights: gapNights.map(gn => ({
+        date: gn.date,
+        nightlyRate: gn.nightlyRate,
+        gapNightDiscount: gn.gapNightDiscount,
+        discountedRate: Math.round(gn.nightlyRate * (1 - (gn.gapNightDiscount || 0) / 100)),
+      })),
+      reviewStats: {
+        count: reviewStats?.count || 0,
+        avgRating: Number(reviewStats?.avgRating || 0),
+      },
+    });
+  }
+  
+  return result;
+}
+
+// ========================================
+// ERROR RESPONSE HELPERS (Fix #36: Standardized Error Format)
+// ========================================
+
+interface ErrorResponse {
+  error: true;
+  message: string;
+  field?: string;
+  code?: string;
+  timestamp: string;
+}
+
+function sendError(res: Response, status: number, message: string, field?: string, code?: string) {
+  const response: ErrorResponse = {
+    error: true,
+    message,
+    field,
+    code,
+    timestamp: new Date().toISOString(),
+  };
+  res.status(status).json(response);
+}
+
+// ========================================
+// TYPE INTERFACES (Fix #37: TypeScript Strict Typing)
+// ========================================
+
+// Extended request type with user info (using intersection instead of extension to avoid conflicts)
+type AuthenticatedRequest = Request & {
+  user?: {
+    id: string;
+    email: string;
+    name?: string;
+  };
+};
+
+interface BookingRequestBody {
+  checkInDate: string;
+  checkOutDate: string;
+  guests: number;
+  guestMessage?: string;
+  specialRequests?: string;
+  guestFirstName: string;
+  guestLastName: string;
+  guestEmail: string;
+  guestPhone?: string;
+}
+
+interface QuestionRequestBody {
+  question: string;
+}
 
 // ========================================
 // PUBLIC PROPERTY LISTINGS
@@ -273,13 +407,14 @@ router.get("/api/properties/:propertyId", async (req: Request, res: Response) =>
       reviews: enrichedReviews,
       reviewStats: reviewStats ? {
         count: reviewStats.count,
-        averageRating: Number(reviewStats.avgRating).toFixed(1),
-        cleanliness: Number(reviewStats.avgCleanliness).toFixed(1),
-        accuracy: Number(reviewStats.avgAccuracy).toFixed(1),
-        checkIn: Number(reviewStats.avgCheckIn).toFixed(1),
-        communication: Number(reviewStats.avgCommunication).toFixed(1),
-        location: Number(reviewStats.avgLocation).toFixed(1),
-        value: Number(reviewStats.avgValue).toFixed(1),
+        // Fix #24: Use proper rounding to avoid floating point precision issues
+        averageRating: Math.round((Number(reviewStats.avgRating) + Number.EPSILON) * 10) / 10,
+        cleanliness: Math.round((Number(reviewStats.avgCleanliness) + Number.EPSILON) * 10) / 10,
+        accuracy: Math.round((Number(reviewStats.avgAccuracy) + Number.EPSILON) * 10) / 10,
+        checkIn: Math.round((Number(reviewStats.avgCheckIn) + Number.EPSILON) * 10) / 10,
+        communication: Math.round((Number(reviewStats.avgCommunication) + Number.EPSILON) * 10) / 10,
+        location: Math.round((Number(reviewStats.avgLocation) + Number.EPSILON) * 10) / 10,
+        value: Math.round((Number(reviewStats.avgValue) + Number.EPSILON) * 10) / 10,
       } : null,
     });
   } catch (error) {
@@ -642,94 +777,99 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
       dateList.push(d.toISOString().split("T")[0]);
     }
 
-    // Check each date's availability
-    for (const date of dateList) {
-      const [avail] = await db
-        .select()
-        .from(propertyAvailability)
-        .where(and(
-          eq(propertyAvailability.propertyId, propertyId),
-          eq(propertyAvailability.date, date),
-          eq(propertyAvailability.isAvailable, true)
-        ))
-        .limit(1);
+    // Fix #9 & #11: Use transaction for atomic booking creation
+    const bookingResult = await db.transaction(async (trx) => {
+      // Check each date's availability
+      for (const date of dateList) {
+        const [avail] = await trx
+          .select()
+          .from(propertyAvailability)
+          .where(and(
+            eq(propertyAvailability.propertyId, propertyId),
+            eq(propertyAvailability.date, date),
+            eq(propertyAvailability.isAvailable, true)
+          ))
+          .limit(1);
 
-      if (!avail) {
-        return res.status(400).json({ error: `Date ${date} is not available` });
+        if (!avail) {
+          throw new Error(`Date ${date} is not available`);
+        }
+
+        // Apply gap night discount
+        const rate = avail.isGapNight && avail.gapNightDiscount
+          ? Math.round(avail.nightlyRate * (1 - avail.gapNightDiscount / 100))
+          : avail.nightlyRate;
+        totalNightlyRate += rate;
       }
 
-      // Apply gap night discount
-      const rate = avail.isGapNight && avail.gapNightDiscount
-        ? Math.round(avail.nightlyRate * (1 - avail.gapNightDiscount / 100))
-        : avail.nightlyRate;
-      totalNightlyRate += rate;
-    }
+      const cleaningFee = property.cleaningFee || 0;
+      const serviceFee = Math.round(totalNightlyRate * 0.08);
+      const totalPrice = totalNightlyRate + cleaningFee + serviceFee;
 
-    const cleaningFee = property.cleaningFee || 0;
-    const serviceFee = Math.round(totalNightlyRate * 0.08); // 8% GapNight service fee
-    const totalPrice = totalNightlyRate + cleaningFee + serviceFee;
-
-    // Create payment intent with manual capture (authorization hold)
-    let paymentIntentId = null;
-    if (stripe) {
-      try {
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: totalPrice,
-          currency: "aud",
-          capture_method: "manual", // Hold only, capture when host approves
-          metadata: {
-            propertyId,
-            userId: req.user?.id,
-            checkInDate,
-            checkOutDate,
-          },
-        });
-        paymentIntentId = paymentIntent.id;
-      } catch (stripeError) {
-        console.error("Stripe payment intent error:", stripeError);
-        return res.status(500).json({ error: "Failed to create payment authorization" });
+      // Create payment intent with manual capture
+      let paymentIntentId = null;
+      if (stripe) {
+        try {
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: totalPrice,
+            currency: "aud",
+            capture_method: "manual",
+            metadata: {
+              propertyId,
+              userId: req.user?.id,
+              checkInDate,
+              checkOutDate,
+            },
+          });
+          paymentIntentId = paymentIntent.id;
+        } catch (stripeError) {
+          console.error("Stripe payment intent error:", stripeError);
+          throw new Error("Failed to create payment authorization");
+        }
       }
-    }
 
-    // Create booking
-    const bookingId = `PB-${uuidv4().substring(0, 8).toUpperCase()}`;
-    const [booking] = await db
-      .insert(propertyBookings)
-      .values({
-        id: bookingId,
-        propertyId,
-        hostId: property.hostId,
-        userId: req.user?.id,
-        checkInDate,
-        checkOutDate,
-        nights,
-        guests: guests || 1,
-        nightlyRate: Math.round(totalNightlyRate / nights),
-        cleaningFee,
-        serviceFee,
-        totalPrice,
-        currency: "AUD",
-        guestMessage: guestMessage || null,
-        specialRequests: specialRequests || null,
-        status: "PENDING_APPROVAL",
-        stripePaymentIntentId: paymentIntentId,
-        guestFirstName,
-        guestLastName,
-        guestEmail,
-        guestPhone: guestPhone || null,
-      })
-      .returning();
+      // Create booking
+      const bookingId = `PB-${uuidv4().substring(0, 8).toUpperCase()}`;
+      const [booking] = await trx
+        .insert(propertyBookings)
+        .values({
+          id: bookingId,
+          propertyId,
+          hostId: property.hostId,
+          userId: req.user?.id,
+          checkInDate,
+          checkOutDate,
+          nights,
+          guests: guests || 1,
+          nightlyRate: Math.round(totalNightlyRate / nights),
+          cleaningFee,
+          serviceFee,
+          totalPrice,
+          currency: "AUD",
+          guestMessage: guestMessage || null,
+          specialRequests: specialRequests || null,
+          status: "PENDING_APPROVAL",
+          stripePaymentIntentId: paymentIntentId,
+          guestFirstName,
+          guestLastName,
+          guestEmail,
+          guestPhone: guestPhone || null,
+        })
+        .returning();
 
-    // Mark dates as unavailable (pending)
-    for (const date of dateList) {
-      await db
-        .update(propertyAvailability)
-        .set({ isAvailable: false, updatedAt: new Date() })
-        .where(and(
-          eq(propertyAvailability.propertyId, propertyId),
-          eq(propertyAvailability.date, date)
-        ));
-    }
+      // Mark dates as unavailable
+      for (const date of dateList) {
+        await trx
+          .update(propertyAvailability)
+          .set({ isAvailable: false, updatedAt: new Date() })
+          .where(and(
+            eq(propertyAvailability.propertyId, propertyId),
+            eq(propertyAvailability.date, date)
+          ));
+      }
+
+      return { booking, paymentIntentId, totalNightlyRate, cleaningFee, serviceFee, totalPrice };
+    });
 
     // Get host info for response time
     const [host] = await db
@@ -739,35 +879,51 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
       .limit(1);
 
     res.json({
-      booking,
-      paymentIntentId,
+      booking: bookingResult.booking,
+      paymentIntentId: bookingResult.paymentIntentId,
       message: "Booking request submitted! The host will review your request.",
       estimatedResponseTime: host?.averageResponseTime || 60,
       pricing: {
-        nightlyTotal: totalNightlyRate,
-        cleaningFee,
-        serviceFee,
-        total: totalPrice,
+        nightlyTotal: bookingResult.totalNightlyRate,
+        cleaningFee: bookingResult.cleaningFee,
+        serviceFee: bookingResult.serviceFee,
+        total: bookingResult.totalPrice,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Book property error:", error);
+    if (error.message?.includes("is not available")) {
+      return res.status(400).json({ error: error.message });
+    }
     res.status(500).json({ error: "Failed to create booking" });
   }
 });
 
-// Get user's property bookings
+// Get user's property bookings - with pagination limits
 router.get("/api/auth/property-bookings", async (req: any, res: Response) => {
   try {
     if (!req.user?.id) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
+    // Cap limit to prevent abuse (max 100 per request)
+    const requestedLimit = parseInt(req.query.limit as string) || 20;
+    const limit = Math.min(Math.max(requestedLimit, 1), 100);
+    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
+    const offset = (page - 1) * limit;
+
     const bookingsList = await db
       .select()
       .from(propertyBookings)
       .where(eq(propertyBookings.userId, req.user?.id))
-      .orderBy(desc(propertyBookings.createdAt));
+      .orderBy(desc(propertyBookings.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [totalCount] = await db
+      .select({ count: count() })
+      .from(propertyBookings)
+      .where(eq(propertyBookings.userId, req.user?.id));
 
     const enriched = await Promise.all(
       bookingsList.map(async (booking) => {
@@ -802,7 +958,13 @@ router.get("/api/auth/property-bookings", async (req: any, res: Response) => {
       })
     );
 
-    res.json({ bookings: enriched });
+    res.json({ 
+      bookings: enriched,
+      total: totalCount.count,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount.count / limit)
+    });
   } catch (error) {
     console.error("Get user property bookings error:", error);
     res.status(500).json({ error: "Failed to fetch bookings" });

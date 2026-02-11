@@ -30,6 +30,11 @@ interface DealHold {
 const dealHolds = new Map<string, DealHold>(); // dealId -> hold
 const HOLD_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
+// Fix #14: Periodic cleanup to prevent memory leak
+setInterval(() => {
+  cleanupExpiredHolds();
+}, 60 * 1000); // Run every minute
+
 function cleanupExpiredHolds() {
   const now = new Date();
   dealHolds.forEach((hold, dealId) => {

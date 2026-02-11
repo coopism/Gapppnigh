@@ -1,20 +1,49 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { bootstrapDatabase } from "./bootstrap";
 import { startAllCronJobs } from "./cron-jobs";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
+
+import { csrfCookieMiddleware, csrfProtectionMiddleware } from "./csrf";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Fix #41: CORS Configuration
+const corsOptions = {
+  origin: process.env.NODE_ENV === "production" 
+    ? process.env.ALLOWED_ORIGINS?.split(",") || ["https://gapnight.com"]
+    : ["http://localhost:5173", "http://localhost:5000"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "X-Requested-With"],
+  maxAge: 86400,
+};
+app.use(cors(corsOptions));
+
+// Fix #8: CSRF Protection
+app.use(csrfCookieMiddleware);
+app.use(csrfProtectionMiddleware);
 
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
   }
 }
+
+import { API_VERSION } from "./config";
+
+// Fix #40: API Version Header Middleware
+app.use((req, res, next) => {
+  res.setHeader("X-API-Version", API_VERSION);
+  next();
+});
 
 // Security headers middleware
 app.use((req, res, next) => {
@@ -100,6 +129,27 @@ app.use((req, res, next) => {
     console.error("Bootstrap failed:", err);
   }
   await registerRoutes(httpServer, app);
+
+  // Fix #42: Health Check Endpoint
+  app.get("/health", async (_req, res) => {
+    try {
+      // Check database connectivity
+      await db.execute(sql`SELECT 1`);
+      res.json({
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        database: "connected",
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "unhealthy",
+        timestamp: new Date().toISOString(),
+        database: "disconnected",
+        error: "Database connection failed",
+      });
+    }
+  });
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
