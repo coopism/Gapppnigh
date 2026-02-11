@@ -600,6 +600,9 @@ router.post("/api/auth/verify-identity", async (req: any, res: Response) => {
       return res.json({ status: "verified", message: "ID already verified" });
     }
 
+    // Build return URL from the request's referer or body
+    const returnUrl = req.body?.returnUrl || req.headers.referer || process.env.APP_URL || "https://www.gapnight.com/deals";
+
     // Create Stripe Identity VerificationSession
     const verificationSession = await stripe.identity.verificationSessions.create({
       type: "document",
@@ -611,6 +614,7 @@ router.post("/api/auth/verify-identity", async (req: any, res: Response) => {
           require_matching_selfie: true,
         },
       },
+      return_url: returnUrl,
     });
 
     // Upsert verification record

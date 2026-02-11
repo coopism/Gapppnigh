@@ -115,7 +115,9 @@ export default function PropertyBooking() {
     try {
       const res = await fetch("/api/auth/verify-identity", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ returnUrl: window.location.href }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to start verification");
