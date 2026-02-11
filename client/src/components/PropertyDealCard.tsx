@@ -86,9 +86,9 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
 
   return (
     <Link href={`/stays/${property.id}`} className="block group" data-testid={`property-card-${property.id}`}>
-      <div className="bg-card rounded-2xl overflow-visible border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all duration-300 hover-elevate">
+      <div className="bg-card rounded-2xl overflow-visible border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all duration-300 hover-elevate flex flex-row sm:flex-col">
         {/* Image Section - identical to DealCard */}
-        <div className="relative aspect-[4/3] overflow-hidden">
+        <div className="relative w-[140px] h-[140px] sm:w-full sm:h-auto sm:aspect-[4/3] overflow-hidden shrink-0 rounded-l-2xl sm:rounded-l-none sm:rounded-t-2xl">
           <img
             src={property.coverImage || "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop"}
             alt={property.title}
@@ -98,8 +98,8 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
             }}
           />
           
-          {/* Top badges - matches DealCard */}
-          <div className="absolute top-3 left-3 flex items-center gap-2">
+          {/* Top badges - hidden on mobile compact layout */}
+          <div className="absolute top-3 left-3 hidden sm:flex items-center gap-2">
             <Badge className="bg-card text-foreground font-semibold shadow-sm flex items-center gap-1.5 px-2.5 py-1">
               <Heart className="w-3.5 h-3.5 fill-primary text-primary" />
               <span>{property.host?.isSuperhost ? "Superhost" : "Rare Find"}</span>
@@ -111,8 +111,8 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
             )}
           </div>
           
-          {/* Score badge at bottom right - identical to DealCard */}
-          <div className="absolute bottom-3 right-3">
+          {/* Score badge at bottom right - hidden on mobile compact layout */}
+          <div className="absolute bottom-3 right-3 hidden sm:block">
             <div className="bg-primary text-white font-bold rounded-full px-3 py-1.5 text-sm shadow-lg flex items-center gap-1">
               <span className="text-xs font-medium opacity-90">SCORE</span>
               <span className="text-base">{dealScore}</span>
@@ -121,10 +121,20 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
         </div>
 
         {/* Content Section - identical structure to DealCard */}
-        <div className="p-4 bg-card">
+        <div className="p-3 sm:p-4 bg-card flex-1 min-w-0">
+          {/* Mobile-only badges */}
+          <div className="flex items-center gap-2 mb-1.5 sm:hidden">
+            {maxDiscount > 0 && (
+              <Badge className="bg-amber-500 text-white font-bold text-[10px] px-1.5 py-0.5">
+                {maxDiscount}% OFF
+              </Badge>
+            )}
+            <span className="text-xs font-bold text-primary">SCORE {dealScore}</span>
+          </div>
+
           {/* Name + rating */}
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="font-bold text-foreground text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+          <div className="flex items-start justify-between gap-2 mb-1 sm:mb-2">
+            <h3 className="font-bold text-foreground text-sm sm:text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors">
               {property.title}
             </h3>
             <div className="flex items-center gap-1 shrink-0">
@@ -142,16 +152,16 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
             <span className="line-clamp-1">{property.city}, {property.state}</span>
           </div>
 
-          {/* Nearby highlight */}
+          {/* Nearby highlight - hidden on mobile */}
           {property.nearbyHighlight && (
-            <div className="flex items-center text-primary text-xs mb-1.5">
+            <div className="hidden sm:flex items-center text-primary text-xs mb-1.5">
               <Navigation className="w-3 h-3 mr-1.5 shrink-0" />
               <span>{property.nearbyHighlight}</span>
             </div>
           )}
 
           {/* Room type + capacity - matches DealCard */}
-          <div className="flex items-center text-muted-foreground text-sm mb-1.5">
+          <div className="flex items-center text-muted-foreground text-xs sm:text-sm mb-1.5">
             <Bed className="w-3.5 h-3.5 mr-1.5 shrink-0" />
             <span>{property.bedrooms} bed{property.bedrooms !== 1 ? "s" : ""} · {property.bathrooms} bath</span>
             <span className="mx-1.5 text-border">•</span>
@@ -159,9 +169,9 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
             <span>{property.maxGuests || 2}</span>
           </div>
 
-          {/* Amenities icons - identical to DealCard */}
+          {/* Amenities icons - hidden on mobile */}
           {property.amenities && property.amenities.length > 0 && (
-            <div className="flex items-center gap-2 mb-3">
+            <div className="hidden sm:flex items-center gap-2 mb-3">
               {property.amenities.slice(0, 4).map((amenity: string) => {
                 const Icon = AMENITY_ICONS[amenity];
                 if (!Icon) return null;

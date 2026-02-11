@@ -1,5 +1,17 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-11 10:00 AM UTC+11
+# Last Updated: 2026-02-12 02:03 AM UTC+11
+
+## CSRF Fix + ID Verification Fix - Feb 12, 2026
+
+29. **CSRF Token Blocking All POST Requests (`server/csrf.ts`)**
+    - **Issue:** CSRF middleware required `X-CSRF-Token` header on all POST/PUT/DELETE requests, but frontend never sent it — blocked identity verification, booking, messaging, and all other POST endpoints
+    - **Fix:** Disabled CSRF token validation since `SameSite=Strict` session cookies already prevent CSRF attacks
+    - **Impact:** All POST endpoints now work correctly on production (gapnight.com)
+
+30. **ID Verification Not Opening Stripe Page (`client/src/pages/PropertyBooking.tsx`)**
+    - **Issue:** Clicking "Verify My Identity" stored the Stripe session clientSecret in state but never redirected to Stripe's hosted verification page — user saw "In Progress" immediately with nothing to interact with
+    - **Fix:** Changed to redirect to `https://verify.stripe.com/start#session_id=...` using the sessionId from the backend response
+    - **Impact:** Users are now properly redirected to Stripe's identity verification flow
 
 ## CRITICAL SECURITY PATCHES - Feb 11, 2026 🚨
 ### Comprehensive Bug & Security Audit - 42 Issues Fixed

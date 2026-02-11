@@ -123,13 +123,10 @@ export default function PropertyBooking() {
       if (data.status === "verified") {
         setIdStatus("verified");
         toast({ title: "Already Verified", description: "Your ID has already been verified." });
-      } else if (data.sessionId) {
-        // Redirect to Stripe's hosted verification page
+      } else if (data.url) {
+        // Redirect to Stripe's hosted verification page using the session URL
         setIdStatus("pending");
-        // Store current URL so we can return after verification
-        sessionStorage.setItem("verification_return_url", window.location.href);
-        // Open Stripe Identity hosted verification in same tab
-        window.location.href = `https://verify.stripe.com/start#session_id=${data.sessionId}`;
+        window.location.href = data.url;
       }
     } catch (err: any) {
       toast({ title: "Verification Error", description: err.message, variant: "destructive" });

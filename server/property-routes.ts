@@ -635,7 +635,7 @@ router.post("/api/auth/verify-identity", async (req: any, res: Response) => {
     }
 
     res.json({
-      clientSecret: verificationSession.client_secret,
+      url: verificationSession.url,
       sessionId: verificationSession.id,
       status: "pending",
     });
