@@ -56,6 +56,12 @@
     - **Fix:** Signup page now reads the `redirect` query parameter and navigates there after successful registration
     - **Impact:** Users creating accounts during booking are returned to the booking page to continue
 
+41. **Step-by-Step Property Listing Wizard (`client/src/pages/host/HostDashboard.tsx`)**
+    - **Feature:** Replaced the single-page property creation form with a 5-step wizard
+    - **Steps:** 1) About (title, description, type) → 2) Location (address, city, state) → 3) Space Details (guests, beds, amenities) → 4) Pricing (rate, cleaning fee, min nights) → 5) Extras & Review (rules, instructions, summary)
+    - **UI:** Progress bar, step validation, back/continue navigation, review summary before submission
+    - **Impact:** Much less daunting for hosts — asks for info one step at a time instead of a wall of fields
+
 ## CSRF Fix + ID Verification Fix - Feb 12, 2026
 
 29. **CSRF Token Blocking All POST Requests (`server/csrf.ts`)**
