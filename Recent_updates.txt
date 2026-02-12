@@ -68,6 +68,19 @@
     - **Scoped to:** Australia (`countrycodes=au`), debounced 400ms, max 5 results
     - **Impact:** Faster and more accurate address entry when listing properties
 
+43. **Host Dashboard Visual Revamp (`client/src/pages/host/HostDashboard.tsx`)**
+    - **Profile Tab:** Added avatar initial, host-since date, stats cards (response time, response rate, listings count), cleaner edit form layout
+    - **Bookings Tab:** Clickable booking cards with status badges, full detail modal with guest info/contact/requests/pricing
+    - **Properties Tab:** Edit/Photos toggle buttons, drag & drop photo zone, full property edit form
+    - **Calendar Tab:** Rate OR discount toggle with live price preview
+    - **Impact:** Dashboard is now cleaner, more intuitive, and easier to navigate
+
+44. **Google Auth (Error 401: disabled_client)**
+    - **Status:** NOT a code issue — this is a Google Cloud Console configuration problem
+    - **Root cause:** The OAuth 2.0 client ID is disabled in Google Cloud Console
+    - **Fix required:** Go to Google Cloud Console → APIs & Services → Credentials → Enable the OAuth client
+    - **Code status:** All Google OAuth code in `Login.tsx`, `Signup.tsx`, and `server/auth-routes.ts` is correct and functional
+
 ## CSRF Fix + ID Verification Fix - Feb 12, 2026
 
 29. **CSRF Token Blocking All POST Requests (`server/csrf.ts`)**
