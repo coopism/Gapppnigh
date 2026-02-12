@@ -718,6 +718,101 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
   );
 }
 
+function LocationStep({ form, setForm }: { form: any; setForm: (f: any) => void }) {
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchAddress = async (q: string) => {
+    if (q.length < 3) { setSuggestions([]); return; }
+    setSearching(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=au&limit=5&q=${encodeURIComponent(q)}`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setSuggestions(data);
+        setShowSuggestions(data.length > 0);
+      }
+    } catch {} finally { setSearching(false); }
+  };
+
+  const handleQueryChange = (val: string) => {
+    setQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchAddress(val), 400);
+  };
+
+  const selectSuggestion = (s: any) => {
+    const addr = s.address || {};
+    const road = [addr.house_number, addr.road].filter(Boolean).join(" ");
+    const city = addr.city || addr.town || addr.suburb || addr.village || "";
+    const state = addr.state || "";
+    const postcode = addr.postcode || "";
+    setForm({ ...form, address: road || s.display_name.split(",")[0], city, state, postcode });
+    setQuery(s.display_name);
+    setShowSuggestions(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="relative">
+        <label className="text-sm font-medium mb-1 block">Search Address</label>
+        <Input placeholder="Start typing an address..." value={query}
+          onChange={e => handleQueryChange(e.target.value)}
+          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+          className="h-11" />
+        {searching && <span className="absolute right-3 top-9 text-xs text-muted-foreground">Searching...</span>}
+        {showSuggestions && (
+          <div className="absolute z-20 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {suggestions.map((s, i) => (
+              <button key={i} type="button"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors border-b border-border/30 last:border-0"
+                onClick={() => selectSuggestion(s)}>
+                {s.display_name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">Street Address *</label>
+        <Input placeholder="123 Main Street" value={form.address}
+          onChange={e => setForm({...form, address: e.target.value})} className="h-11" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium mb-1 block">City *</label>
+          <Input placeholder="Sydney" value={form.city}
+            onChange={e => setForm({...form, city: e.target.value})} className="h-11" />
+        </div>
+        <div>
+          <label className="text-sm font-medium mb-1 block">State</label>
+          <Input placeholder="NSW" value={form.state}
+            onChange={e => setForm({...form, state: e.target.value})} className="h-11" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium mb-1 block">Postcode</label>
+          <Input placeholder="2000" value={form.postcode}
+            onChange={e => setForm({...form, postcode: e.target.value})} className="h-11" />
+        </div>
+        <div>
+          <label className="text-sm font-medium mb-1 block">Nearby Highlight</label>
+          <Input placeholder="e.g. 5 min walk to beach" value={form.nearbyHighlight}
+            onChange={e => setForm({...form, nearbyHighlight: e.target.value})} className="h-11" />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">Search above to auto-fill, or enter manually below. Address data powered by OpenStreetMap.</p>
+    </div>
+  );
+}
+
 function NewPropertyForm({ onCreated }: { onCreated: () => void }) {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
@@ -846,37 +941,9 @@ function NewPropertyForm({ onCreated }: { onCreated: () => void }) {
           </div>
         )}
 
-        {/* Step 2: Location */}
+        {/* Step 2: Location with address autocomplete */}
         {step === 2 && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Street Address *</label>
-              <Input placeholder="123 Main Street" value={form.address}
-                onChange={e => setForm({...form, address: e.target.value})} className="h-11" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">City *</label>
-                <Input placeholder="Sydney" value={form.city}
-                  onChange={e => setForm({...form, city: e.target.value})} className="h-11" />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">State</label>
-                <Input placeholder="NSW" value={form.state}
-                  onChange={e => setForm({...form, state: e.target.value})} className="h-11" />
-              </div>
-            </div>
-            <div className="max-w-xs">
-              <label className="text-sm font-medium mb-1 block">Postcode</label>
-              <Input placeholder="2000" value={form.postcode}
-                onChange={e => setForm({...form, postcode: e.target.value})} className="h-11" />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Nearby Highlight</label>
-              <Input placeholder="e.g. 5 min walk to Bondi Beach" value={form.nearbyHighlight}
-                onChange={e => setForm({...form, nearbyHighlight: e.target.value})} className="h-11" />
-            </div>
-          </div>
+          <LocationStep form={form} setForm={setForm} />
         )}
 
         {/* Step 3: Space Details */}
