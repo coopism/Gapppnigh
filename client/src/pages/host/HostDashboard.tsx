@@ -1972,38 +1972,63 @@ function ProfileTab({ host, onUpdate }: { host: any; onUpdate: () => void }) {
     }
   };
 
+  const responseTime = host.averageResponseTime || 60;
+  const responseTimeLabel = responseTime < 60 ? `${responseTime} min` : `${Math.round(responseTime / 60)} hr${Math.round(responseTime / 60) !== 1 ? "s" : ""}`;
+
   return (
-    <div className="max-w-xl">
-      <h2 className="text-2xl font-bold mb-6">Your Profile</h2>
-      <Card>
-        <CardContent className="p-6 space-y-4">
+    <div className="max-w-2xl">
+      {/* Profile header */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl shrink-0">
+          {(host.name || "H").charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold">{host.name}</h2>
+          <p className="text-sm text-muted-foreground">{host.email}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Host since {host.createdAt ? new Date(host.createdAt).toLocaleDateString("en-AU", { month: "long", year: "numeric" }) : "N/A"}
+          </p>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="bg-card rounded-xl border border-border/50 p-4 text-center">
+          <p className="text-2xl font-bold text-primary">{responseTimeLabel}</p>
+          <p className="text-xs text-muted-foreground mt-1">Avg Response</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border/50 p-4 text-center">
+          <p className="text-2xl font-bold text-primary">{host.responseRate || 100}%</p>
+          <p className="text-xs text-muted-foreground mt-1">Response Rate</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border/50 p-4 text-center">
+          <p className="text-2xl font-bold text-primary">{host.totalProperties || 0}</p>
+          <p className="text-xs text-muted-foreground mt-1">Listings</p>
+        </div>
+      </div>
+
+      {/* Edit form */}
+      <div className="bg-card rounded-xl border border-border/50 p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Edit Profile</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium">Name</label>
-            <Input value={name} onChange={e => setName(e.target.value)} />
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Display Name</label>
+            <Input value={name} onChange={e => setName(e.target.value)} className="h-10" />
           </div>
           <div>
-            <label className="text-sm font-medium">Email</label>
-            <Input value={host.email} disabled className="opacity-60" />
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Phone</label>
+            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+61 4XX XXX XXX" className="h-10" />
           </div>
-          <div>
-            <label className="text-sm font-medium">Phone</label>
-            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+61 4XX XXX XXX" />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Bio</label>
-            <Textarea value={bio} onChange={e => setBio(e.target.value)} rows={4}
-              placeholder="Tell guests about yourself..." />
-          </div>
-          <div className="text-sm text-muted-foreground">
-            <p>Response Time: ~{host.averageResponseTime || 60} minutes</p>
-            <p>Response Rate: {host.responseRate || 100}%</p>
-            <p>Member since: {host.createdAt ? new Date(host.createdAt).toLocaleDateString() : "N/A"}</p>
-          </div>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save Profile"}
-          </Button>
-        </CardContent>
-      </Card>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Bio</label>
+          <Textarea value={bio} onChange={e => setBio(e.target.value)} rows={4}
+            placeholder="Tell guests about yourself, your hosting style, and what makes your properties special..." className="text-sm" />
+        </div>
+        <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
+          {isSaving ? "Saving..." : "Save Profile"}
+        </Button>
+      </div>
     </div>
   );
 }
