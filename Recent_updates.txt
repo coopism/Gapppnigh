@@ -1,5 +1,60 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-12 02:03 AM UTC+11
+# Last Updated: 2026-02-12
+
+## Major Platform Fixes & Features - Feb 12, 2026
+
+31. **Photo Upload Fix (`server/host-routes.ts`)**
+    - **Issue:** Duplicate photo upload route at line 623 (JSON-based, expects `req.body.url`) was registered before the multer file upload route at line 871, intercepting all FormData uploads and causing them to fail silently
+    - **Fix:** Removed the duplicate JSON-based photo upload route; the multer-based route now handles all photo uploads correctly
+    - **Impact:** Photo uploads now work correctly in the host dashboard
+
+32. **Acceptance Rate Calculation Fix (`client/src/pages/host/HostDashboard.tsx`)**
+    - **Issue:** Declined bookings were counted in the acceptance rate denominator, unfairly penalizing hosts
+    - **Fix:** Only count bookings where the host made a decision (CONFIRMED, COMPLETED, DECLINED) in the acceptance rate calculation; exclude PAYMENT_FAILED, CANCELLED, and PENDING statuses
+    - **Impact:** Acceptance rate now accurately reflects host decision patterns
+
+33. **Remove Superhost Branding (multiple files)**
+    - **Files:** `HostDashboard.tsx`, `PropertyDealCard.tsx`, `PropertyDetail.tsx`, `HostProfile.tsx`, `Stays.tsx`
+    - **Fix:** Removed all "Superhost" badges, labels, and score bonuses across the entire platform
+    - **Impact:** GapNight no longer uses Airbnb-style Superhost terminology
+
+34. **Payment Capture Fix (`server/property-routes.ts`, `server/host-routes.ts`)**
+    - **Issue:** Booking route created a NEW unconfirmed PaymentIntent with `capture_method: "manual"` while the frontend's StripePaymentForm already confirmed a DIFFERENT PaymentIntent — so the stored PI was never charged, and host approval capture always failed
+    - **Fix:** Booking route now uses the PaymentIntent ID already confirmed by the frontend instead of creating a new one. Approve route now checks PI status and handles both legacy manual-capture and already-succeeded flows
+    - **Impact:** Payment capture on booking approval now works correctly with Stripe test cards
+
+35. **Booking Detail Preview Modal (`client/src/pages/host/HostDashboard.tsx`)**
+    - **Feature:** Added a full booking detail modal that opens when clicking any booking in the BookingsTab
+    - **Shows:** Guest name, email, phone, member-since date, ID verification status, note to host, special requests, pricing, and approve/decline actions with optional decline reason
+    - **Impact:** Hosts can now review all booking details before making approve/decline decisions
+
+36. **Gap Night Rate OR Discount Toggle (`client/src/pages/host/HostDashboard.tsx`)**
+    - **Feature:** Hosts can now choose between setting a discount percentage OR a custom rate when listing gap nights — not both simultaneously
+    - **UI:** Toggle button switches between "Discount %" and "Set Rate" modes with live price preview
+    - **Impact:** Clearer pricing control for hosts when creating gap night availability
+
+37. **Property Edit Form (`client/src/pages/host/HostDashboard.tsx`)**
+    - **Feature:** Full property editing form accessible from each PropertyCard in the dashboard
+    - **Editable fields:** Title, description, type, category, base rate, cleaning fee, min nights, address, city, state, postcode, max guests, bedrooms, beds, bathrooms, house rules, check-in instructions, nearby highlight, self check-in, pet friendly
+    - **Impact:** Hosts can now edit ALL property fields directly from the dashboard
+
+38. **Drag & Drop Photo Upload (`client/src/pages/host/HostDashboard.tsx`)**
+    - **Feature:** Added drag & drop zone to the photo manager in PropertyCard
+    - **Supports:** Drag files from desktop, file type filtering (JPG, PNG, WebP), visual feedback on drag-over
+    - **Impact:** More intuitive photo upload experience for hosts
+
+39. **Email Notifications (`server/email.ts`, `server/host-routes.ts`, `server/property-routes.ts`)**
+    - **New emails:**
+      - Booking declined → guest receives notification with reason
+      - Payment failed → guest receives notification to update card
+      - Q&A answered → guest who asked the question receives notification
+      - New booking request → host receives notification with booking details and "Review Booking" CTA
+    - **Impact:** All key booking lifecycle events now trigger email notifications
+
+40. **Redirect After Account Creation (`client/src/pages/Signup.tsx`)**
+    - **Issue:** After creating an account during the booking flow, user was always redirected to /account instead of back to the booking page
+    - **Fix:** Signup page now reads the `redirect` query parameter and navigates there after successful registration
+    - **Impact:** Users creating accounts during booking are returned to the booking page to continue
 
 ## CSRF Fix + ID Verification Fix - Feb 12, 2026
 

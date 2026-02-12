@@ -91,11 +91,6 @@ export default function HostProfile() {
               <h1 className="text-2xl font-bold">{host.name}</h1>
               <p className="text-sm text-muted-foreground mt-1">Member since {formatMemberSince(host.createdAt)}</p>
               
-              {host.isSuperhost && (
-                <Badge className="mt-3 bg-amber-500/10 text-amber-600 font-semibold">
-                  <Award className="w-3.5 h-3.5 mr-1" /> Superhost
-                </Badge>
-              )}
             </CardContent>
           </Card>
 
@@ -147,18 +142,6 @@ export default function HostProfile() {
                   <MessageCircle className="w-4 h-4 text-primary" />
                   <span>{host.responseRate}% response rate</span>
                 </div>
-                {host.isSuperhost && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Shield className="w-4 h-4 text-primary" />
-                    <span>Identity verified</span>
-                  </div>
-                )}
-                {host.isSuperhost && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Award className="w-4 h-4 text-amber-500" />
-                    <span>Superhost status</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>

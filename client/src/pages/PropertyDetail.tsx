@@ -288,11 +288,6 @@ export default function PropertyDetail() {
                 <Badge variant="outline" className="rounded-md border-foreground/20 text-xs font-semibold uppercase tracking-wider">
                   {property.propertyType === "entire_place" ? "Entire Place" : property.propertyType === "private_room" ? "Private Room" : "Stay"}
                 </Badge>
-                {hostData?.isSuperhost && (
-                  <Badge variant="outline" className="rounded-md border-foreground/20 text-xs font-semibold uppercase tracking-wider">
-                    <Award className="w-3 h-3 mr-1" /> Superhost
-                  </Badge>
-                )}
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">{property.title}</h1>
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -326,15 +321,6 @@ export default function PropertyDetail() {
 
             {/* Highlights - Airbnb style feature callouts */}
             <div className="space-y-4">
-              {hostData?.isSuperhost && (
-                <div className="flex gap-4">
-                  <Award className="w-6 h-6 text-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold text-foreground text-sm">{hostData.name} is a Superhost</h3>
-                    <p className="text-xs text-muted-foreground">Superhosts are experienced, highly rated hosts who are committed to providing great stays.</p>
-                  </div>
-                </div>
-              )}
               {property.selfCheckIn && (
                 <div className="flex gap-4">
                   <KeyRound className="w-6 h-6 text-foreground shrink-0 mt-0.5" />
@@ -433,7 +419,6 @@ export default function PropertyDetail() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        {hostData.isSuperhost && <Badge variant="secondary" className="text-xs"><Award className="w-3 h-3 mr-1" />Superhost</Badge>}
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mb-2">
                         <span>{hostData.totalProperties} listing{hostData.totalProperties !== 1 ? "s" : ""}</span>

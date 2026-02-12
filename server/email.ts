@@ -266,6 +266,173 @@ export async function sendPropertyApprovalEmail(property: any, host: any): Promi
   }
 }
 
+export async function sendBookingDeclinedEmail(booking: any, property: any, reason?: string): Promise<boolean> {
+  try {
+    const { client, fromEmail } = getResendClient();
+    const checkInDate = format(parseISO(booking.checkInDate), "EEEE, MMMM d, yyyy");
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1 style="color: #1a1a1a; margin-bottom: 5px;">GapNight</h1>
+  </div>
+  <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+    <h2 style="margin: 0 0 10px 0; color: #991b1b;">Booking Not Approved</h2>
+    <p style="margin: 0; color: #666;">Unfortunately, the host was unable to accept your booking request.</p>
+  </div>
+  <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+    <p style="margin: 0 0 8px 0;"><strong>${property.title}</strong></p>
+    <p style="margin: 0 0 8px 0; color: #666;">${property.city}, ${property.state || ''}</p>
+    <p style="margin: 0 0 8px 0;">Check-in: ${checkInDate}</p>
+    <p style="margin: 0 0 8px 0;">Reference: ${booking.id}</p>
+    ${reason ? `<hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;"><p style="margin: 0;"><strong>Reason:</strong> ${reason}</p>` : ''}
+  </div>
+  <p style="color: #666; font-size: 14px;">No charges have been made to your card. Browse other gap night deals at <a href="https://www.gapnight.com">gapnight.com</a></p>
+  <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">GapNight - Gap Night Deals on Short-Term Rentals</p>
+</body>
+</html>`;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: booking.guestEmail,
+      subject: `Booking Update - ${property.title} | ${booking.id}`,
+      html: emailHtml,
+    });
+    console.log('Booking declined email sent to', booking.guestEmail);
+    return true;
+  } catch (error) {
+    console.error('Failed to send booking declined email:', error);
+    return false;
+  }
+}
+
+export async function sendPaymentFailedEmail(booking: any, property: any): Promise<boolean> {
+  try {
+    const { client, fromEmail } = getResendClient();
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1 style="color: #1a1a1a; margin-bottom: 5px;">GapNight</h1>
+  </div>
+  <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+    <h2 style="margin: 0 0 10px 0; color: #991b1b;">Payment Issue</h2>
+    <p style="margin: 0; color: #666;">We were unable to process the payment for your booking at <strong>${property.title}</strong>.</p>
+  </div>
+  <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+    <p style="margin: 0 0 8px 0;">Reference: ${booking.id}</p>
+    <p style="margin: 0; color: #666;">Please ensure your card details are correct and try booking again.</p>
+  </div>
+  <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">GapNight - Gap Night Deals on Short-Term Rentals</p>
+</body>
+</html>`;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: booking.guestEmail,
+      subject: `Payment Issue - ${property.title} | ${booking.id}`,
+      html: emailHtml,
+    });
+    console.log('Payment failed email sent to', booking.guestEmail);
+    return true;
+  } catch (error) {
+    console.error('Failed to send payment failed email:', error);
+    return false;
+  }
+}
+
+export async function sendQAAnsweredEmail(question: any, property: any, userEmail: string): Promise<boolean> {
+  try {
+    const { client, fromEmail } = getResendClient();
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1 style="color: #1a1a1a; margin-bottom: 5px;">GapNight</h1>
+    <p style="color: #666; font-size: 14px;">Your question has been answered!</p>
+  </div>
+  <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+    <p style="margin: 0 0 5px 0; color: #666; font-size: 12px;">${property.title}</p>
+    <p style="margin: 0 0 15px 0;"><strong>Your question:</strong> "${question.question}"</p>
+    <p style="margin: 0;"><strong>Host's answer:</strong> "${question.answer}"</p>
+  </div>
+  <p style="color: #666; font-size: 14px;">View the listing at <a href="https://www.gapnight.com/stays/${property.id}">gapnight.com</a></p>
+  <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">GapNight - Gap Night Deals on Short-Term Rentals</p>
+</body>
+</html>`;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: userEmail,
+      subject: `Your question about ${property.title} was answered`,
+      html: emailHtml,
+    });
+    console.log('Q&A answered email sent to', userEmail);
+    return true;
+  } catch (error) {
+    console.error('Failed to send Q&A answered email:', error);
+    return false;
+  }
+}
+
+export async function sendNewBookingNotificationToHost(booking: any, property: any, hostEmail: string): Promise<boolean> {
+  try {
+    const { client, fromEmail } = getResendClient();
+    const checkInDate = format(parseISO(booking.checkInDate), "EEEE, MMMM d, yyyy");
+    const checkOutDate = format(parseISO(booking.checkOutDate), "EEEE, MMMM d, yyyy");
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1 style="color: #1a1a1a; margin-bottom: 5px;">GapNight</h1>
+    <p style="color: #666; font-size: 14px;">New Booking Request!</p>
+  </div>
+  <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 25px;">
+    <h2 style="margin: 0 0 10px 0;">New Booking Request</h2>
+    <p style="margin: 0; font-size: 18px;">${property.title}</p>
+  </div>
+  <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+    <p style="margin: 0 0 8px 0;"><strong>Guest:</strong> ${booking.guestFirstName} ${booking.guestLastName}</p>
+    <p style="margin: 0 0 8px 0;"><strong>Email:</strong> ${booking.guestEmail}</p>
+    <p style="margin: 0 0 8px 0;"><strong>Check-in:</strong> ${checkInDate}</p>
+    <p style="margin: 0 0 8px 0;"><strong>Check-out:</strong> ${checkOutDate}</p>
+    <p style="margin: 0 0 8px 0;"><strong>Nights:</strong> ${booking.nights} · <strong>Guests:</strong> ${booking.guests}</p>
+    <p style="margin: 0; font-size: 18px;"><strong>Total: $${(booking.totalPrice / 100).toFixed(2)} AUD</strong></p>
+    ${booking.guestMessage ? `<hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;"><p style="margin: 0;"><strong>Guest message:</strong> "${booking.guestMessage}"</p>` : ''}
+  </div>
+  <div style="text-align: center;">
+    <a href="https://www.gapnight.com/host/dashboard" style="display: inline-block; background: #1e293b; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Review Booking</a>
+  </div>
+  <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">GapNight - Gap Night Deals on Short-Term Rentals</p>
+</body>
+</html>`;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: hostEmail,
+      subject: `New Booking Request - ${property.title} | ${booking.id}`,
+      html: emailHtml,
+    });
+    console.log('New booking notification sent to host', hostEmail);
+    return true;
+  } catch (error) {
+    console.error('Failed to send new booking notification to host:', error);
+    return false;
+  }
+}
+
 export async function sendPropertyBookingConfirmationEmail(booking: any, property: any, host: any): Promise<boolean> {
   try {
     const { client, fromEmail } = getResendClient();

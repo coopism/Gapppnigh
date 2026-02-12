@@ -129,9 +129,7 @@ function PropertyCard({ property, onClick }: { property: any; onClick: () => voi
             Up to {maxDiscount}% OFF
           </Badge>
         )}
-        {property.host?.isSuperhost && (
-          <Badge className="absolute bottom-3 left-3 bg-amber-500">Superhost</Badge>
-        )}
+        
       </div>
       <CardContent className="p-4">
         <div className="flex justify-between items-start mb-1">

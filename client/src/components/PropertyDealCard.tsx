@@ -34,7 +34,6 @@ function calculateDealScore(property: any): number {
   score += Math.min(maxDiscount * 0.8, 25);
   const gapCount = property.gapNightCount || 0;
   score += Math.min(gapCount * 0.5, 8);
-  if (property.host?.isSuperhost) score += 5;
   const rating = Number(property.averageRating || 0);
   if (rating >= 4.5) score += 7;
   else if (rating >= 4.0) score += 4;
@@ -102,7 +101,7 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
           <div className="absolute top-3 left-3 hidden sm:flex items-center gap-2">
             <Badge className="bg-card text-foreground font-semibold shadow-sm flex items-center gap-1.5 px-2.5 py-1">
               <Heart className="w-3.5 h-3.5 fill-primary text-primary" />
-              <span>{property.host?.isSuperhost ? "Superhost" : "Rare Find"}</span>
+              <span>Rare Find</span>
             </Badge>
             {maxDiscount > 0 && (
               <Badge className="bg-amber-500 text-white font-bold shadow-sm px-2.5 py-1">

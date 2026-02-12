@@ -735,6 +735,7 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
     const {
       checkInDate, checkOutDate, guests, guestMessage, specialRequests,
       guestFirstName, guestLastName, guestEmail, guestPhone,
+      paymentIntentId: frontendPaymentIntentId,
     } = req.body;
 
     if (!checkInDate || !checkOutDate || !guestFirstName || !guestLastName || !guestEmail) {
@@ -810,26 +811,11 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
       const serviceFee = Math.round(totalNightlyRate * 0.08);
       const totalPrice = totalNightlyRate + cleaningFee + serviceFee;
 
-      // Create payment intent with manual capture
-      let paymentIntentId = null;
-      if (stripe) {
-        try {
-          const paymentIntent = await stripe.paymentIntents.create({
-            amount: totalPrice,
-            currency: "aud",
-            capture_method: "manual",
-            metadata: {
-              propertyId,
-              userId: req.user?.id,
-              checkInDate,
-              checkOutDate,
-            },
-          });
-          paymentIntentId = paymentIntent.id;
-        } catch (stripeError) {
-          console.error("Stripe payment intent error:", stripeError);
-          throw new Error("Failed to create payment authorization");
-        }
+      // Use the PaymentIntent already confirmed by the frontend's StripePaymentForm
+      // The frontend calls stripe.confirmCardPayment() which charges the card
+      const paymentIntentId = frontendPaymentIntentId || null;
+      if (!paymentIntentId) {
+        throw new Error("Payment is required to complete booking");
       }
 
       // Create booking
@@ -875,12 +861,22 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
       return { booking, paymentIntentId, totalNightlyRate, cleaningFee, serviceFee, totalPrice };
     });
 
-    // Get host info for response time
+    // Get host info for response time and email notification
     const [host] = await db
-      .select({ averageResponseTime: airbnbHosts.averageResponseTime })
+      .select()
       .from(airbnbHosts)
       .where(eq(airbnbHosts.id, property.hostId))
       .limit(1);
+
+    // Send email notification to host about new booking
+    try {
+      const { sendNewBookingNotificationToHost } = await import("./email");
+      if (host?.email) {
+        await sendNewBookingNotificationToHost(bookingResult.booking, property, host.email);
+      }
+    } catch (emailError) {
+      console.error("Failed to send new booking notification to host:", emailError);
+    }
 
     res.json({
       booking: bookingResult.booking,

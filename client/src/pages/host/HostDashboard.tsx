@@ -71,7 +71,7 @@ export default function HostDashboard() {
             <span className="text-sm text-foreground font-medium hidden sm:inline">
               {host.name}
             </span>
-            {host.isSuperhost && <Badge variant="secondary" className="text-xs">Superhost</Badge>}
+            
             <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
               <LogOut className="w-4 h-4 mr-1" /> Sign Out
             </Button>
@@ -137,10 +137,11 @@ function OverviewTab() {
   const upcomingCheckins = bookings.filter(b => b.status === "CONFIRMED" && b.checkInDate >= today).sort((a, b) => a.checkInDate.localeCompare(b.checkInDate)).slice(0, 3);
   const currentlyHosting = bookings.filter(b => b.status === "CONFIRMED" && b.checkInDate <= today && b.checkOutDate >= today);
 
-  // Performance metrics
-  const totalBookingsCount = bookings.length;
+  // Performance metrics - only count host decisions (exclude payment failures, cancellations)
+  const hostDecisionStatuses = ["CONFIRMED", "COMPLETED", "DECLINED"];
+  const hostDecisionBookings = bookings.filter(b => hostDecisionStatuses.includes(b.status));
   const approvedCount = bookings.filter(b => b.status === "CONFIRMED" || b.status === "COMPLETED").length;
-  const acceptanceRate = totalBookingsCount > 0 ? Math.round((approvedCount / totalBookingsCount) * 100) : 100;
+  const acceptanceRate = hostDecisionBookings.length > 0 ? Math.round((approvedCount / hostDecisionBookings.length) * 100) : 100;
 
   const statCards = [
     { label: "Active Listings", value: stats.totalProperties, icon: Home },
@@ -334,10 +335,37 @@ function PropertiesTab() {
 
 function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => void }) {
   const [showPhotos, setShowPhotos] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [photos, setPhotos] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    title: property.title || "",
+    description: property.description || "",
+    propertyType: property.propertyType || "entire_place",
+    category: property.category || "apartment",
+    address: property.address || "",
+    city: property.city || "",
+    state: property.state || "",
+    postcode: property.postcode || "",
+    maxGuests: property.maxGuests || 2,
+    bedrooms: property.bedrooms || 1,
+    beds: property.beds || 1,
+    bathrooms: property.bathrooms || "1",
+    baseNightlyRate: ((property.baseNightlyRate || 0) / 100).toFixed(2),
+    cleaningFee: ((property.cleaningFee || 0) / 100).toFixed(2),
+    minNights: property.minNights || 1,
+    houseRules: property.houseRules || "",
+    checkInInstructions: property.checkInInstructions || "",
+    nearbyHighlight: property.nearbyHighlight || "",
+    selfCheckIn: property.selfCheckIn || false,
+    petFriendly: property.petFriendly || false,
+  });
 
   const loadPhotos = async () => {
     try {
@@ -353,13 +381,12 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
     if (showPhotos) loadPhotos();
   }, [showPhotos]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const uploadFiles = async (files: File[]) => {
+    if (files.length === 0) return;
     setUploading(true);
     try {
       const formData = new FormData();
-      Array.from(files).forEach(f => formData.append("photos", f));
+      files.forEach(f => formData.append("photos", f));
       const res = await fetch(`/api/host/properties/${property.id}/photos`, {
         method: "POST",
         credentials: "include",
@@ -381,6 +408,24 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    uploadFiles(Array.from(files));
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files).filter(f =>
+      ["image/jpeg", "image/png", "image/webp"].includes(f.type)
+    );
+    if (files.length > 0) uploadFiles(files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragOver(true); };
+  const handleDragLeave = () => setDragOver(false);
 
   const handleDelete = async (photoId: string) => {
     try {
@@ -414,9 +459,40 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
     }
   };
 
+  const handleSaveEdit = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/host/properties/${property.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          ...editForm,
+          baseNightlyRate: Math.round(parseFloat(editForm.baseNightlyRate) * 100),
+          cleaningFee: editForm.cleaningFee ? Math.round(parseFloat(editForm.cleaningFee) * 100) : 0,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: "Property updated!" });
+        setShowEdit(false);
+        onUpdate();
+      } else {
+        const data = await res.json();
+        toast({ title: "Error", description: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const amenityOptions = ["WiFi", "Kitchen", "Pool", "Parking", "Air Conditioning", "Heating",
+    "Washer", "Dryer", "TV", "Beach Access", "Garden", "BBQ", "Gym", "Elevator", "Balcony"];
+
   return (
-    <Card>
-      <CardContent className="p-4">
+    <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+      <div className="p-4">
         <div className="flex gap-4">
           <div className="w-32 h-24 rounded-lg overflow-hidden bg-muted shrink-0">
             {property.coverImage ? (
@@ -442,70 +518,203 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
               {" · "}{property.bedrooms} bed{property.bedrooms !== 1 ? "s" : ""}
               {" · "}{property.maxGuests} guest{property.maxGuests !== 1 ? "s" : ""}
             </p>
-            <Button variant="ghost" size="sm" className="mt-1 text-xs px-0 text-primary"
-              onClick={() => setShowPhotos(!showPhotos)}>
-              {showPhotos ? "Hide Photos" : "Manage Photos"}
-            </Button>
+            <div className="flex gap-2 mt-2">
+              <Button variant="ghost" size="sm" className="text-xs px-2 h-7 text-primary"
+                onClick={() => { setShowEdit(!showEdit); if (!showEdit) setShowPhotos(false); }}>
+                {showEdit ? "Cancel Edit" : "Edit Property"}
+              </Button>
+              <Button variant="ghost" size="sm" className="text-xs px-2 h-7 text-primary"
+                onClick={() => { setShowPhotos(!showPhotos); if (!showPhotos) setShowEdit(false); }}>
+                {showPhotos ? "Hide Photos" : "Photos"}
+              </Button>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Photo Manager */}
-        {showPhotos && (
-          <div className="mt-4 pt-4 border-t border-border/50">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-foreground">Photos ({photos.length})</h4>
-              <div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept=".jpg,.jpeg,.png,.webp"
-                  className="hidden"
-                  onChange={handleUpload}
-                />
-                <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                  {uploading ? "Uploading..." : "+ Upload Photos"}
-                </Button>
-              </div>
+      {/* Edit Form */}
+      {showEdit && (
+        <div className="px-4 pb-4 border-t border-border/50 pt-4 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Title</label>
+              <Input value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="h-9 text-sm" />
             </div>
-
-            {photos.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                {photos.map((photo: any) => (
-                  <div key={photo.id} className="relative group rounded-lg overflow-hidden aspect-square">
-                    <img src={photo.url} alt="" className="w-full h-full object-cover" />
-                    {photo.isCover && (
-                      <div className="absolute top-1 left-1">
-                        <Badge className="text-[10px] bg-primary/90 px-1.5 py-0.5">Cover</Badge>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                      {!photo.isCover && (
-                        <button onClick={() => handleSetCover(photo.id)}
-                          className="text-white text-[10px] bg-white/20 rounded px-1.5 py-1 hover:bg-white/30">
-                          Set Cover
-                        </button>
-                      )}
-                      <button onClick={() => handleDelete(photo.id)}
-                        className="text-white text-[10px] bg-red-500/60 rounded px-1.5 py-1 hover:bg-red-500/80">
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-muted/30 rounded-lg border-2 border-dashed border-border/50 p-6 text-center cursor-pointer hover:border-primary/30 transition-colors"
-                onClick={() => fileInputRef.current?.click()}>
-                <Home className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Click to upload photos</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">JPG, PNG, WebP · Max 10MB each</p>
-              </div>
-            )}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Base Rate ($/night)</label>
+              <Input type="number" step="0.01" value={editForm.baseNightlyRate} onChange={e => setEditForm({...editForm, baseNightlyRate: e.target.value})} className="h-9 text-sm" />
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Description</label>
+            <Textarea value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} rows={3} className="text-sm" />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Type</label>
+              <select className="w-full rounded-md border p-2 text-xs h-9 bg-background" value={editForm.propertyType} onChange={e => setEditForm({...editForm, propertyType: e.target.value})}>
+                <option value="entire_place">Entire Place</option>
+                <option value="private_room">Private Room</option>
+                <option value="shared_room">Shared Room</option>
+                <option value="unique_stay">Unique Stay</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Category</label>
+              <select className="w-full rounded-md border p-2 text-xs h-9 bg-background" value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})}>
+                <option value="apartment">Apartment</option>
+                <option value="house">House</option>
+                <option value="cabin">Cabin</option>
+                <option value="villa">Villa</option>
+                <option value="cottage">Cottage</option>
+                <option value="loft">Loft</option>
+                <option value="studio">Studio</option>
+                <option value="townhouse">Townhouse</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Cleaning Fee ($)</label>
+              <Input type="number" step="0.01" value={editForm.cleaningFee} onChange={e => setEditForm({...editForm, cleaningFee: e.target.value})} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Min Nights</label>
+              <Input type="number" value={editForm.minNights} onChange={e => setEditForm({...editForm, minNights: parseInt(e.target.value) || 1})} className="h-9 text-sm" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Address</label>
+              <Input value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">City</label>
+              <Input value={editForm.city} onChange={e => setEditForm({...editForm, city: e.target.value})} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">State</label>
+              <Input value={editForm.state} onChange={e => setEditForm({...editForm, state: e.target.value})} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Postcode</label>
+              <Input value={editForm.postcode} onChange={e => setEditForm({...editForm, postcode: e.target.value})} className="h-9 text-sm" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Max Guests</label>
+              <Input type="number" value={editForm.maxGuests} onChange={e => setEditForm({...editForm, maxGuests: parseInt(e.target.value) || 1})} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Bedrooms</label>
+              <Input type="number" value={editForm.bedrooms} onChange={e => setEditForm({...editForm, bedrooms: parseInt(e.target.value) || 0})} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Beds</label>
+              <Input type="number" value={editForm.beds} onChange={e => setEditForm({...editForm, beds: parseInt(e.target.value) || 1})} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Bathrooms</label>
+              <Input value={editForm.bathrooms} onChange={e => setEditForm({...editForm, bathrooms: e.target.value})} className="h-9 text-sm" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">House Rules</label>
+              <Textarea value={editForm.houseRules} onChange={e => setEditForm({...editForm, houseRules: e.target.value})} rows={2} className="text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Check-in Instructions</label>
+              <Textarea value={editForm.checkInInstructions} onChange={e => setEditForm({...editForm, checkInInstructions: e.target.value})} rows={2} className="text-sm" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Nearby Highlight</label>
+            <Input value={editForm.nearbyHighlight} onChange={e => setEditForm({...editForm, nearbyHighlight: e.target.value})} className="h-9 text-sm" />
+          </div>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={editForm.selfCheckIn} onChange={e => setEditForm({...editForm, selfCheckIn: e.target.checked})} />
+              Self check-in
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={editForm.petFriendly} onChange={e => setEditForm({...editForm, petFriendly: e.target.checked})} />
+              Pet friendly
+            </label>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button size="sm" onClick={handleSaveEdit} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Manager with Drag & Drop */}
+      {showPhotos && (
+        <div className="px-4 pb-4 border-t border-border/50 pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold text-foreground">Photos ({photos.length})</h4>
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".jpg,.jpeg,.png,.webp"
+                className="hidden"
+                onChange={handleUpload}
+              />
+              <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                {uploading ? "Uploading..." : "+ Upload Photos"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Drag & Drop Zone */}
+          <div
+            className={`rounded-lg border-2 border-dashed p-4 mb-3 text-center transition-colors cursor-pointer ${
+              dragOver ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/30"
+            }`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <p className="text-xs text-muted-foreground">
+              {uploading ? "Uploading..." : dragOver ? "Drop photos here!" : "Drag & drop photos here, or click to browse"}
+            </p>
+            <p className="text-[10px] text-muted-foreground/60 mt-1">JPG, PNG, WebP · Max 10MB each</p>
+          </div>
+
+          {photos.length > 0 && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+              {photos.map((photo: any) => (
+                <div key={photo.id} className="relative group rounded-lg overflow-hidden aspect-square">
+                  <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                  {photo.isCover && (
+                    <div className="absolute top-1 left-1">
+                      <Badge className="text-[10px] bg-primary/90 px-1.5 py-0.5">Cover</Badge>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                    {!photo.isCover && (
+                      <button onClick={() => handleSetCover(photo.id)}
+                        className="text-white text-[10px] bg-white/20 rounded px-1.5 py-1 hover:bg-white/30">
+                        Set Cover
+                      </button>
+                    )}
+                    <button onClick={() => handleDelete(photo.id)}
+                      className="text-white text-[10px] bg-red-500/60 rounded px-1.5 py-1 hover:bg-red-500/80">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -712,6 +921,9 @@ function BookingsTab() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("");
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [declineReason, setDeclineReason] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => { loadBookings(); }, [filter]);
@@ -728,6 +940,7 @@ function BookingsTab() {
   };
 
   const handleAction = async (bookingId: string, action: "approve" | "decline", reason?: string) => {
+    setActionLoading(true);
     try {
       const res = await fetch(`/api/host/bookings/${bookingId}/${action}`, {
         method: "POST",
@@ -738,20 +951,32 @@ function BookingsTab() {
       const data = await res.json();
       if (res.ok) {
         toast({ title: action === "approve" ? "Booking approved!" : "Booking declined", description: data.message });
+        setSelectedBooking(null);
+        setDeclineReason("");
         loadBookings();
       } else {
         toast({ title: "Error", description: data.error, variant: "destructive" });
       }
     } catch {
       toast({ title: "Error", description: "Action failed", variant: "destructive" });
+    } finally {
+      setActionLoading(false);
     }
+  };
+
+  const statusColor = (s: string) => {
+    if (s === "CONFIRMED" || s === "COMPLETED") return "bg-emerald-500/10 text-emerald-700 border-emerald-200";
+    if (s === "PENDING_APPROVAL") return "bg-amber-500/10 text-amber-700 border-amber-200";
+    if (s === "DECLINED") return "bg-red-500/10 text-red-700 border-red-200";
+    if (s === "PAYMENT_FAILED") return "bg-red-500/10 text-red-700 border-red-200";
+    return "bg-muted text-muted-foreground";
   };
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
         <h2 className="text-2xl font-bold">Bookings</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {["", "PENDING_APPROVAL", "CONFIRMED", "COMPLETED", "DECLINED"].map(s => (
             <Button key={s} size="sm" variant={filter === s ? "default" : "outline"}
               onClick={() => setFilter(s)}>
@@ -768,48 +993,154 @@ function BookingsTab() {
           <CardContent><p className="text-muted-foreground">No bookings found</p></CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           {bookings.map((b: any) => (
-            <Card key={b.id}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-sm">{b.id}</span>
-                      <Badge variant={
-                        b.status === "CONFIRMED" ? "default" :
-                        b.status === "PENDING_APPROVAL" ? "secondary" :
-                        b.status === "DECLINED" ? "destructive" : "outline"
-                      }>{b.status}</Badge>
-                      {b.idVerified && <Badge variant="outline" className="text-primary">ID Verified</Badge>}
-                    </div>
-                    <p className="font-semibold">{b.propertyTitle}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Guest: {b.guestName || `${b.guestFirstName} ${b.guestLastName}`}
-                      {b.guestEmail && ` (${b.guestEmail})`}
-                    </p>
-                    <p className="text-sm mt-1">
-                      {b.checkInDate} → {b.checkOutDate} ({b.nights} night{b.nights !== 1 ? "s" : ""})
-                      {" · "}{b.guests} guest{b.guests !== 1 ? "s" : ""}
-                    </p>
-                    <p className="text-sm font-medium mt-1">${((b.totalPrice || 0) / 100).toFixed(2)} AUD</p>
-                    {b.guestMessage && (
-                      <p className="text-sm mt-2 p-2 bg-muted rounded italic">"{b.guestMessage}"</p>
-                    )}
+            <div key={b.id}
+              className="bg-card rounded-xl border border-border/50 p-4 hover:border-primary/30 transition-colors cursor-pointer"
+              onClick={() => setSelectedBooking(b)}>
+              <div className="flex justify-between items-start">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                    <span className="font-mono text-xs text-muted-foreground">{b.id}</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${statusColor(b.status)}`}>
+                      {b.status === "PENDING_APPROVAL" ? "PENDING" : b.status}
+                    </span>
+                    {b.idVerified && <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">ID Verified</span>}
                   </div>
+                  <p className="font-semibold text-sm">{b.propertyTitle}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {b.guestFirstName} {b.guestLastName} · {b.checkInDate} → {b.checkOutDate} · {b.nights} night{b.nights !== 1 ? "s" : ""}
+                  </p>
+                  <p className="text-sm font-bold text-primary mt-1">${((b.totalPrice || 0) / 100).toFixed(2)} AUD</p>
+                </div>
+                {b.status === "PENDING_APPROVAL" && (
+                  <div className="flex gap-2 shrink-0 ml-3">
+                    <Button size="sm" variant="outline" className="text-xs"
+                      onClick={(e) => { e.stopPropagation(); setSelectedBooking(b); }}>
+                      Review
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-                  {b.status === "PENDING_APPROVAL" && (
-                    <div className="flex gap-2">
-                      <Button size="sm"
-                        onClick={() => handleAction(b.id, "approve")}>Approve</Button>
-                      <Button size="sm" variant="destructive"
-                        onClick={() => handleAction(b.id, "decline", "Not available for these dates")}>Decline</Button>
-                    </div>
+      {/* Booking Detail Modal */}
+      {selectedBooking && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setSelectedBooking(null); setDeclineReason(""); }}>
+          <div className="bg-card rounded-2xl border border-border shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-5 border-b border-border/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-lg">Booking Details</h3>
+                  <p className="text-xs text-muted-foreground font-mono">{selectedBooking.id}</p>
+                </div>
+                <button onClick={() => { setSelectedBooking(null); setDeclineReason(""); }}
+                  className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground">✕</button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Status */}
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${statusColor(selectedBooking.status)}`}>
+                  {selectedBooking.status === "PENDING_APPROVAL" ? "PENDING APPROVAL" : selectedBooking.status}
+                </span>
+                {selectedBooking.idVerified && (
+                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">ID Verified</span>
+                )}
+              </div>
+
+              {/* Property */}
+              <div className="bg-muted/30 rounded-lg p-3">
+                <p className="font-semibold text-sm">{selectedBooking.propertyTitle}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {selectedBooking.checkInDate} → {selectedBooking.checkOutDate} · {selectedBooking.nights} night{selectedBooking.nights !== 1 ? "s" : ""} · {selectedBooking.guests} guest{selectedBooking.guests !== 1 ? "s" : ""}
+                </p>
+              </div>
+
+              {/* Guest Info */}
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Guest Information</h4>
+                <div className="bg-muted/30 rounded-lg p-3 space-y-1.5">
+                  <p className="text-sm"><span className="font-medium">{selectedBooking.guestFirstName} {selectedBooking.guestLastName}</span></p>
+                  {selectedBooking.guestEmail && <p className="text-xs text-muted-foreground">{selectedBooking.guestEmail}</p>}
+                  {selectedBooking.guestPhone && <p className="text-xs text-muted-foreground">{selectedBooking.guestPhone}</p>}
+                  {selectedBooking.userCreatedAt && (
+                    <p className="text-xs text-muted-foreground">Member since {new Date(selectedBooking.userCreatedAt).toLocaleDateString("en-AU", { month: "short", year: "numeric" })}</p>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+
+              {/* Guest Message */}
+              {selectedBooking.guestMessage && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Note to Host</h4>
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <p className="text-sm italic">"{selectedBooking.guestMessage}"</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Special Requests */}
+              {selectedBooking.specialRequests && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Special Requests</h4>
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <p className="text-sm">{selectedBooking.specialRequests}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Pricing */}
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Payment</h4>
+                <div className="bg-muted/30 rounded-lg p-3">
+                  <div className="flex justify-between text-sm">
+                    <span>Total</span>
+                    <span className="font-bold text-primary">${((selectedBooking.totalPrice || 0) / 100).toFixed(2)} AUD</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Decline reason input */}
+              {selectedBooking.status === "PENDING_APPROVAL" && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Actions</h4>
+                  <Textarea
+                    placeholder="Reason for declining (optional)..."
+                    value={declineReason}
+                    onChange={e => setDeclineReason(e.target.value)}
+                    rows={2}
+                    className="text-sm mb-3"
+                  />
+                  <div className="flex gap-2">
+                    <Button className="flex-1" disabled={actionLoading}
+                      onClick={() => handleAction(selectedBooking.id, "approve")}>
+                      {actionLoading ? "Processing..." : "Approve Booking"}
+                    </Button>
+                    <Button variant="destructive" className="flex-1" disabled={actionLoading}
+                      onClick={() => handleAction(selectedBooking.id, "decline", declineReason || "Host declined the booking request")}>
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Decline reason display */}
+              {selectedBooking.status === "DECLINED" && selectedBooking.hostDeclineReason && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Decline Reason</h4>
+                  <div className="bg-red-500/5 border border-red-200 rounded-lg p-3">
+                    <p className="text-sm">{selectedBooking.hostDeclineReason}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -827,6 +1158,7 @@ function AvailabilityTab() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [isGap, setIsGap] = useState(true);
+  const [pricingMode, setPricingMode] = useState<"discount" | "rate">("discount");
   const [rate, setRate] = useState("");
   const [discount, setDiscount] = useState("25");
   const [notes, setNotes] = useState("");
@@ -882,13 +1214,35 @@ function AvailabilityTab() {
     const start = new Date(startDate + "T00:00:00");
     const end = endDate ? new Date(endDate + "T00:00:00") : start;
 
+    // Calculate rate and discount based on pricing mode
+    let finalRate: number | undefined;
+    let finalDiscount = 0;
+    const baseRate = selectedProperty?.baseNightlyRate || 0;
+
+    if (isGap) {
+      if (pricingMode === "discount" && discount) {
+        finalDiscount = parseInt(discount);
+        // Rate is base rate (backend applies discount)
+        finalRate = baseRate || undefined;
+      } else if (pricingMode === "rate" && rate) {
+        finalRate = Math.round(parseFloat(rate) * 100);
+        // Calculate equivalent discount for display
+        if (baseRate > 0) {
+          finalDiscount = Math.round((1 - (finalRate / baseRate)) * 100);
+          if (finalDiscount < 0) finalDiscount = 0;
+        }
+      }
+    } else if (rate) {
+      finalRate = Math.round(parseFloat(rate) * 100);
+    }
+
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       dates.push({
         date: d.toISOString().split("T")[0],
         isAvailable: true,
         isGapNight: isGap,
-        nightlyRate: rate ? Math.round(parseFloat(rate) * 100) : undefined,
-        gapNightDiscount: isGap ? parseInt(discount) : 0,
+        nightlyRate: finalRate,
+        gapNightDiscount: isGap ? finalDiscount : 0,
         notes: notes || undefined,
       });
     }
@@ -1058,7 +1412,7 @@ function AvailabilityTab() {
           {showAddForm && (
             <div className="bg-card rounded-xl border border-border/50 p-5 mb-6">
               <h3 className="text-sm font-semibold text-foreground mb-3">Add Available Dates</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Start Date</label>
                   <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 text-sm" />
@@ -1068,20 +1422,59 @@ function AvailabilityTab() {
                   <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-9 text-sm" />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Rate ($/night)</label>
-                  <Input type="number" step="0.01" placeholder={selectedProperty ? `${(selectedProperty.baseNightlyRate / 100).toFixed(0)}` : ""}
-                    value={rate} onChange={e => setRate(e.target.value)} className="h-9 text-sm" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Discount %</label>
-                  <Input type="number" value={discount} onChange={e => setDiscount(e.target.value)} disabled={!isGap} className="h-9 text-sm" />
+                  <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-1">
+                    <input type="checkbox" checked={isGap} onChange={e => setIsGap(e.target.checked)} className="rounded" />
+                    Gap Night
+                  </label>
+                  {isGap && (
+                    <div className="flex rounded-lg border border-border overflow-hidden h-9">
+                      <button
+                        type="button"
+                        className={`flex-1 text-xs font-medium transition-colors ${pricingMode === "discount" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                        onClick={() => { setPricingMode("discount"); setRate(""); }}
+                      >Discount %</button>
+                      <button
+                        type="button"
+                        className={`flex-1 text-xs font-medium transition-colors ${pricingMode === "rate" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                        onClick={() => { setPricingMode("rate"); setDiscount(""); }}
+                      >Set Rate</button>
+                    </div>
+                  )}
                 </div>
               </div>
+              {isGap && (
+                <div className="mb-3">
+                  {pricingMode === "discount" ? (
+                    <div className="max-w-xs">
+                      <label className="text-xs font-medium text-muted-foreground">Discount off base rate ({selectedProperty ? `$${(selectedProperty.baseNightlyRate / 100).toFixed(0)}/night` : ""})</label>
+                      <div className="flex items-center gap-2">
+                        <Input type="number" min="1" max="90" value={discount} onChange={e => setDiscount(e.target.value)} className="h-9 text-sm" placeholder="25" />
+                        <span className="text-sm text-muted-foreground shrink-0">%</span>
+                        {selectedProperty && discount && (
+                          <span className="text-xs text-primary font-medium shrink-0">
+                            = ${((selectedProperty.baseNightlyRate / 100) * (1 - parseInt(discount) / 100)).toFixed(0)}/night
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="max-w-xs">
+                      <label className="text-xs font-medium text-muted-foreground">Custom rate per night</label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">$</span>
+                        <Input type="number" step="0.01" value={rate} onChange={e => setRate(e.target.value)} className="h-9 text-sm"
+                          placeholder={selectedProperty ? `${(selectedProperty.baseNightlyRate / 100).toFixed(0)}` : ""} />
+                        {selectedProperty && rate && (
+                          <span className="text-xs text-primary font-medium shrink-0">
+                            {Math.round((1 - parseFloat(rate) / (selectedProperty.baseNightlyRate / 100)) * 100)}% off
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <label className="flex items-center gap-2 text-sm shrink-0">
-                  <input type="checkbox" checked={isGap} onChange={e => setIsGap(e.target.checked)} className="rounded" />
-                  Gap Night
-                </label>
                 <Input placeholder="Notes (optional)" value={notes} onChange={e => setNotes(e.target.value)} className="h-9 text-sm flex-1" />
                 <Button size="sm" onClick={handleAddAvailability} className="shrink-0">Save Dates</Button>
               </div>

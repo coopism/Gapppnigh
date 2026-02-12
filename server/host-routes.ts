@@ -617,82 +617,8 @@ router.delete("/api/host/properties/:propertyId", requireHostAuth, async (req: H
 });
 
 // ========================================
-// PROPERTY PHOTOS
+// PROPERTY PHOTOS (JSON-based route removed - multer file upload route below handles this)
 // ========================================
-
-router.post("/api/host/properties/:propertyId/photos", requireHostAuth, async (req: HostRequest, res: Response) => {
-  try {
-    const propertyId = req.params.propertyId as string;
-    const { url, caption, isCover } = req.body;
-
-    const [existing] = await db
-      .select()
-      .from(properties)
-      .where(and(eq(properties.id, propertyId), eq(properties.hostId, req.hostId!)))
-      .limit(1);
-
-    if (!existing) {
-      return res.status(404).json({ error: "Property not found" });
-    }
-
-    // Get current max sort order
-    const photos = await db
-      .select()
-      .from(propertyPhotos)
-      .where(eq(propertyPhotos.propertyId, propertyId));
-
-    const maxOrder = photos.length > 0 ? Math.max(...photos.map(p => p.sortOrder)) : -1;
-
-    const [photo] = await db
-      .insert(propertyPhotos)
-      .values({
-        id: uuidv4(),
-        propertyId,
-        url,
-        caption: caption ? sanitizeInput(caption) : null, // Fix #44: XSS sanitize caption
-        sortOrder: maxOrder + 1,
-        isCover: isCover || false,
-      })
-      .returning();
-
-    // If this is set as cover, update property coverImage
-    if (isCover) {
-      await db.update(properties).set({ coverImage: url, updatedAt: new Date() }).where(eq(properties.id, propertyId));
-    }
-
-    res.json({ photo });
-  } catch (error) {
-    console.error("Add photo error:", error);
-    res.status(500).json({ error: "Failed to add photo" });
-  }
-});
-
-router.delete("/api/host/properties/:propertyId/photos/:photoId", requireHostAuth, async (req: HostRequest, res: Response) => {
-  try {
-    const propertyId = req.params.propertyId as string;
-    const photoId = req.params.photoId as string;
-
-    const [existing] = await db
-      .select()
-      .from(properties)
-      .where(and(eq(properties.id, propertyId), eq(properties.hostId, req.hostId!)))
-      .limit(1);
-
-    if (!existing) {
-      return res.status(404).json({ error: "Property not found" });
-    }
-
-    await db.delete(propertyPhotos).where(and(
-      eq(propertyPhotos.id, photoId),
-      eq(propertyPhotos.propertyId, propertyId)
-    ));
-
-    res.json({ message: "Photo deleted" });
-  } catch (error) {
-    console.error("Delete photo error:", error);
-    res.status(500).json({ error: "Failed to delete photo" });
-  }
-});
 
 // ========================================
 // AVAILABILITY MANAGEMENT
@@ -1246,21 +1172,43 @@ router.post("/api/host/bookings/:bookingId/approve", requireHostAuth, async (req
       return res.status(404).json({ error: "Booking not found or already processed" });
     }
 
-    // Capture the payment via Stripe
+    // Payment was already confirmed by the frontend's StripePaymentForm at booking time.
+    // Verify the PaymentIntent status with Stripe if available
     if (booking.stripePaymentIntentId) {
       try {
         const { stripe } = await import("./stripe");
         if (stripe) {
-          await stripe.paymentIntents.capture(booking.stripePaymentIntentId);
+          const pi = await stripe.paymentIntents.retrieve(booking.stripePaymentIntentId);
+          if (pi.status === "requires_capture") {
+            // Legacy manual capture flow - capture it now
+            await stripe.paymentIntents.capture(booking.stripePaymentIntentId);
+          } else if (pi.status !== "succeeded") {
+            await db
+              .update(propertyBookings)
+              .set({ status: "PAYMENT_FAILED", updatedAt: new Date() })
+              .where(eq(propertyBookings.id, bookingId));
+            // Send payment failed email to guest
+            try {
+              const [prop] = await db.select().from(properties).where(eq(properties.id, booking.propertyId)).limit(1);
+              const { sendPaymentFailedEmail } = await import("./email");
+              await sendPaymentFailedEmail(booking, prop);
+            } catch (e) { console.error("Failed to send payment failed email:", e); }
+            return res.status(500).json({ error: `Payment not completed. Status: ${pi.status}` });
+          }
         }
       } catch (stripeError) {
-        console.error("Stripe capture error:", stripeError);
-        // Update status to payment failed
+        console.error("Stripe verification error:", stripeError);
         await db
           .update(propertyBookings)
           .set({ status: "PAYMENT_FAILED", updatedAt: new Date() })
           .where(eq(propertyBookings.id, bookingId));
-        return res.status(500).json({ error: "Payment capture failed. The guest's card may have been declined." });
+        // Send payment failed email to guest
+        try {
+          const [prop] = await db.select().from(properties).where(eq(properties.id, booking.propertyId)).limit(1);
+          const { sendPaymentFailedEmail } = await import("./email");
+          await sendPaymentFailedEmail(booking, prop);
+        } catch (e) { console.error("Failed to send payment failed email:", e); }
+        return res.status(500).json({ error: "Payment verification failed. The guest's card may have been declined." });
       }
     }
 
@@ -1339,7 +1287,18 @@ router.post("/api/host/bookings/:bookingId/decline", requireHostAuth, async (req
       .where(eq(propertyBookings.id, bookingId))
       .returning();
 
-    // TODO: Send decline notification email to guest
+    // Send decline notification email to guest
+    try {
+      const [property] = await db
+        .select()
+        .from(properties)
+        .where(eq(properties.id, booking.propertyId))
+        .limit(1);
+      const { sendBookingDeclinedEmail } = await import("./email");
+      await sendBookingDeclinedEmail(updated, property, reason);
+    } catch (emailError) {
+      console.error("Failed to send decline email:", emailError);
+    }
 
     res.json({ booking: updated, message: "Booking declined" });
   } catch (error) {
@@ -1528,6 +1487,23 @@ router.post("/api/host/qa/:questionId/answer", requireHostAuth, async (req: Host
       .set({ answer: answer.trim(), answeredAt: new Date() })
       .where(eq(propertyQA.id, questionId))
       .returning();
+
+    // Send email notification to the guest who asked the question
+    if (question.userId) {
+      try {
+        const [questioner] = await db
+          .select({ email: users.email })
+          .from(users)
+          .where(eq(users.id, question.userId))
+          .limit(1);
+        if (questioner?.email) {
+          const { sendQAAnsweredEmail } = await import("./email");
+          await sendQAAnsweredEmail(updated, property, questioner.email);
+        }
+      } catch (emailError) {
+        console.error("Failed to send Q&A answered email:", emailError);
+      }
+    }
 
     res.json({ question: updated });
   } catch (error) {

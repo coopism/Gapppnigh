@@ -149,7 +149,9 @@ export default function Signup() {
     setIsLoading(false);
 
     if (result.success) {
-      setLocation("/account?verified=pending");
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect");
+      setLocation(redirect || "/account?verified=pending");
     } else {
       setError(result.error || "Signup failed");
       setFieldError(result.field || null);
