@@ -720,6 +720,7 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
 
 function NewPropertyForm({ onCreated }: { onCreated: () => void }) {
   const { toast } = useToast();
+  const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     title: "", description: "", propertyType: "entire_place", category: "apartment",
@@ -731,6 +732,7 @@ function NewPropertyForm({ onCreated }: { onCreated: () => void }) {
     coverImage: "",
   });
 
+  const totalSteps = 5;
   const amenityOptions = ["WiFi", "Kitchen", "Pool", "Parking", "Air Conditioning", "Heating",
     "Washer", "Dryer", "TV", "Beach Access", "Garden", "BBQ", "Gym", "Elevator", "Balcony"];
 
@@ -743,9 +745,16 @@ function NewPropertyForm({ onCreated }: { onCreated: () => void }) {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title || !form.description || !form.address || !form.city || !form.baseNightlyRate) {
+  const canProceed = () => {
+    if (step === 1) return form.title && form.propertyType && form.category;
+    if (step === 2) return form.address && form.city;
+    if (step === 3) return true;
+    if (step === 4) return form.baseNightlyRate;
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!form.title || !form.address || !form.city || !form.baseNightlyRate) {
       toast({ title: "Missing fields", description: "Please fill in all required fields", variant: "destructive" });
       return;
     }
@@ -776,144 +785,238 @@ function NewPropertyForm({ onCreated }: { onCreated: () => void }) {
     }
   };
 
+  const stepTitles = ["About Your Property", "Location", "Space Details", "Pricing", "Extras & Submit"];
+
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle>Add New Property</CardTitle>
-        <CardDescription>Your property will be reviewed by our team before going live.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="mb-6">
+      {/* Progress bar */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-bold">List Your Property</h2>
+          <span className="text-xs text-muted-foreground">Step {step} of {totalSteps}</span>
+        </div>
+        <div className="flex gap-1">
+          {Array.from({ length: totalSteps }, (_, i) => (
+            <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i < step ? "bg-primary" : "bg-muted"}`} />
+          ))}
+        </div>
+        <p className="text-sm text-muted-foreground mt-2">{stepTitles[step - 1]}</p>
+      </div>
+
+      <div className="bg-card rounded-xl border border-border/50 p-5">
+        {/* Step 1: About */}
+        {step === 1 && (
+          <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Title *</label>
-              <Input placeholder="Stunning Bondi Beach Apartment" value={form.title} onChange={e => setForm({...form, title: e.target.value})} required />
+              <label className="text-sm font-medium mb-1 block">What's your property called? *</label>
+              <Input placeholder="e.g. Stunning Bondi Beach Apartment" value={form.title}
+                onChange={e => setForm({...form, title: e.target.value})} className="text-base h-11" />
             </div>
             <div>
-              <label className="text-sm font-medium">Cover Image URL</label>
-              <Input placeholder="https://..." value={form.coverImage} onChange={e => setForm({...form, coverImage: e.target.value})} />
+              <label className="text-sm font-medium mb-1 block">Describe your place</label>
+              <Textarea placeholder="What makes your property special? Describe the space, the neighbourhood, and what guests will love..."
+                value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={4} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Property Type</label>
+                <select className="w-full rounded-lg border border-border bg-background p-2.5 text-sm" value={form.propertyType}
+                  onChange={e => setForm({...form, propertyType: e.target.value})}>
+                  <option value="entire_place">Entire Place</option>
+                  <option value="private_room">Private Room</option>
+                  <option value="shared_room">Shared Room</option>
+                  <option value="unique_stay">Unique Stay</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Category</label>
+                <select className="w-full rounded-lg border border-border bg-background p-2.5 text-sm" value={form.category}
+                  onChange={e => setForm({...form, category: e.target.value})}>
+                  <option value="apartment">Apartment</option>
+                  <option value="house">House</option>
+                  <option value="cabin">Cabin</option>
+                  <option value="villa">Villa</option>
+                  <option value="cottage">Cottage</option>
+                  <option value="loft">Loft</option>
+                  <option value="studio">Studio</option>
+                  <option value="townhouse">Townhouse</option>
+                </select>
+              </div>
             </div>
           </div>
+        )}
 
-          <div>
-            <label className="text-sm font-medium">Description *</label>
-            <Textarea placeholder="Describe your property..." value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={4} required />
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Step 2: Location */}
+        {step === 2 && (
+          <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Type</label>
-              <select className="w-full rounded-md border p-2 text-sm" value={form.propertyType} onChange={e => setForm({...form, propertyType: e.target.value})}>
-                <option value="entire_place">Entire Place</option>
-                <option value="private_room">Private Room</option>
-                <option value="shared_room">Shared Room</option>
-                <option value="unique_stay">Unique Stay</option>
-              </select>
+              <label className="text-sm font-medium mb-1 block">Street Address *</label>
+              <Input placeholder="123 Main Street" value={form.address}
+                onChange={e => setForm({...form, address: e.target.value})} className="h-11" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">City *</label>
+                <Input placeholder="Sydney" value={form.city}
+                  onChange={e => setForm({...form, city: e.target.value})} className="h-11" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">State</label>
+                <Input placeholder="NSW" value={form.state}
+                  onChange={e => setForm({...form, state: e.target.value})} className="h-11" />
+              </div>
+            </div>
+            <div className="max-w-xs">
+              <label className="text-sm font-medium mb-1 block">Postcode</label>
+              <Input placeholder="2000" value={form.postcode}
+                onChange={e => setForm({...form, postcode: e.target.value})} className="h-11" />
             </div>
             <div>
-              <label className="text-sm font-medium">Category</label>
-              <select className="w-full rounded-md border p-2 text-sm" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
-                <option value="apartment">Apartment</option>
-                <option value="house">House</option>
-                <option value="cabin">Cabin</option>
-                <option value="villa">Villa</option>
-                <option value="cottage">Cottage</option>
-                <option value="loft">Loft</option>
-                <option value="studio">Studio</option>
-                <option value="townhouse">Townhouse</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Base Rate ($/night) *</label>
-              <Input type="number" step="0.01" placeholder="189.00" value={form.baseNightlyRate} onChange={e => setForm({...form, baseNightlyRate: e.target.value})} required />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Cleaning Fee ($)</label>
-              <Input type="number" step="0.01" placeholder="85.00" value={form.cleaningFee} onChange={e => setForm({...form, cleaningFee: e.target.value})} />
+              <label className="text-sm font-medium mb-1 block">Nearby Highlight</label>
+              <Input placeholder="e.g. 5 min walk to Bondi Beach" value={form.nearbyHighlight}
+                onChange={e => setForm({...form, nearbyHighlight: e.target.value})} className="h-11" />
             </div>
           </div>
+        )}
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm font-medium">Address *</label>
-              <Input placeholder="123 Main St" value={form.address} onChange={e => setForm({...form, address: e.target.value})} required />
+        {/* Step 3: Space Details */}
+        {step === 3 && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Max Guests</label>
+                <Input type="number" min="1" value={form.maxGuests}
+                  onChange={e => setForm({...form, maxGuests: parseInt(e.target.value) || 1})} className="h-11 text-center text-lg" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Bedrooms</label>
+                <Input type="number" min="0" value={form.bedrooms}
+                  onChange={e => setForm({...form, bedrooms: parseInt(e.target.value) || 0})} className="h-11 text-center text-lg" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Beds</label>
+                <Input type="number" min="1" value={form.beds}
+                  onChange={e => setForm({...form, beds: parseInt(e.target.value) || 1})} className="h-11 text-center text-lg" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Bathrooms</label>
+                <Input value={form.bathrooms}
+                  onChange={e => setForm({...form, bathrooms: e.target.value})} className="h-11 text-center text-lg" />
+              </div>
             </div>
             <div>
-              <label className="text-sm font-medium">City *</label>
-              <Input placeholder="Sydney" value={form.city} onChange={e => setForm({...form, city: e.target.value})} required />
+              <label className="text-sm font-medium mb-2 block">What amenities do you offer?</label>
+              <div className="flex flex-wrap gap-2">
+                {amenityOptions.map(a => (
+                  <button key={a} type="button"
+                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                      form.amenities.includes(a)
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-foreground border-border hover:border-primary/50"
+                    }`}
+                    onClick={() => toggleAmenity(a)}>{a}</button>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium">State</label>
-              <Input placeholder="NSW" value={form.state} onChange={e => setForm({...form, state: e.target.value})} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Postcode</label>
-              <Input placeholder="2000" value={form.postcode} onChange={e => setForm({...form, postcode: e.target.value})} />
+            <div className="flex gap-6 pt-2">
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+                <input type="checkbox" checked={form.selfCheckIn} onChange={e => setForm({...form, selfCheckIn: e.target.checked})}
+                  className="w-4 h-4 rounded" />
+                Self check-in available
+              </label>
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+                <input type="checkbox" checked={form.petFriendly} onChange={e => setForm({...form, petFriendly: e.target.checked})}
+                  className="w-4 h-4 rounded" />
+                Pet friendly
+              </label>
             </div>
           </div>
+        )}
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Step 4: Pricing */}
+        {step === 4 && (
+          <div className="space-y-4">
+            <div className="max-w-sm">
+              <label className="text-sm font-medium mb-1 block">Base Rate per Night (AUD) *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
+                <Input type="number" step="0.01" placeholder="189.00" value={form.baseNightlyRate}
+                  onChange={e => setForm({...form, baseNightlyRate: e.target.value})} className="h-12 pl-8 text-lg" />
+              </div>
+            </div>
+            <div className="max-w-sm">
+              <label className="text-sm font-medium mb-1 block">Cleaning Fee (optional)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
+                <Input type="number" step="0.01" placeholder="85.00" value={form.cleaningFee}
+                  onChange={e => setForm({...form, cleaningFee: e.target.value})} className="h-11 pl-8" />
+              </div>
+            </div>
+            <div className="max-w-xs">
+              <label className="text-sm font-medium mb-1 block">Minimum Nights</label>
+              <Input type="number" min="1" value={form.minNights}
+                onChange={e => setForm({...form, minNights: parseInt(e.target.value) || 1})} className="h-11" />
+            </div>
+            {form.baseNightlyRate && (
+              <div className="bg-muted/30 rounded-lg p-3 text-sm text-muted-foreground max-w-sm">
+                Guests will see <span className="font-semibold text-foreground">${parseFloat(form.baseNightlyRate).toFixed(0)}/night</span>
+                {form.cleaningFee && <> + <span className="font-semibold text-foreground">${parseFloat(form.cleaningFee).toFixed(0)}</span> cleaning fee</>}
+                {" "}+ 8% service fee
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 5: Extras & Submit */}
+        {step === 5 && (
+          <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Max Guests</label>
-              <Input type="number" value={form.maxGuests} onChange={e => setForm({...form, maxGuests: parseInt(e.target.value) || 1})} />
+              <label className="text-sm font-medium mb-1 block">House Rules</label>
+              <Textarea placeholder="e.g. No smoking, no parties, quiet hours after 10pm..."
+                value={form.houseRules} onChange={e => setForm({...form, houseRules: e.target.value})} rows={3} />
             </div>
             <div>
-              <label className="text-sm font-medium">Bedrooms</label>
-              <Input type="number" value={form.bedrooms} onChange={e => setForm({...form, bedrooms: parseInt(e.target.value) || 0})} />
+              <label className="text-sm font-medium mb-1 block">Check-in Instructions</label>
+              <Textarea placeholder="e.g. Self check-in via smart lock. Code will be sent 24hrs before..."
+                value={form.checkInInstructions} onChange={e => setForm({...form, checkInInstructions: e.target.value})} rows={3} />
             </div>
             <div>
-              <label className="text-sm font-medium">Beds</label>
-              <Input type="number" value={form.beds} onChange={e => setForm({...form, beds: parseInt(e.target.value) || 1})} />
+              <label className="text-sm font-medium mb-1 block">Cover Image URL (optional)</label>
+              <Input placeholder="https://..." value={form.coverImage}
+                onChange={e => setForm({...form, coverImage: e.target.value})} />
+              <p className="text-xs text-muted-foreground mt-1">You can upload more photos after your property is created.</p>
             </div>
-            <div>
-              <label className="text-sm font-medium">Min Nights</label>
-              <Input type="number" value={form.minNights} onChange={e => setForm({...form, minNights: parseInt(e.target.value) || 1})} />
+
+            {/* Summary */}
+            <div className="bg-muted/30 rounded-lg p-4 space-y-1.5">
+              <h4 className="text-sm font-semibold mb-2">Review Your Listing</h4>
+              <p className="text-sm"><span className="text-muted-foreground">Title:</span> {form.title || "—"}</p>
+              <p className="text-sm"><span className="text-muted-foreground">Location:</span> {form.city ? `${form.address}, ${form.city}${form.state ? `, ${form.state}` : ""}` : "—"}</p>
+              <p className="text-sm"><span className="text-muted-foreground">Type:</span> {form.propertyType} · {form.category}</p>
+              <p className="text-sm"><span className="text-muted-foreground">Space:</span> {form.maxGuests} guests · {form.bedrooms} bed{form.bedrooms !== 1 ? "s" : ""} · {form.bathrooms} bath</p>
+              <p className="text-sm"><span className="text-muted-foreground">Rate:</span> ${form.baseNightlyRate || "—"}/night</p>
+              {form.amenities.length > 0 && <p className="text-sm"><span className="text-muted-foreground">Amenities:</span> {form.amenities.join(", ")}</p>}
             </div>
           </div>
+        )}
 
-          <div>
-            <label className="text-sm font-medium mb-2 block">Amenities</label>
-            <div className="flex flex-wrap gap-2">
-              {amenityOptions.map(a => (
-                <Badge key={a} variant={form.amenities.includes(a) ? "default" : "outline"}
-                  className="cursor-pointer" onClick={() => toggleAmenity(a)}>{a}</Badge>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">House Rules</label>
-              <Textarea placeholder="No smoking, no parties..." value={form.houseRules} onChange={e => setForm({...form, houseRules: e.target.value})} rows={2} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Check-in Instructions</label>
-              <Textarea placeholder="Self check-in via smart lock..." value={form.checkInInstructions} onChange={e => setForm({...form, checkInInstructions: e.target.value})} rows={2} />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Nearby Highlight</label>
-            <Input placeholder="5 min walk to beach" value={form.nearbyHighlight} onChange={e => setForm({...form, nearbyHighlight: e.target.value})} />
-          </div>
-
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.selfCheckIn} onChange={e => setForm({...form, selfCheckIn: e.target.checked})} />
-              Self check-in
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.petFriendly} onChange={e => setForm({...form, petFriendly: e.target.checked})} />
-              Pet friendly
-            </label>
-          </div>
-
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Submitting..." : "Submit Property for Review"}
+        {/* Navigation */}
+        <div className="flex justify-between mt-6 pt-4 border-t border-border/50">
+          <Button variant="outline" onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1}>
+            Back
           </Button>
-        </form>
-      </CardContent>
-    </Card>
+          {step < totalSteps ? (
+            <Button onClick={() => setStep(step + 1)} disabled={!canProceed()}>
+              Continue
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? "Submitting..." : "Submit for Review"}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
