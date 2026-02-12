@@ -126,7 +126,9 @@ export default function PropertyBooking() {
         setIdStatus("verified");
         toast({ title: "Already Verified", description: "Your ID has already been verified." });
       } else if (data.url) {
-        // Redirect to Stripe's hosted verification page using the session URL
+        // Save form data to localStorage before redirecting so it's not lost
+        const currentFormData = form.getValues();
+        localStorage.setItem(`booking_form_${propertyId}`, JSON.stringify(currentFormData));
         setIdStatus("pending");
         window.location.href = data.url;
       }
@@ -153,9 +155,23 @@ export default function PropertyBooking() {
     }
   };
 
+  // Restore saved form data if returning from ID verification redirect
+  const getSavedFormData = () => {
+    try {
+      const saved = localStorage.getItem(`booking_form_${propertyId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        localStorage.removeItem(`booking_form_${propertyId}`);
+        return parsed;
+      }
+    } catch {}
+    return null;
+  };
+  const savedFormData = getSavedFormData();
+
   const form = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
-    defaultValues: {
+    defaultValues: savedFormData || {
       firstName: user?.name?.split(" ")[0] || "",
       lastName: user?.name?.split(" ").slice(1).join(" ") || "",
       email: user?.email || "",
@@ -424,10 +440,10 @@ export default function PropertyBooking() {
                       To book this property you need a GapNight account. Sign in or create one — it only takes a minute.
                     </p>
                     <div className="flex flex-wrap gap-3 justify-center mb-4">
-                      <Link href={`/login?redirect=/booking/property/${propertyId}?checkIn=${checkInDate}&checkOut=${checkOutDate}&nights=${nightsParam}`}>
+                      <Link href={`/login?redirect=${encodeURIComponent(`/booking/property/${propertyId}?checkIn=${checkInDate}&checkOut=${checkOutDate}&nights=${nightsParam}`)}`}>
                         <Button size="lg" className="px-8">Sign In</Button>
                       </Link>
-                      <Link href={`/signup?redirect=/booking/property/${propertyId}?checkIn=${checkInDate}&checkOut=${checkOutDate}&nights=${nightsParam}`}>
+                      <Link href={`/signup?redirect=${encodeURIComponent(`/booking/property/${propertyId}?checkIn=${checkInDate}&checkOut=${checkOutDate}&nights=${nightsParam}`)}`}>
                         <Button size="lg" variant="outline" className="px-8">Create Account</Button>
                       </Link>
                     </div>

@@ -1,6 +1,38 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-12
 
+## Round 2 Fixes - Feb 12, 2026
+
+45. **Footer Mobile Layout Fix (`client/src/components/Footer.tsx`)**
+    - **Issue:** Footer looked ugly/cramped on mobile — 4-column grid didn't stack properly
+    - **Fix:** Changed to 2-col grid on mobile (brand spans full width, Quick Links + Support side by side), smaller text sizes on mobile (text-xs), tighter padding, bottom bar stacks vertically on small screens
+    - **Impact:** Footer now looks clean and readable on all screen sizes
+
+46. **Booking Redirect After Signup Fix (`client/src/pages/PropertyBooking.tsx`)**
+    - **Issue:** Redirect URL contained unencoded `?` and `&` characters (e.g. `/signup?redirect=/booking/property/123?checkIn=2026-02-15&checkOut=...`) which caused URLSearchParams to parse them as separate params instead of part of the redirect value
+    - **Fix:** Wrapped the redirect URL in `encodeURIComponent()` so the full booking URL is preserved as a single query parameter
+    - **Impact:** After creating an account during booking, users are now correctly redirected back to the booking page
+
+47. **Booking Form Data Loss After ID Verification (`client/src/pages/PropertyBooking.tsx`)**
+    - **Issue:** When user clicks "Verify ID", the page does `window.location.href = stripeUrl` which is a full page navigation. When user returns from Stripe, all React state (form fields) is lost — name, email, phone all blank
+    - **Fix:** Save form data to `localStorage` before redirecting to Stripe verification; restore it on page load if saved data exists
+    - **Impact:** Guest details are preserved across the ID verification redirect
+
+48. **Remove isSuperhost from ALL API Responses (`server/property-routes.ts`, `server/host-routes.ts`)**
+    - **Issue:** Frontend TSX files had Superhost removed, but the server API was still sending `isSuperhost` field in every host data response — 6 locations in property-routes.ts and 2 in host-routes.ts
+    - **Fix:** Removed `isSuperhost` from all `.select()` queries and response objects across both files
+    - **Impact:** No Superhost data is sent to the frontend at all anymore
+
+49. **Address Lookup Fix (`client/src/pages/host/HostDashboard.tsx`)**
+    - **Issue:** OpenStreetMap Nominatim API was blocking requests because no User-Agent header was set (required by their usage policy)
+    - **Fix:** Added `User-Agent: GapNight/1.0 (gapnight.com)` header, added error handling with user-friendly messages, added click-outside-to-close for dropdown, increased debounce to 500ms
+    - **Impact:** Address autocomplete now works reliably when listing properties
+
+50. **Host Dashboard Revamp Verification**
+    - **Status:** All dashboard revamp changes from previous session ARE in the codebase and committed
+    - **Includes:** Overview tab with stat cards + "Today" section, Bookings tab with detail preview modal, Properties tab with edit form + drag & drop photos, Calendar tab with rate/discount toggle, Q&A tab with FAQ management, Profile tab with avatar + stats cards
+    - **Note:** If the dashboard still looks old, clear browser cache or hard-refresh (Ctrl+Shift+R)
+
 ## Major Platform Fixes & Features - Feb 12, 2026
 
 31. **Photo Upload Fix (`server/host-routes.ts`)**

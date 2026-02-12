@@ -267,7 +267,6 @@ router.post("/api/host/login", authRateLimit, async (req: Request, res: Response
         profilePhoto: host.profilePhoto,
         averageResponseTime: host.averageResponseTime,
         responseRate: host.responseRate,
-        isSuperhost: host.isSuperhost,
       },
     });
   } catch (error) {
@@ -299,7 +298,6 @@ router.get("/api/host/me", requireHostAuth, async (req: HostRequest, res: Respon
       profilePhoto: host.profilePhoto,
       averageResponseTime: host.averageResponseTime,
       responseRate: host.responseRate,
-      isSuperhost: host.isSuperhost,
       createdAt: host.createdAt,
     },
   });

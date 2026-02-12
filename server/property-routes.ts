@@ -30,7 +30,6 @@ async function batchGetPropertyDetails(propertyIds: string[]): Promise<Map<strin
       hostId: properties.hostId,
       hostName: airbnbHosts.name,
       hostProfilePhoto: airbnbHosts.profilePhoto,
-      hostIsSuperhost: airbnbHosts.isSuperhost,
       hostAvgResponseTime: airbnbHosts.averageResponseTime,
       hostResponseRate: airbnbHosts.responseRate,
     })
@@ -72,7 +71,6 @@ async function batchGetPropertyDetails(propertyIds: string[]): Promise<Map<strin
         id: pd.hostId,
         name: pd.hostName,
         profilePhoto: pd.hostProfilePhoto,
-        isSuperhost: pd.hostIsSuperhost,
         averageResponseTime: pd.hostAvgResponseTime,
         responseRate: pd.hostResponseRate,
       } : null,
@@ -190,7 +188,6 @@ router.get("/api/properties", async (req: Request, res: Response) => {
           .select({
             name: airbnbHosts.name,
             profilePhoto: airbnbHosts.profilePhoto,
-            isSuperhost: airbnbHosts.isSuperhost,
             averageResponseTime: airbnbHosts.averageResponseTime,
             responseRate: airbnbHosts.responseRate,
           })
@@ -289,7 +286,6 @@ router.get("/api/properties/:propertyId", async (req: Request, res: Response) =>
         name: airbnbHosts.name,
         profilePhoto: airbnbHosts.profilePhoto,
         bio: airbnbHosts.bio,
-        isSuperhost: airbnbHosts.isSuperhost,
         averageResponseTime: airbnbHosts.averageResponseTime,
         responseRate: airbnbHosts.responseRate,
         createdAt: airbnbHosts.createdAt,
@@ -437,7 +433,6 @@ router.get("/api/hosts/:hostId/profile", async (req: Request, res: Response) => 
         name: airbnbHosts.name,
         profilePhoto: airbnbHosts.profilePhoto,
         bio: airbnbHosts.bio,
-        isSuperhost: airbnbHosts.isSuperhost,
         averageResponseTime: airbnbHosts.averageResponseTime,
         responseRate: airbnbHosts.responseRate,
         createdAt: airbnbHosts.createdAt,
@@ -490,7 +485,6 @@ router.get("/api/hosts/:hostId/profile", async (req: Request, res: Response) => 
           host: {
             name: host.name,
             profilePhoto: host.profilePhoto,
-            isSuperhost: host.isSuperhost,
             averageResponseTime: host.averageResponseTime,
             responseRate: host.responseRate,
           },

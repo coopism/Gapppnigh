@@ -723,28 +723,46 @@ function LocationStep({ form, setForm }: { form: any; setForm: (f: any) => void 
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const searchAddress = async (q: string) => {
-    if (q.length < 3) { setSuggestions([]); return; }
+    if (q.length < 3) { setSuggestions([]); setSearchError(""); return; }
     setSearching(true);
+    setSearchError("");
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=au&limit=5&q=${encodeURIComponent(q)}`,
-        { headers: { "Accept-Language": "en" } }
+        { headers: { "Accept-Language": "en", "User-Agent": "GapNight/1.0 (gapnight.com)" } }
       );
       if (res.ok) {
         const data = await res.json();
         setSuggestions(data);
         setShowSuggestions(data.length > 0);
+        if (data.length === 0) setSearchError("No results found. Try a more specific address.");
+      } else {
+        setSearchError("Address search unavailable. Please enter manually.");
       }
-    } catch {} finally { setSearching(false); }
+    } catch {
+      setSearchError("Address search unavailable. Please enter manually.");
+    } finally { setSearching(false); }
   };
 
   const handleQueryChange = (val: string) => {
     setQuery(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => searchAddress(val), 400);
+    debounceRef.current = setTimeout(() => searchAddress(val), 500);
   };
 
   const selectSuggestion = (s: any) => {
@@ -756,22 +774,24 @@ function LocationStep({ form, setForm }: { form: any; setForm: (f: any) => void 
     setForm({ ...form, address: road || s.display_name.split(",")[0], city, state, postcode });
     setQuery(s.display_name);
     setShowSuggestions(false);
+    setSearchError("");
   };
 
   return (
     <div className="space-y-4">
-      <div className="relative">
+      <div className="relative" ref={wrapperRef}>
         <label className="text-sm font-medium mb-1 block">Search Address</label>
-        <Input placeholder="Start typing an address..." value={query}
+        <Input placeholder="Start typing an Australian address..." value={query}
           onChange={e => handleQueryChange(e.target.value)}
           onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
           className="h-11" />
-        {searching && <span className="absolute right-3 top-9 text-xs text-muted-foreground">Searching...</span>}
+        {searching && <span className="absolute right-3 top-9 text-xs text-muted-foreground animate-pulse">Searching...</span>}
+        {searchError && !showSuggestions && <p className="text-xs text-muted-foreground mt-1">{searchError}</p>}
         {showSuggestions && (
-          <div className="absolute z-20 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          <div className="absolute z-20 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-52 overflow-y-auto">
             {suggestions.map((s, i) => (
               <button key={i} type="button"
-                className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors border-b border-border/30 last:border-0"
+                className="w-full text-left px-3 py-2.5 text-sm hover:bg-muted/50 transition-colors border-b border-border/30 last:border-0"
                 onClick={() => selectSuggestion(s)}>
                 {s.display_name}
               </button>

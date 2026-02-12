@@ -7,59 +7,63 @@ export function Footer() {
 
   return (
     <footer className="mt-auto bg-neutral-900 dark:bg-neutral-950 text-white/90">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          <div className="md:col-span-2">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <GapNightLogo size={32} />
-              <span className="font-display font-bold text-xl text-white">GapNight</span>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        {/* Top section */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-8">
+          {/* Brand - full width on mobile */}
+          <div className="col-span-2">
+            <Link href="/" className="flex items-center gap-2 mb-3">
+              <GapNightLogo size={28} />
+              <span className="font-display font-bold text-lg text-white">GapNight</span>
             </Link>
-            <p className="text-white/70 text-sm leading-relaxed max-w-sm mb-4">
-              The marketplace for gap nights — unsold hotel rooms between bookings, available at clearance prices. Real discounts on real rooms.
+            <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-sm mb-3">
+              The marketplace for gap nights — unsold rooms between bookings at clearance prices.
             </p>
-            <div className="flex items-center gap-2 text-white/60 text-sm">
-              <MapPin className="w-4 h-4" />
+            <div className="flex items-center gap-2 text-white/50 text-xs">
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
               <span>Melbourne, Australia</span>
             </div>
           </div>
 
+          {/* Quick Links */}
           <div>
-            <h4 className="font-display font-bold text-white mb-4">Quick Links</h4>
+            <h4 className="font-display font-bold text-white text-sm mb-3">Quick Links</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="/deals" className="text-white/70 hover:text-white text-sm transition-colors">
+                <Link href="/deals" className="text-white/60 hover:text-white text-xs sm:text-sm transition-colors">
                   Browse Deals
                 </Link>
               </li>
               <li>
-                <Link href="/list-your-hotel" className="text-white/70 hover:text-white text-sm transition-colors">
+                <Link href="/list-your-hotel" className="text-white/60 hover:text-white text-xs sm:text-sm transition-colors">
                   For Hotels
                 </Link>
               </li>
               <li>
-                <Link href="/waitlist" className="text-white/70 hover:text-white text-sm transition-colors">
+                <Link href="/waitlist" className="text-white/60 hover:text-white text-xs sm:text-sm transition-colors">
                   Join Waitlist
                 </Link>
               </li>
             </ul>
           </div>
 
+          {/* Support */}
           <div>
-            <h4 className="font-display font-bold text-white mb-4">Support</h4>
+            <h4 className="font-display font-bold text-white text-sm mb-3">Support</h4>
             <ul className="space-y-2">
               <li>
-                <a href="mailto:info@gapnight.com" className="text-white/70 hover:text-white text-sm transition-colors flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
+                <a href="mailto:info@gapnight.com" className="text-white/60 hover:text-white text-xs sm:text-sm transition-colors flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 shrink-0" />
                   info@gapnight.com
                 </a>
               </li>
               <li>
-                <Link href="/privacy" className="text-white/70 hover:text-white text-sm transition-colors">
+                <Link href="/privacy" className="text-white/60 hover:text-white text-xs sm:text-sm transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="text-white/70 hover:text-white text-sm transition-colors">
+                <Link href="/terms" className="text-white/60 hover:text-white text-xs sm:text-sm transition-colors">
                   Terms of Service
                 </Link>
               </li>
@@ -67,22 +71,21 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-white/50 text-sm">
-            {currentYear} GapNight. All rights reserved.
+        {/* Bottom bar */}
+        <div className="border-t border-white/10 pt-5 flex flex-col sm:flex-row justify-between items-center gap-3">
+          <p className="text-white/40 text-xs">
+            © {currentYear} GapNight. All rights reserved.
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 text-xs">
             <Link 
               href="/owner/login" 
-              className="text-white/70 hover:text-white text-sm transition-colors"
+              className="text-white/50 hover:text-white transition-colors"
               data-testid="link-developer-portal"
             >
               Developer Portal
             </Link>
-            <span className="text-white/30">|</span>
-            <p className="text-white/50 text-xs">
-              Made with care in Australia
-            </p>
+            <span className="text-white/20">·</span>
+            <span className="text-white/40">Made with care in Australia</span>
           </div>
         </div>
       </div>
