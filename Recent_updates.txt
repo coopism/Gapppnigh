@@ -62,6 +62,12 @@
     - **UI:** Progress bar, step validation, back/continue navigation, review summary before submission
     - **Impact:** Much less daunting for hosts — asks for info one step at a time instead of a wall of fields
 
+42. **Address Autocomplete for Property Listing (`client/src/pages/host/HostDashboard.tsx`)**
+    - **Feature:** Added address search autocomplete using OpenStreetMap Nominatim API (no API key required)
+    - **Behaviour:** As the host types an address, suggestions appear in a dropdown; selecting one auto-fills street address, city, state, and postcode
+    - **Scoped to:** Australia (`countrycodes=au`), debounced 400ms, max 5 results
+    - **Impact:** Faster and more accurate address entry when listing properties
+
 ## CSRF Fix + ID Verification Fix - Feb 12, 2026
 
 29. **CSRF Token Blocking All POST Requests (`server/csrf.ts`)**
