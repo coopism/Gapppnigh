@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuthStore } from "@/hooks/useAuth";
 
 const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "WiFi": Wifi,
@@ -32,7 +32,7 @@ interface DealCardProps {
 }
 
 export function DealCard({ deal }: DealCardProps) {
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuthStore();
   const [isSaved, setIsSaved] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   
@@ -45,7 +45,7 @@ export function DealCard({ deal }: DealCardProps) {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!isAuthenticated) {
+    if (!user) {
       setShowLoginDialog(true);
       return;
     }

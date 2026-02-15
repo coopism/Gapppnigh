@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuthStore } from "@/hooks/useAuth";
 
 const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "WiFi": Wifi,
@@ -81,7 +81,7 @@ function getGapNightRangeLabel(property: any): string {
 }
 
 export function PropertyDealCard({ property }: PropertyDealCardProps) {
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuthStore();
   const [isSaved, setIsSaved] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   
@@ -100,7 +100,7 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!isAuthenticated) {
+    if (!user) {
       setShowLoginDialog(true);
       return;
     }
