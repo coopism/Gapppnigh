@@ -475,6 +475,99 @@ async function createTables() {
     )
   `);
 
+  // ========================================
+  // DRAFT LISTINGS + iCAL + GAP NIGHT RULES
+  // ========================================
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "draft_listings" (
+      "id" text PRIMARY KEY NOT NULL,
+      "host_id" text NOT NULL REFERENCES "airbnb_hosts"("id"),
+      "current_step" integer DEFAULT 0 NOT NULL,
+      "airbnb_url" text,
+      "title" text,
+      "description" text,
+      "property_type" text DEFAULT 'entire_place',
+      "category" text DEFAULT 'apartment',
+      "address" text,
+      "city" text,
+      "state" text,
+      "country" text DEFAULT 'Australia',
+      "postcode" text,
+      "latitude" numeric,
+      "longitude" numeric,
+      "max_guests" integer DEFAULT 2,
+      "bedrooms" integer DEFAULT 1,
+      "beds" integer DEFAULT 1,
+      "bathrooms" numeric DEFAULT '1',
+      "amenities" text[],
+      "house_rules" text,
+      "check_in_time" text DEFAULT '15:00',
+      "check_out_time" text DEFAULT '10:00',
+      "min_notice" integer DEFAULT 1,
+      "prep_buffer" boolean DEFAULT false,
+      "base_nightly_rate" integer,
+      "cleaning_fee" integer DEFAULT 0,
+      "gap_night_discount" integer DEFAULT 30,
+      "weekday_multiplier" numeric DEFAULT '1.0',
+      "weekend_multiplier" numeric DEFAULT '1.0',
+      "manual_approval" boolean DEFAULT true,
+      "auto_publish" boolean DEFAULT false,
+      "self_check_in" boolean DEFAULT false,
+      "pet_friendly" boolean DEFAULT false,
+      "smoking_allowed" boolean DEFAULT false,
+      "nearby_highlight" text,
+      "check_in_instructions" text,
+      "cover_image" text,
+      "images" text[],
+      "status" text DEFAULT 'draft' NOT NULL,
+      "published_property_id" text,
+      "last_saved_at" timestamp DEFAULT now() NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "ical_connections" (
+      "id" text PRIMARY KEY NOT NULL,
+      "host_id" text NOT NULL REFERENCES "airbnb_hosts"("id"),
+      "draft_id" text REFERENCES "draft_listings"("id") ON DELETE CASCADE,
+      "property_id" text REFERENCES "properties"("id") ON DELETE CASCADE,
+      "ical_url" text NOT NULL,
+      "label" text DEFAULT 'Airbnb',
+      "status" text DEFAULT 'pending' NOT NULL,
+      "last_sync_at" timestamp,
+      "last_error" text,
+      "sync_interval_minutes" integer DEFAULT 30,
+      "blocked_dates" jsonb,
+      "detected_gap_nights" jsonb,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "gap_night_rules" (
+      "id" text PRIMARY KEY NOT NULL,
+      "host_id" text NOT NULL REFERENCES "airbnb_hosts"("id"),
+      "property_id" text REFERENCES "properties"("id") ON DELETE CASCADE,
+      "draft_id" text REFERENCES "draft_listings"("id") ON DELETE CASCADE,
+      "check_in_time" text DEFAULT '15:00',
+      "check_out_time" text DEFAULT '10:00',
+      "min_notice" integer DEFAULT 1,
+      "prep_buffer" boolean DEFAULT false,
+      "base_nightly_rate" integer,
+      "gap_night_discount" integer DEFAULT 30,
+      "weekday_multiplier" numeric DEFAULT '1.0',
+      "weekend_multiplier" numeric DEFAULT '1.0',
+      "manual_approval" boolean DEFAULT true,
+      "auto_publish" boolean DEFAULT false,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
   console.log("Tables created!");
 
   // ========================================
@@ -519,6 +612,19 @@ async function createTables() {
 
   // User sessions index
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON "user_sessions"("user_id")`);
+
+  // Draft listings indexes
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_draft_listings_host_id ON "draft_listings"("host_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_draft_listings_status ON "draft_listings"("status")`);
+
+  // iCal connections indexes
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ical_connections_host_id ON "ical_connections"("host_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ical_connections_draft_id ON "ical_connections"("draft_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ical_connections_property_id ON "ical_connections"("property_id")`);
+
+  // Gap night rules indexes
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_gap_night_rules_host_id ON "gap_night_rules"("host_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_gap_night_rules_property_id ON "gap_night_rules"("property_id")`);
 
   console.log("Indexes created!");
 }

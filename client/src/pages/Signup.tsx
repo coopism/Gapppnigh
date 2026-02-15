@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, User, Check, X, ArrowLeft, Phone } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, User, Check, X, ArrowLeft, Phone, Shield, Clock, ArrowRight } from "lucide-react";
 import { signup, validatePassword, getPasswordStrength, useAuthStore } from "@/hooks/useAuth";
 import { GapNightLogo } from "@/components/GapNightLogo";
 import { Footer } from "@/components/Footer";
@@ -31,6 +31,24 @@ export default function Signup() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [resendingOtp, setResendingOtp] = useState(false);
   const [signupEmail, setSignupEmail] = useState("");
+  const [resendTimer, setResendTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+
+  // Countdown timer for resend
+  useEffect(() => {
+    if (showOtpStep && resendTimer > 0) {
+      const timer = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [showOtpStep, resendTimer]);
 
   // Initialize Google Sign-In when script loads
   useEffect(() => {
@@ -237,6 +255,7 @@ export default function Signup() {
   };
 
   const handleResendOtp = async () => {
+    if (!canResend) return;
     setResendingOtp(true);
     setOtpError(null);
     try {
@@ -250,6 +269,8 @@ export default function Signup() {
       if (res.ok) {
         setOtpError(null);
         setOtpCode("");
+        setResendTimer(60);
+        setCanResend(false);
       } else {
         setOtpError(data.message || "Failed to resend code.");
       }
@@ -301,6 +322,20 @@ export default function Signup() {
 
               <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
                 <div className="space-y-4">
+                  {/* Why verification is needed */}
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Why verify your email?</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          This helps prevent fraud and protects hosts from fake bookings. 
+                          You'll only need to do this once.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {otpError && (
                     <Alert variant="destructive" className="rounded-xl">
                       <AlertCircle className="h-4 w-4" />
@@ -337,22 +372,62 @@ export default function Signup() {
                     )}
                   </Button>
 
+                  {/* Resend with timer */}
                   <div className="text-center pt-2">
                     <p className="text-xs text-muted-foreground mb-2">Didn't receive the code?</p>
+                    {resendTimer > 0 ? (
+                      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>Resend available in {resendTimer}s</span>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleResendOtp}
+                        disabled={resendingOtp}
+                        className="text-primary text-xs"
+                      >
+                        {resendingOtp ? (
+                          <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Sending...</>
+                        ) : (
+                          "Resend code"
+                        )}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Change email or continue browsing */}
+                  <div className="border-t border-border pt-4 space-y-2">
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={handleResendOtp}
-                      disabled={resendingOtp}
-                      className="text-primary text-xs"
+                      onClick={() => {
+                        setShowOtpStep(false);
+                        setEmail("");
+                        setOtpCode("");
+                      }}
+                      className="w-full text-xs text-muted-foreground hover:text-foreground"
                     >
-                      {resendingOtp ? (
-                        <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Sending...</>
-                      ) : (
-                        "Resend code"
-                      )}
+                      Use a different email address
                     </Button>
+                    
+                    <Link href="/deals">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs gap-1"
+                      >
+                        Browse deals first
+                        <ArrowRight className="w-3 h-3" />
+                      </Button>
+                    </Link>
+                    <p className="text-[10px] text-center text-muted-foreground">
+                      You can verify later. Booking will require verification.
+                    </p>
                   </div>
                 </div>
               </div>

@@ -518,6 +518,145 @@ export const userIdVerificationsRelations = relations(userIdVerifications, ({ on
   }),
 }));
 
+// ========================================
+// DRAFT LISTINGS (Autosave wizard flow)
+// ========================================
+
+export const draftListings = pgTable("draft_listings", {
+  id: text("id").primaryKey(), // UUID
+  hostId: text("host_id").notNull().references(() => airbnbHosts.id),
+  currentStep: integer("current_step").notNull().default(0), // 0-5
+  // Step 1: Airbnb reference
+  airbnbUrl: text("airbnb_url"),
+  // Step 2: Basics
+  title: text("title"),
+  description: text("description"),
+  propertyType: text("property_type").default("entire_place"),
+  category: text("category").default("apartment"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country").default("Australia"),
+  postcode: text("postcode"),
+  latitude: numeric("latitude"),
+  longitude: numeric("longitude"),
+  maxGuests: integer("max_guests").default(2),
+  bedrooms: integer("bedrooms").default(1),
+  beds: integer("beds").default(1),
+  bathrooms: numeric("bathrooms").default("1"),
+  amenities: text("amenities").array(),
+  houseRules: text("house_rules"),
+  // Step 4: Gap Night Rules + Pricing
+  checkInTime: text("check_in_time").default("15:00"),
+  checkOutTime: text("check_out_time").default("10:00"),
+  minNotice: integer("min_notice").default(1), // days
+  prepBuffer: boolean("prep_buffer").default(false), // block day after booking
+  baseNightlyRate: integer("base_nightly_rate"), // cents
+  cleaningFee: integer("cleaning_fee").default(0),
+  gapNightDiscount: integer("gap_night_discount").default(30), // percentage
+  weekdayMultiplier: numeric("weekday_multiplier").default("1.0"),
+  weekendMultiplier: numeric("weekend_multiplier").default("1.0"),
+  manualApproval: boolean("manual_approval").default(true),
+  autoPublish: boolean("auto_publish").default(false),
+  // Meta
+  selfCheckIn: boolean("self_check_in").default(false),
+  petFriendly: boolean("pet_friendly").default(false),
+  smokingAllowed: boolean("smoking_allowed").default(false),
+  nearbyHighlight: text("nearby_highlight"),
+  checkInInstructions: text("check_in_instructions"),
+  coverImage: text("cover_image"),
+  images: text("images").array(),
+  // Status
+  status: text("status").notNull().default("draft"), // draft | published
+  publishedPropertyId: text("published_property_id"), // links to properties.id after publish
+  lastSavedAt: timestamp("last_saved_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ========================================
+// iCAL CONNECTIONS (Calendar sync)
+// ========================================
+
+export const icalConnections = pgTable("ical_connections", {
+  id: text("id").primaryKey(), // UUID
+  hostId: text("host_id").notNull().references(() => airbnbHosts.id),
+  draftId: text("draft_id").references(() => draftListings.id, { onDelete: "cascade" }),
+  propertyId: text("property_id").references(() => properties.id, { onDelete: "cascade" }),
+  icalUrl: text("ical_url").notNull(),
+  label: text("label").default("Airbnb"), // Airbnb, Booking.com, etc.
+  status: text("status").notNull().default("pending"), // pending | connected | error
+  lastSyncAt: timestamp("last_sync_at"),
+  lastError: text("last_error"),
+  syncIntervalMinutes: integer("sync_interval_minutes").default(30),
+  blockedDates: jsonb("blocked_dates"), // Array of { start, end, summary }
+  detectedGapNights: jsonb("detected_gap_nights"), // Array of { date, gapSize }
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ========================================
+// GAP NIGHT RULES (Per-property defaults)
+// ========================================
+
+export const gapNightRules = pgTable("gap_night_rules", {
+  id: text("id").primaryKey(), // UUID
+  hostId: text("host_id").notNull().references(() => airbnbHosts.id),
+  propertyId: text("property_id").references(() => properties.id, { onDelete: "cascade" }),
+  draftId: text("draft_id").references(() => draftListings.id, { onDelete: "cascade" }),
+  checkInTime: text("check_in_time").default("15:00"),
+  checkOutTime: text("check_out_time").default("10:00"),
+  minNotice: integer("min_notice").default(1),
+  prepBuffer: boolean("prep_buffer").default(false),
+  baseNightlyRate: integer("base_nightly_rate"), // cents
+  gapNightDiscount: integer("gap_night_discount").default(30),
+  weekdayMultiplier: numeric("weekday_multiplier").default("1.0"),
+  weekendMultiplier: numeric("weekend_multiplier").default("1.0"),
+  manualApproval: boolean("manual_approval").default(true),
+  autoPublish: boolean("auto_publish").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Relations for new tables
+export const draftListingsRelations = relations(draftListings, ({ one, many }) => ({
+  host: one(airbnbHosts, {
+    fields: [draftListings.hostId],
+    references: [airbnbHosts.id],
+  }),
+  icalConnections: many(icalConnections),
+}));
+
+export const icalConnectionsRelations = relations(icalConnections, ({ one }) => ({
+  host: one(airbnbHosts, {
+    fields: [icalConnections.hostId],
+    references: [airbnbHosts.id],
+  }),
+  draft: one(draftListings, {
+    fields: [icalConnections.draftId],
+    references: [draftListings.id],
+  }),
+  property: one(properties, {
+    fields: [icalConnections.propertyId],
+    references: [properties.id],
+  }),
+}));
+
+export const gapNightRulesRelations = relations(gapNightRules, ({ one }) => ({
+  host: one(airbnbHosts, {
+    fields: [gapNightRules.hostId],
+    references: [airbnbHosts.id],
+  }),
+  property: one(properties, {
+    fields: [gapNightRules.propertyId],
+    references: [properties.id],
+  }),
+  draft: one(draftListings, {
+    fields: [gapNightRules.draftId],
+    references: [draftListings.id],
+  }),
+}));
+
 // Insert schemas for host tables
 export const insertAirbnbHostSchema = createInsertSchema(airbnbHosts).omit({ createdAt: true, updatedAt: true });
 export const insertHostSessionSchema = createInsertSchema(hostSessions).omit({ createdAt: true });
@@ -528,6 +667,9 @@ export const insertPropertyBookingSchema = createInsertSchema(propertyBookings).
 export const insertPropertyQASchema = createInsertSchema(propertyQA).omit({ createdAt: true });
 export const insertUserIdVerificationSchema = createInsertSchema(userIdVerifications).omit({ createdAt: true, updatedAt: true });
 export const insertPropertyReviewSchema = createInsertSchema(propertyReviews).omit({ createdAt: true });
+export const insertDraftListingSchema = createInsertSchema(draftListings).omit({ createdAt: true, updatedAt: true });
+export const insertIcalConnectionSchema = createInsertSchema(icalConnections).omit({ createdAt: true, updatedAt: true });
+export const insertGapNightRuleSchema = createInsertSchema(gapNightRules).omit({ createdAt: true, updatedAt: true });
 
 // Types for host tables
 export type AirbnbHost = typeof airbnbHosts.$inferSelect;
@@ -542,6 +684,12 @@ export type InsertPropertyBooking = z.infer<typeof insertPropertyBookingSchema>;
 export type PropertyQA = typeof propertyQA.$inferSelect;
 export type UserIdVerification = typeof userIdVerifications.$inferSelect;
 export type PropertyReview = typeof propertyReviews.$inferSelect;
+export type DraftListing = typeof draftListings.$inferSelect;
+export type InsertDraftListing = z.infer<typeof insertDraftListingSchema>;
+export type IcalConnection = typeof icalConnections.$inferSelect;
+export type InsertIcalConnection = z.infer<typeof insertIcalConnectionSchema>;
+export type GapNightRule = typeof gapNightRules.$inferSelect;
+export type InsertGapNightRule = z.infer<typeof insertGapNightRuleSchema>;
 
 // Zod Schemas
 export const insertDealSchema = createInsertSchema(deals);

@@ -15,6 +15,7 @@ import { optionalUserAuthMiddleware } from "./user-auth";
 import ownerRoutes from "./owner-routes";
 import { registerAdminRoutes } from "./admin-routes";
 import hostRoutes from "./host-routes";
+import listingRoutes from "./listing-routes";
 import propertyRoutes from "./property-routes";
 
 // ========================================
@@ -1504,6 +1505,9 @@ export async function registerRoutes(
 
   // Register host routes (AirBnB-style hosts)
   app.use(hostRoutes);
+
+  // Register listing wizard routes (draft listings, iCal sync, gap night detection)
+  app.use(listingRoutes);
 
   // Register property routes (public listings, booking, Q&A, ID verification)
   // Apply optional user auth so req.user is available for authenticated endpoints

@@ -1,11 +1,20 @@
 import { Link } from "wouter";
-import { Home, Search, ArrowLeft } from "lucide-react";
+import { Home, Search, ArrowLeft, HelpCircle, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { GapNightLogo } from "@/components/GapNightLogo";
 
+// Generate a short support code for reference
+const generateSupportCode = () => {
+  const timestamp = Date.now().toString(36).slice(-4).toUpperCase();
+  const random = Math.random().toString(36).slice(-3).toUpperCase();
+  return `404-${timestamp}${random}`;
+};
+
 export default function NotFound() {
+  const supportCode = generateSupportCode();
+  
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navigation />
@@ -31,7 +40,7 @@ export default function NotFound() {
             Sorry, we couldn't find the page you're looking for. It may have been moved or doesn't exist.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
             <Link href="/">
               <Button size="lg" className="w-full sm:w-auto font-bold rounded-xl gap-2">
                 <Home className="w-4 h-4" />
@@ -44,6 +53,24 @@ export default function NotFound() {
                 Browse Deals
               </Button>
             </Link>
+          </div>
+
+          {/* Support Section */}
+          <div className="border-t border-border pt-6">
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-2">
+              <HelpCircle className="w-4 h-4" />
+              <span>Having trouble?</span>
+              <a 
+                href="mailto:support@gapnight.com?subject=Support Request - Error ${supportCode}" 
+                className="text-primary hover:underline font-medium"
+              >
+                Contact support
+              </a>
+            </div>
+            <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground/60">
+              <MessageSquare className="w-3 h-3" />
+              <span>Reference code: <code className="font-mono bg-muted px-1.5 py-0.5 rounded">{supportCode}</code></span>
+            </div>
           </div>
         </div>
       </main>

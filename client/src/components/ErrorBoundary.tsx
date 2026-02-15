@@ -1,6 +1,6 @@
 import { Component, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { AlertTriangle, RefreshCw, Home, HelpCircle, MessageSquare } from "lucide-react";
 import { GapNightLogo } from "./GapNightLogo";
 
 interface Props {
@@ -11,16 +11,24 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  supportCode: string;
 }
+
+// Generate a short support code for reference
+const generateSupportCode = () => {
+  const timestamp = Date.now().toString(36).slice(-4).toUpperCase();
+  const random = Math.random().toString(36).slice(-3).toUpperCase();
+  return `ERR-${timestamp}${random}`;
+};
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, supportCode: generateSupportCode() };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error, supportCode: generateSupportCode() };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -79,7 +87,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
                 <Button
                   size="lg"
                   onClick={this.handleReload}
@@ -97,6 +105,24 @@ export class ErrorBoundary extends Component<Props, State> {
                   <Home className="w-4 h-4" />
                   Go Home
                 </Button>
+              </div>
+
+              {/* Support Section */}
+              <div className="border-t border-border pt-6">
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-2">
+                  <HelpCircle className="w-4 h-4" />
+                  <span>Having trouble?</span>
+                  <a 
+                    href={`mailto:support@gapnight.com?subject=Support Request - Error ${this.state.supportCode}`}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Contact support
+                  </a>
+                </div>
+                <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground/60">
+                  <MessageSquare className="w-3 h-3" />
+                  <span>Reference code: <code className="font-mono bg-muted px-1.5 py-0.5 rounded">{this.state.supportCode}</code></span>
+                </div>
               </div>
             </div>
           </main>

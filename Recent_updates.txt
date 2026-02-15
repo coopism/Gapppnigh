@@ -1,5 +1,99 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-17
+# Last Updated: 2026-02-18
+
+## Host Onboarding Revamp - Feb 18, 2026
+
+71. **New 6-Step Create Listing Wizard (`client/src/pages/host/CreateListing.tsx`)**
+    - **Goal:** Enable hosts to publish a listing in 3-7 minutes with autosave, iCal sync, and mobile-first design
+    - **Steps:**
+      - **Step 0 (Start):** Welcome screen explaining GapNight value prop, creates draft on click
+      - **Step 1 (Details):** Optional Airbnb URL reference + quick-paste for title/description/rules
+      - **Step 2 (Basics):** Property type, category, address (with autocomplete), space details (guests/beds/bath), amenities (searchable pills), photo upload (drag & drop + mobile CTA)
+      - **Step 3 (Calendar):** iCal URL input with test/connect flow, blocked date visualization, gap night detection with badge display
+      - **Step 4 (Pricing):** Check-in/out times, min notice, prep buffer, base rate, gap night discount slider (10-60%), cleaning fee, manual/auto approval toggle
+      - **Step 5 (Publish):** Full review summary card with cover image, all details, publish CTA, missing field warnings, next-actions suggestions
+    - **Features:**
+      - **Autosave:** 800ms debounce, offline localStorage fallback, visual status indicator (saving/saved/offline/error)
+      - **Skip for now:** Available on non-critical steps
+      - **Mobile-first:** All touch targets min 44px, sticky bottom CTA bar, responsive layout
+      - **Progress bar:** Visual step indicator in header
+    - **Impact:** Dramatically faster listing creation vs old 5-step form embedded in dashboard
+
+72. **Draft Listings Backend (`server/listing-routes.ts`)**
+    - **Endpoints:**
+      - `POST /api/host/drafts` — Create new draft
+      - `GET /api/host/drafts` — List all drafts for host
+      - `GET /api/host/drafts/:draftId` — Get single draft + iCal connections
+      - `PATCH /api/host/drafts/:draftId` — Autosave (partial update, whitelisted fields)
+      - `DELETE /api/host/drafts/:draftId` — Delete draft + cascade iCal/rules
+      - `POST /api/host/drafts/:draftId/photos` — Upload photos to draft (multer, 10MB limit)
+      - `POST /api/host/drafts/:draftId/ical/test` — Test iCal URL (fetch + parse + gap detect)
+      - `POST /api/host/drafts/:draftId/ical/connect` — Save + sync iCal connection
+      - `POST /api/host/ical/:connectionId/sync` — Manual re-sync
+      - `DELETE /api/host/ical/:connectionId` — Remove connection
+      - `POST /api/host/drafts/:draftId/publish` — Convert draft → property (pending_approval)
+    - **iCal parsing:** Custom parser handles VCALENDAR/VEVENT blocks, DATE and DATETIME formats, extracts blocked ranges
+    - **Gap night detection:** Finds 1-2 night gaps between consecutive blocked periods
+    - **Impact:** Full draft lifecycle with autosave, iCal sync, and publish-to-property conversion
+
+73. **New Database Tables (`shared/schema.ts`, `server/bootstrap.ts`)**
+    - **`draft_listings`:** Stores all wizard form data with autosave timestamps, links to published property after publish
+    - **`ical_connections`:** Stores iCal URLs, sync status, blocked dates (JSONB), detected gap nights (JSONB)
+    - **`gap_night_rules`:** Per-property gap night defaults (discount, check-in/out times, approval mode)
+    - **Relations:** All three tables linked to `airbnb_hosts`, drafts cascade-delete connections and rules
+    - **Indexes:** Added 7 new indexes for host_id, draft_id, property_id, status
+    - **Impact:** Supports the full draft → iCal → publish flow with proper data model
+
+74. **Dashboard Integration (`client/src/pages/host/HostDashboard.tsx`)**
+    - **Changed:** "Add Property" button now links to `/host/create-listing` wizard
+    - **Changed:** Empty state "List Your Property" button also links to new wizard
+    - **Impact:** All property creation flows now use the new premium wizard
+
+75. **Routing (`client/src/App.tsx`)**
+    - **Added:** `/host/create-listing` and `/host/create-listing/:draftId` routes in both MainRouter and PublicRouter
+    - **Import:** `CreateListing` component from `@/pages/host/CreateListing`
+    - **Impact:** New wizard accessible from any entry point
+
+**Files Created:**
+- `server/listing-routes.ts` — Draft listing API + iCal sync + publish
+- `client/src/pages/host/CreateListing.tsx` — 6-step wizard UI
+
+**Files Modified:**
+- `shared/schema.ts` — 3 new tables + relations + types
+- `server/bootstrap.ts` — Table creation + indexes for new tables
+- `server/routes.ts` — Register listing routes
+- `client/src/App.tsx` — Add wizard routes
+- `client/src/pages/host/HostDashboard.tsx` — Link to new wizard
+- `Recent_updates.txt` — This log update
+
+---
+
+## Verification Resilience & Support Visibility - Feb 17, 2026
+
+69. **Verification Page Resilience (`client/src/pages/Signup.tsx`)**
+    - **Issue:** Signup verification flow felt too rigid - no clear timer for resend, couldn't change email if typed wrong, no explanation of why verification matters
+    - **Fix:**
+      - **Clear resend timer:** Added 60-second countdown with visual clock icon and "Resend available in Xs" message
+      - **Change email option:** Added "Use a different email address" button that returns to signup form
+      - **Fraud explanation:** Added info box with shield icon explaining "This helps prevent fraud and protects hosts from fake bookings. You'll only need to do this once."
+      - **Browse without verifying:** Added "Browse deals first" button allowing users to skip verification and view deals - booking gate remains in place
+    - **Impact:** Users feel more in control, less trapped by verification friction
+
+70. **Support Visibility on Error Screens (`client/src/pages/NotFound.tsx`, `client/src/components/ErrorBoundary.tsx`)**
+    - **Issue:** When users hit 404s or runtime errors, no clear path to get help - they feel stuck
+    - **Fix:**
+      - **404 Page:** Added "Having trouble? Contact support" section with mailto link and unique reference code (404-XXXXXXX format)
+      - **Error Boundary:** Added same support section with "Having trouble? Contact support" and reference code (ERR-XXXXXXX format)
+      - **Reference codes:** Short unique tokens generated from timestamp + random for support lookup
+    - **Impact:** Users always have an escape hatch when stuck - they can contact support with a reference code
+
+**Files Modified:**
+- `client/src/pages/Signup.tsx` - Verification resilience improvements
+- `client/src/pages/NotFound.tsx` - Support visibility on 404
+- `client/src/components/ErrorBoundary.tsx` - Support visibility on errors
+- `Recent_updates.txt` - This log update
+
+---
 
 ## Deals Page UI Refinement - Feb 17, 2026
 
