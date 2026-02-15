@@ -328,7 +328,7 @@ export default function Home() {
     <div className="min-h-screen bg-background pb-20">
       <Navigation />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 overflow-x-hidden">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 w-full max-w-full">
         {/* Search Bar - 3 sections */}
         <div className="flex justify-center mb-8">
           <div className="bg-card rounded-2xl sm:rounded-full shadow-lg border border-border/50 p-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-1 max-w-3xl w-full relative">
@@ -677,15 +677,15 @@ export default function Home() {
         </div>
 
         {/* Category Chips */}
-        <div className="w-full overflow-hidden mb-8">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 px-1 min-w-0">
+        <div className="relative w-full mb-8">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 px-1" style={{ width: '100%', maxWidth: '100%' }}>
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
               data-testid={`chip-category-${cat.toLowerCase().replace(/\s+/g, '-')}`}
               className={`
-                whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-medium transition-all
+                whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-medium transition-all shrink-0
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
                 ${
                   activeCategory === cat
