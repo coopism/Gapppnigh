@@ -35,11 +35,18 @@ export default function Signup() {
   // Initialize Google Sign-In when script loads
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) return;
+    console.log('Google Client ID:', clientId);
+    if (!clientId) {
+      console.error('No Google Client ID found');
+      setGoogleFailed(true);
+      return;
+    }
 
     const initGoogle = () => {
+      console.log('Initializing Google Sign-In...');
       // @ts-ignore
       if (window.google?.accounts?.id) {
+        console.log('Google accounts.id found, initializing...');
         // @ts-ignore
         window.google.accounts.id.initialize({
           client_id: clientId,
@@ -73,21 +80,36 @@ export default function Signup() {
             }
             setIsLoading(false);
           },
+          auto_select: false,
+          cancel_on_tap_outside: true,
         });
 
-        if (googleButtonRef.current) {
-          // @ts-ignore
-          window.google.accounts.id.renderButton(googleButtonRef.current, {
-            type: "standard",
-            theme: "outline",
-            size: "large",
-            width: googleButtonRef.current.offsetWidth,
-            text: "signup_with",
-            shape: "rectangular",
-            logo_alignment: "left",
-          });
-        }
-        setGoogleLoaded(true);
+        // Render the Google button with retry logic
+        const renderButton = () => {
+          if (googleButtonRef.current) {
+            const width = googleButtonRef.current.offsetWidth || 280;
+            console.log('Rendering Google button with width:', width);
+            // @ts-ignore
+            window.google.accounts.id.renderButton(googleButtonRef.current, {
+              type: "standard",
+              theme: "outline",
+              size: "large",
+              width: Math.max(width, 200),
+              text: "signup_with",
+              shape: "rectangular",
+              logo_alignment: "left",
+            });
+            console.log('Google button rendered successfully');
+            setGoogleLoaded(true);
+            setGoogleFailed(false);
+          } else {
+            console.log('Google button ref not ready, retrying in 100ms...');
+            setTimeout(renderButton, 100);
+          }
+        };
+        
+        // Delay slightly to ensure DOM is ready
+        setTimeout(renderButton, 50);
       }
     };
 

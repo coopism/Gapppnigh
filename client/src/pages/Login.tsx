@@ -29,6 +29,7 @@ export default function Login() {
     console.log('Google Client ID:', clientId);
     if (!clientId) {
       console.error('No Google Client ID found');
+      setGoogleFailed(true);
       return;
     }
 
@@ -70,24 +71,36 @@ export default function Login() {
             }
             setIsLoading(false);
           },
+          auto_select: false,
+          cancel_on_tap_outside: true,
         });
 
-        // Render the Google button
-        if (googleButtonRef.current) {
-          console.log('Rendering Google button...');
-          // @ts-ignore
-          window.google.accounts.id.renderButton(googleButtonRef.current, {
-            type: "standard",
-            theme: "outline",
-            size: "large",
-            width: googleButtonRef.current.offsetWidth,
-            text: "continue_with",
-            shape: "rectangular",
-            logo_alignment: "left",
-          });
-          console.log('Google button rendered successfully');
-        }
-        setGoogleLoaded(true);
+        // Render the Google button with retry logic
+        const renderButton = () => {
+          if (googleButtonRef.current) {
+            const width = googleButtonRef.current.offsetWidth || 280;
+            console.log('Rendering Google button with width:', width);
+            // @ts-ignore
+            window.google.accounts.id.renderButton(googleButtonRef.current, {
+              type: "standard",
+              theme: "outline",
+              size: "large",
+              width: Math.max(width, 200),
+              text: "continue_with",
+              shape: "rectangular",
+              logo_alignment: "left",
+            });
+            console.log('Google button rendered successfully');
+            setGoogleLoaded(true);
+            setGoogleFailed(false);
+          } else {
+            console.log('Google button ref not ready, retrying in 100ms...');
+            setTimeout(renderButton, 100);
+          }
+        };
+        
+        // Delay slightly to ensure DOM is ready
+        setTimeout(renderButton, 50);
       }
     };
 
