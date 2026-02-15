@@ -768,6 +768,10 @@ export default function Home() {
         </div>
 
         {/* Deals Grid */}
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+          {isLoading ? "Loading deals..." : deals ? `${deals.length} deals found` : "No deals found"}
+        </div>
+        
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <GapNightLogoLoader size={64} className="mb-4" />

@@ -88,6 +88,70 @@ export default function DealDetail() {
       setSelectedOption(deal.id);
     }
   }, [deal, selectedOption]);
+
+  // Generate structured data for SEO
+  const generateStructuredData = () => {
+    if (!deal) return null;
+    
+    const discountPercent = Math.round(
+      ((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100
+    );
+    
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "LodgingReservation",
+      "reservationFor": {
+        "@type": "LodgingBusiness",
+        "name": deal.hotelName,
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": deal.location,
+          "addressCountry": "AU"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": deal.rating.toString(),
+          "reviewCount": deal.reviewCount.toString()
+        },
+        "amenityFeature": (deal.amenities || []).map(amenity => ({
+          "@type": "LocationFeatureSpecification",
+          "name": amenity
+        }))
+      },
+      "price": deal.dealPrice.toString(),
+      "priceCurrency": deal.currency,
+      "discount": `${discountPercent}%`,
+      "checkinDate": deal.checkInDate,
+      "checkoutDate": deal.checkOutDate,
+      "offers": {
+        "@type": "Offer",
+        "price": deal.dealPrice.toString(),
+        "priceCurrency": deal.currency,
+        "priceValidUntil": deal.checkInDate,
+        "availability": "https://schema.org/InStock",
+        "url": `https://www.gapnight.com/deal/${deal.id}`,
+        "itemOffered": {
+          "@type": "HotelRoom",
+          "name": deal.roomType,
+          "bed": {
+            "@type": "BedDetails",
+            "numberOfBeds": 1
+          },
+          "occupancy": {
+            "@type": "QuantitativeValue",
+            "value": deal.maxGuests || 2
+          }
+        }
+      },
+      "provider": {
+        "@type": "Organization",
+        "name": "GapNight",
+        "url": "https://www.gapnight.com"
+      }
+    };
+    
+    return structuredData;
+  };
   
   const handleBooking = () => {
     if (selectedOption) {
@@ -151,9 +215,27 @@ export default function DealDetail() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* JSON-LD Structured Data for SEO */}
+      {deal && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(generateStructuredData()),
+          }}
+        />
+      )}
+      
+      {/* Skip to content link for accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg"
+      >
+        Skip to main content
+      </a>
+      
       <Navigation />
       
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <main id="main-content" className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {/* Back Link */}
         <Link href="/deals" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors" data-testid="link-back">
           <ArrowLeft className="w-4 h-4" />
