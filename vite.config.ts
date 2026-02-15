@@ -34,7 +34,7 @@ export default defineConfig({
           // Date handling
           dates: ["date-fns"],
           // Maps (heavy, lazy loaded)
-          maps: ["leaflet", "react-leaflet"],
+          maps: ["leaflet"],
           // Charts and visualization
           charts: ["recharts"],
           // Stripe (load only when needed)
