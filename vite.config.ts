@@ -26,7 +26,7 @@ export default defineConfig({
         // Manual chunking for better caching
         manualChunks: {
           // Core vendor libraries
-          vendor: ["react", "react-dom", "react-router-dom"],
+          vendor: ["react", "react-dom", "wouter"],
           // UI components and styling
           ui: ["@radix-ui/react-dialog", "@radix-ui/react-dropdown-menu", "@radix-ui/react-slot", "class-variance-authority", "clsx", "tailwind-merge"],
           // Data fetching and state
@@ -74,7 +74,7 @@ export default defineConfig({
   },
   // Optimize dependencies pre-bundling
   optimizeDeps: {
-    include: ["react", "react-dom", "react-router-dom", "@tanstack/react-query", "date-fns"],
+    include: ["react", "react-dom", "wouter", "@tanstack/react-query", "date-fns"],
     exclude: ["leaflet", "@stripe/stripe-js"], // Lazy load heavy deps
   },
 });
