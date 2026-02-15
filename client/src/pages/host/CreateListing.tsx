@@ -294,8 +294,8 @@ export default function CreateListing() {
     gapNightDiscount: 30,
     weekdayMultiplier: "1.0",
     weekendMultiplier: "1.0",
-    manualApproval: true,
-    autoPublish: false,
+    manualApproval: false,
+    autoPublish: true,
     selfCheckIn: false,
     petFriendly: false,
     smokingAllowed: false,
@@ -1035,9 +1035,19 @@ export default function CreateListing() {
                 <CalendarDays className="w-4 h-4 text-primary" />
                 <h3 className="text-sm font-semibold">Sync Airbnb Calendar (recommended)</h3>
               </div>
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 space-y-2">
                 <p className="text-xs text-muted-foreground">
                   <strong className="text-foreground">How to find your iCal link:</strong> In Airbnb → Calendar → Availability settings → Export calendar → Copy the link
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  <strong className="text-foreground">Want to test first?</strong> Paste this sample URL to see how sync works:{" "}
+                  <button
+                    type="button"
+                    className="text-primary underline underline-offset-2 hover:text-primary/80 font-mono break-all"
+                    onClick={() => { setIcalUrl("https://calendar.google.com/calendar/ical/en.australian%23holiday%40group.v.calendar.google.com/public/basic.ics"); toast({ title: "Test URL pasted!", description: "Click 'Test link' to try it out." }); }}
+                  >
+                    Use sample calendar ↗
+                  </button>
                 </p>
               </div>
               <div>
@@ -1200,7 +1210,15 @@ export default function CreateListing() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Prep buffer</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                    Prep buffer
+                    <span className="relative group">
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-muted text-muted-foreground text-[10px] font-bold cursor-help">?</span>
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 bg-foreground text-background text-[11px] rounded-lg px-3 py-2 opacity-0 pointer-events-none group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-30 shadow-lg">
+                        Adds a buffer day after each guest checkout so you have time to clean and prepare the property for the next guest. The blocked day won't be available for bookings.
+                      </span>
+                    </span>
+                  </label>
                   <label className="flex items-center gap-2.5 h-11 cursor-pointer min-h-[44px]">
                     <input type="checkbox" checked={form.prepBuffer} onChange={e => updateForm({ prepBuffer: e.target.checked })} className="w-5 h-5 rounded" />
                     <span className="text-sm">Block day after booking</span>
@@ -1286,34 +1304,29 @@ export default function CreateListing() {
             {/* Approval toggle */}
             <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2"><Settings className="w-4 h-4 text-primary" /> Gap night approval</h3>
+              <div className="bg-emerald-500/10 border border-emerald-200 rounded-xl p-3">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-emerald-700">Auto-approve is on</p>
+                    <p className="text-xs text-emerald-600">Gap nights will be published automatically based on your pricing rules. This is the fastest way to fill gaps.</p>
+                  </div>
+                </div>
+              </div>
               <label className="flex items-center justify-between cursor-pointer min-h-[44px]">
                 <div>
-                  <p className="text-sm font-medium">Manual approval for suggested gap nights</p>
-                  <p className="text-xs text-muted-foreground">Review each gap night before it goes live</p>
+                  <p className="text-sm font-medium">Require manual approval instead</p>
+                  <p className="text-xs text-muted-foreground">Review each gap night before it goes live (slower but more control)</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={form.manualApproval}
-                  onChange={e => updateForm({ manualApproval: e.target.checked })}
+                  onChange={e => {
+                    updateForm({ manualApproval: e.target.checked, autoPublish: !e.target.checked });
+                  }}
                   className="w-5 h-5 rounded"
                 />
               </label>
-              {!form.manualApproval && (
-                <div className="bg-amber-500/10 border border-amber-200 rounded-xl p-3">
-                  <label className="flex items-start gap-2.5 cursor-pointer min-h-[44px]">
-                    <input
-                      type="checkbox"
-                      checked={form.autoPublish}
-                      onChange={e => updateForm({ autoPublish: e.target.checked })}
-                      className="w-5 h-5 rounded mt-0.5"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-amber-700">Auto-publish gap nights</p>
-                      <p className="text-xs text-amber-600">I understand that gap nights will be published automatically based on my rules.</p>
-                    </div>
-                  </label>
-                </div>
-              )}
             </div>
           </div>
         )}

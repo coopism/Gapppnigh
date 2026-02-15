@@ -1,6 +1,27 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Create Listing Wizard UX Improvements - Feb 18, 2026
+
+76. **Auto-approve default flipped (`CreateListing.tsx`)**
+    - Auto-publish gap nights is now ON by default (fastest path for hosts)
+    - Hosts must check "Require manual approval instead" to opt into slower manual flow
+    - Green "Auto-approve is on" banner shown by default with explanation
+
+77. **Prep buffer (?) tooltip (`CreateListing.tsx`)**
+    - Added hover tooltip next to "Prep buffer" label explaining what it does
+    - "Adds a buffer day after each guest checkout so you have time to clean and prepare..."
+
+78. **Test iCal URL for sync verification (`CreateListing.tsx`)**
+    - Added "Want to test first?" section in calendar step with sample Google Calendar URL
+    - Hosts can click "Use sample calendar" to auto-fill a public .ics URL and test the sync flow
+
+**Files Modified:**
+- `client/src/pages/host/CreateListing.tsx` — All 3 changes above
+- `Recent_updates.txt` — This log
+
+---
+
 ## Host Onboarding Revamp - Feb 18, 2026
 
 71. **New 6-Step Create Listing Wizard (`client/src/pages/host/CreateListing.tsx`)**
