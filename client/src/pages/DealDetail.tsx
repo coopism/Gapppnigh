@@ -415,10 +415,13 @@ export default function DealDetail() {
                   <Button 
                     className="w-full h-12 text-base font-semibold rounded-xl" 
                     onClick={handleBooking}
-                    data-testid="button-request-booking"
+                    data-testid="button-continue-checkout"
                   >
-                    Request Booking
+                    Continue to checkout
                   </Button>
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Secure instant booking. No approval needed.
+                  </p>
                 </>
               ) : (
                 <div className="text-center py-4">

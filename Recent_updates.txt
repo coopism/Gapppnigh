@@ -1,5 +1,72 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-16
+# Last Updated: 2026-02-17
+
+## Deals Page UI Refinement - Feb 17, 2026
+
+62. **Card Overlay Cleanup + Badge Logic (`client/src/components/DealCard.tsx`, `client/src/components/PropertyDealCard.tsx`)**
+    - **Issue:** Cards had 3 competing overlays (Rare Find, % OFF, SCORE badge) creating visual clutter; "Rare Find" appeared on almost every card diluting its meaning
+    - **Fix:**
+      - **Discount badge only:** Now the sole badge on image (top-left) - the strongest conversion hook
+      - **Removed SCORE badge:** Eliminated from image entirely; deal score kept only as sort option
+      - **Rare Find rarity:** Only shows for top 15% of deals (score >= 85), moved to card content area (not on image)
+      - **Badge collision rule:** Never stack more than one badge on-image
+    - **Impact:** Cleaner, less cluttered cards; "Rare Find" now truly meaningful; discount is the hero element
+
+63. **Price Block Standardization (`client/src/components/DealCard.tsx`, `client/src/components/PropertyDealCard.tsx`)**
+    - **Issue:** Price formatting and alignment inconsistent - old price right-aligned competing with new price and "per night" label
+    - **Fix:**
+      - **Position:** Always bottom-right of card
+      - **Format:** Consistent ~~$old~~ $new with /night directly underneath
+      - **Old price:** Slightly higher contrast (text-muted-foreground/80) for readability while staying muted
+      - **Copy:** Changed "per night" to "/ night" across all cards
+    - **Impact:** Faster price scanning, consistent visual hierarchy, better conversion
+
+64. **Card Information Hierarchy Cleanup (`client/src/components/DealCard.tsx`, `client/src/components/PropertyDealCard.tsx`)**
+    - **Issue:** Card content felt busy with inconsistent spacing and unclear visual hierarchy
+    - **Fix:**
+      - **New order:** Title → Rating (with review count) → Location → 1 highlight line → Room type + guests → Amenities (max 3 icons + +N) → Availability line
+      - **Truncation:** Title and highlight line limited to 1 line with ellipsis
+      - **Spacing:** Tightened to feel "dense but not cluttered" (p-2.5 mobile, p-3 desktop)
+      - **Amenities:** Reduced from 4 icons to 3 icons + +N indicator
+    - **Impact:** Clearer scanning flow, faster information digestion, more professional appearance
+
+65. **Save (Heart) Interaction (`client/src/components/DealCard.tsx`, `client/src/components/PropertyDealCard.tsx`)**
+    - **Issue:** No way for users to save/bookmark deals for later
+    - **Fix:**
+      - **Position:** Heart icon in top-right of image (opposite discount badge)
+      - **States:** Default (transparent white), hover (30% white fill), saved (rose-500 fill)
+      - **Accessibility:** Keyboard accessible (Tab focus), aria-label and aria-pressed attributes, focus-visible ring
+      - **Mobile:** Full touch support with tap to toggle
+    - **Impact:** Users can now save deals, improving engagement and return visits
+
+66. **Toolbar Alignment Fix (`client/src/pages/Home.tsx`)**
+    - **Issue:** Right-side controls (view toggle + sort) felt detached from content grid
+    - **Fix:**
+      - **Left side:** "Explore today's deals" + result count (always visible)
+      - **Right side:** View toggle + sort dropdown aligned on same baseline
+      - **Spacing:** gap-4 between left/right groups, tight alignment to grid container edges
+    - **Impact:** Cleaner header layout, better visual connection to results
+
+67. **Booking CTA Copy Change (`client/src/pages/DealDetail.tsx`)**
+    - **Issue:** "Request Booking" copy didn't clearly communicate instant vs approval-required flows
+    - **Fix:**
+      - **Instant checkout:** Changed to "Continue to checkout" with "Secure instant booking. No approval needed." explanation
+      - **Button:** data-testid updated to "button-continue-checkout"
+    - **Impact:** Clearer user expectations, reduced confusion at checkout
+
+68. **Mobile Search Components (Verified Existing)**
+    - **CollapsedSearchBar:** Shows "Anywhere • Anytime • 1 guest" summary
+    - **SearchBottomSheet:** Where/When/Who tabs with "Show deals" full-width CTA
+    - **Category chips:** Horizontal scroll with fade indicator
+    - **No overflow:** Already implemented with proper containment
+    - **Status:** All mobile search requirements already satisfied by existing implementation
+
+**Files Modified:**
+- `client/src/components/DealCard.tsx` - Card overlay, price, hierarchy, save heart
+- `client/src/components/PropertyDealCard.tsx` - Matched DealCard styling
+- `client/src/pages/Home.tsx` - Toolbar alignment
+- `client/src/pages/DealDetail.tsx` - Booking CTA copy
+- `Recent_updates.txt` - This log update
 
 ## Desktop Deals Page Redesign - Feb 16, 2026
 

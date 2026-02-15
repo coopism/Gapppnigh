@@ -715,19 +715,19 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Section Header + Sort + View Toggle */}
-        <div className="flex items-center justify-between mb-6">
-          {/* Left: Results count */}
+        {/* Section Header + Sort + View Toggle - Aligned */}
+        <div className="flex items-center justify-between mb-6 gap-4">
+          {/* Left: Title + Results count */}
           <div className="flex items-center gap-3">
             <h2 className="text-lg md:text-xl font-bold text-foreground">Explore today's deals</h2>
             {!isLoading && deals && (
-              <span className="text-sm text-muted-foreground hidden sm:inline">
+              <span className="text-sm text-muted-foreground">
                 {deals.length} {deals.length === 1 ? 'deal' : 'deals'} found
               </span>
             )}
           </div>
 
-          {/* Right: Controls */}
+          {/* Right: View Toggle + Sort */}
           <div className="flex items-center gap-2">
             {/* View Toggle */}
             <div className="flex items-center bg-muted rounded-lg p-1">
