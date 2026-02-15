@@ -64,6 +64,16 @@
     - **Fix:** Added ALTER TABLE migrations in `bootstrap.ts` that run on server start: adds `phone`, `google_id`, `apple_id` to users if missing; makes `property_bookings.user_id` nullable
     - **Impact:** Signup with phone number and guest bookings now work on production
 
+59. **Google OAuth Fix (`client/src/pages/Login.tsx`, `client/src/pages/Signup.tsx`)**
+    - **Issue:** Google Sign-In button sometimes failed to render, especially on mobile or when DOM wasn't ready
+    - **Fix:** 
+      - Added `setGoogleFailed(true)` when Google Client ID is missing
+      - Added retry logic for button rendering (retries if ref isn't ready)
+      - Ensured minimum width of 200px (default 280px if ref width is 0)
+      - Added `auto_select: false` and `cancel_on_tap_outside: true` for better UX
+      - Added console logging for debugging
+    - **Impact:** Google OAuth now works reliably on both signup and signin pages
+
 ## Round 2 Fixes - Feb 12, 2026
 
 45. **Footer Mobile Layout Fix (`client/src/components/Footer.tsx`)**
