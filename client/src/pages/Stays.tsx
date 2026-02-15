@@ -85,18 +85,23 @@ export default function Stays() {
         {/* Results */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="rounded-xl overflow-hidden">
-                  <div className="h-44 sm:h-48 bg-muted animate-pulse" />
-                  <div className="p-4 space-y-2">
-                    <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
-                    <div className="h-3 bg-muted rounded animate-pulse w-1/2" />
-                    <div className="h-5 bg-muted rounded animate-pulse w-1/3 mt-3" />
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="rounded-xl overflow-hidden">
+                    <div className="h-44 sm:h-48 bg-muted animate-pulse" />
+                    <div className="p-4 space-y-2">
+                      <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
+                      <div className="h-3 bg-muted rounded animate-pulse w-1/2" />
+                      <div className="h-5 bg-muted rounded animate-pulse w-1/3 mt-3" />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </>
           ) : properties.length === 0 ? (
             <div className="text-center py-16 sm:py-20">
               <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
@@ -107,8 +112,10 @@ export default function Stays() {
             </div>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground mb-4">{properties.length} {properties.length === 1 ? "property" : "properties"} found</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted-foreground">{properties.length} {properties.length === 1 ? "property" : "properties"} found</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {properties.map((prop: any) => (
                   <PropertyCard key={prop.id} property={prop} onClick={() => setLocation(`/stays/${prop.id}`)} />
                 ))}
