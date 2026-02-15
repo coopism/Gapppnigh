@@ -678,7 +678,7 @@ export default function Home() {
 
         {/* Category Chips */}
         <div className="w-full overflow-hidden mb-8">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 px-1">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 px-1 min-w-0">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
