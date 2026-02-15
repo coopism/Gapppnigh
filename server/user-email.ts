@@ -17,11 +17,16 @@ export async function sendVerificationEmail(
   token: string, 
   name?: string | null
 ): Promise<boolean> {
-  const verifyUrl = `${BASE_URL}/verify-email?token=${token}`;
+  const isOtp = /^\d{6}$/.test(token);
+  const verifyUrl = isOtp ? null : `${BASE_URL}/verify-email?token=${token}`;
   
   // Log for development
   console.log(`[EMAIL] Verification email for ${email}`);
-  console.log(`[EMAIL] Verify URL: ${verifyUrl}`);
+  if (isOtp) {
+    console.log(`[EMAIL] OTP Code: ${token}`);
+  } else {
+    console.log(`[EMAIL] Verify URL: ${verifyUrl}`);
+  }
   
   const { client, fromEmail } = getResendClient();
   
@@ -31,6 +36,23 @@ export async function sendVerificationEmail(
   }
   
   try {
+    const actionBlock = isOtp
+      ? `
+    <div style="text-align: center; margin: 30px 0;">
+      <p style="color: #4b5563; font-size: 14px; margin-bottom: 12px;">Your verification code is:</p>
+      <div style="display: inline-block; background: #f3f4f6; border: 2px dashed #d1d5db; border-radius: 12px; padding: 16px 32px;">
+        <span style="font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #0ea5e9; font-family: monospace;">${token}</span>
+      </div>
+      <p style="color: #6b7280; font-size: 13px; margin-top: 12px;">Enter this code on the verification page to confirm your email.</p>
+    </div>`
+      : `
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${verifyUrl}" 
+         style="display: inline-block; background: #0ea5e9; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+        Verify Email Address
+      </a>
+    </div>`;
+
     const emailHtml = `
 <!DOCTYPE html>
 <html>
@@ -41,25 +63,20 @@ export async function sendVerificationEmail(
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background-color: #f9fafb;">
   <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-    <h1 style="color: #1a1a1a; margin: 0 0 20px 0; font-size: 24px;">🌙 Welcome to GapNight!</h1>
+    <h1 style="color: #1a1a1a; margin: 0 0 20px 0; font-size: 24px;">Welcome to GapNight!</h1>
     
     <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
       Hi${name ? ` ${name}` : ''},
     </p>
     
     <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-      Thanks for signing up! Please verify your email address to access your booking history and manage your account.
+      Thanks for signing up! Please verify your email address to complete your registration.
     </p>
     
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="${verifyUrl}" 
-         style="display: inline-block; background: #0ea5e9; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
-        Verify Email Address
-      </a>
-    </div>
+    ${actionBlock}
     
     <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-      This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.
+      This ${isOtp ? 'code' : 'link'} expires in 24 hours. If you didn't create an account, you can safely ignore this email.
     </p>
     
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
@@ -75,7 +92,7 @@ export async function sendVerificationEmail(
     await client.emails.send({
       from: fromEmail,
       to: email,
-      subject: 'Verify your GapNight account',
+      subject: isOtp ? `${token} is your GapNight verification code` : 'Verify your GapNight account',
       html: emailHtml,
     });
 

@@ -706,23 +706,23 @@ router.get("/api/auth/verify-identity/status", async (req: any, res: Response) =
 // Request a booking
 router.post("/api/properties/:propertyId/book", async (req: any, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "You must be logged in to book" });
-    }
+    const isAuthenticated = !!req.user?.id;
 
-    // Check ID verification
-    const [verification] = await db
-      .select()
-      .from(userIdVerifications)
-      .where(eq(userIdVerifications.userId, req.user?.id))
-      .limit(1);
+    // If authenticated, check ID verification
+    if (isAuthenticated) {
+      const [verification] = await db
+        .select()
+        .from(userIdVerifications)
+        .where(eq(userIdVerifications.userId, req.user?.id))
+        .limit(1);
 
-    if (!verification || verification.status !== "verified") {
-      return res.status(403).json({ 
-        error: "ID verification required",
-        message: "You must verify your identity before booking a property",
-        verificationStatus: verification?.status || "unverified",
-      });
+      if (!verification || verification.status !== "verified") {
+        return res.status(403).json({ 
+          error: "ID verification required",
+          message: "You must verify your identity before booking a property",
+          verificationStatus: verification?.status || "unverified",
+        });
+      }
     }
 
     const propertyId = req.params.propertyId as string;
@@ -820,7 +820,7 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
           id: bookingId,
           propertyId,
           hostId: property.hostId,
-          userId: req.user?.id,
+          userId: req.user?.id || null,
           checkInDate,
           checkOutDate,
           nights,

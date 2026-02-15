@@ -1,5 +1,47 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-12
+# Last Updated: 2026-02-13
+
+## Round 3 Fixes & Features - Feb 13, 2026
+
+51. **Address Lookup Backend Proxy (`server/host-routes.ts`, `client/src/pages/host/HostDashboard.tsx`)**
+    - **Issue:** Direct frontend fetch to Nominatim API was blocked by browsers — browsers strip custom User-Agent headers and Nominatim requires one, plus CORS issues
+    - **Fix:** Created backend proxy endpoint `GET /api/address-search?q=...` that forwards requests to Nominatim with proper User-Agent header. Updated frontend LocationStep to call `/api/address-search` instead of Nominatim directly
+    - **Impact:** Address autocomplete in property listing wizard now works reliably
+
+52. **Stays Page Mobile UI Revamp (`client/src/pages/Stays.tsx`)**
+    - **Issue:** Page used inline header/footer instead of shared Navigation/Footer components, raw gray styling, no mobile optimization
+    - **Fix:** Replaced inline header/footer with shared `<Navigation />` and `<Footer />` components. Added gradient hero search section with icon-prefixed inputs. Mobile-first responsive grid (1-col mobile, 2-col tablet, 3-col desktop). Better skeleton loaders, empty state with icon, result count. Property cards with hover zoom effect, star ratings with Lucide icons, image error fallback
+    - **Impact:** Stays page now matches the rest of the platform and looks great on mobile
+
+53. **OTP Email Verification on Signup (`shared/schema.ts`, `server/user-auth.ts`, `server/user-routes.ts`, `server/user-email.ts`, `client/src/pages/Signup.tsx`, `client/src/hooks/useAuth.ts`)**
+    - **Issue:** Email verification used a link-based flow — user had to click a link in their email, which was easy to skip
+    - **Fix:** 
+      - Signup now generates a 6-digit OTP code (stored as hashed token in email_tokens table)
+      - Email template shows the code prominently with large monospace font instead of a button link
+      - After signup, frontend shows OTP entry screen with 6-digit input, verify button, and resend option
+      - Resend endpoint also generates new 6-digit OTP codes
+    - **Schema changes:** `signupSchema` now requires `name` (was optional) and `phone` (new required field). Users table has new `phone` column
+    - **Impact:** Users must verify their email with a 6-digit code before proceeding. Full name and mobile number are now mandatory at signup
+
+54. **Guest Booking Without Sign-In (`client/src/pages/PropertyBooking.tsx`, `server/property-routes.ts`)**
+    - **Issue:** Booking page had a full auth gate — users had to sign in before seeing the booking form
+    - **Fix:** 
+      - Removed auth gate, replaced with a subtle "Booking as a guest" info banner with optional Sign In button
+      - Guest details form and payment are now accessible without login
+      - ID verification section only shows for authenticated users (guests skip it)
+      - Payment gating updated: guests can pay without ID verification, logged-in users still need it
+      - Backend booking endpoint no longer requires `req.user?.id` — stores `userId: null` for guest bookings
+    - **Impact:** Users can complete a booking without creating an account first
+
+55. **Account Creation Prompt After Guest Booking (`client/src/pages/PropertyBooking.tsx`)**
+    - **Issue:** No way to encourage guest users to create accounts after booking
+    - **Fix:** Added a prominent "Create an account to manage your booking" card on the booking confirmation screen for non-logged-in users. Shows the email they booked with and a "Create Free Account" button linking to signup
+    - **Impact:** Encourages guest-to-account conversion after booking
+
+56. **Link Guest Bookings to Account on Signup (`server/user-routes.ts`)**
+    - **Issue:** If a user booked as a guest then later created an account with the same email, the booking wasn't linked
+    - **Fix:** After creating a new user account, the signup endpoint runs an UPDATE query to set `userId` on all `propertyBookings` where `guestEmail` matches and `userId` is null
+    - **Impact:** Guest bookings are automatically linked to the user's account when they sign up with the same email
 
 ## Round 2 Fixes - Feb 12, 2026
 

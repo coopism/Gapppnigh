@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, User, Check, X, ArrowLeft } from "lucide-react";
-import { signup, validatePassword, getPasswordStrength } from "@/hooks/useAuth";
+import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, User, Check, X, ArrowLeft, Phone } from "lucide-react";
+import { signup, validatePassword, getPasswordStrength, useAuthStore } from "@/hooks/useAuth";
 import { GapNightLogo } from "@/components/GapNightLogo";
 import { Footer } from "@/components/Footer";
 
@@ -15,6 +15,7 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +23,14 @@ export default function Signup() {
   const [googleLoaded, setGoogleLoaded] = useState(false);
   const [googleFailed, setGoogleFailed] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
+  
+  // OTP verification state
+  const [showOtpStep, setShowOtpStep] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [resendingOtp, setResendingOtp] = useState(false);
+  const [signupEmail, setSignupEmail] = useState("");
 
   // Initialize Google Sign-In when script loads
   useEffect(() => {
@@ -142,19 +151,90 @@ export default function Signup() {
       return;
     }
 
+    if (!name.trim()) {
+      setError("Full name is required");
+      setFieldError("name");
+      return;
+    }
+
+    if (!phone.trim() || phone.replace(/\D/g, "").length < 8) {
+      setError("Valid mobile number is required");
+      setFieldError("phone");
+      return;
+    }
+
     setIsLoading(true);
 
-    const result = await signup(email, password, name || undefined);
+    const result = await signup(email, password, name, phone);
 
     setIsLoading(false);
 
     if (result.success) {
-      const params = new URLSearchParams(window.location.search);
-      const redirect = params.get("redirect");
-      setLocation(redirect || "/account?verified=pending");
+      if (result.requiresOtp) {
+        setSignupEmail(email);
+        setShowOtpStep(true);
+      } else {
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get("redirect");
+        setLocation(redirect || "/account");
+      }
     } else {
       setError(result.error || "Signup failed");
       setFieldError(result.field || null);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpCode.length !== 6) {
+      setOtpError("Please enter the 6-digit code");
+      return;
+    }
+    setVerifyingOtp(true);
+    setOtpError(null);
+    try {
+      const csrfToken = useAuthStore.getState().csrfToken;
+      const res = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken || "" },
+        credentials: "include",
+        body: JSON.stringify({ token: otpCode }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get("redirect");
+        setLocation(redirect || "/account");
+      } else {
+        setOtpError(data.message || "Invalid or expired code. Please try again.");
+      }
+    } catch {
+      setOtpError("Verification failed. Please try again.");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setResendingOtp(true);
+    setOtpError(null);
+    try {
+      const csrfToken = useAuthStore.getState().csrfToken;
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken || "" },
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setOtpError(null);
+        setOtpCode("");
+      } else {
+        setOtpError(data.message || "Failed to resend code.");
+      }
+    } catch {
+      setOtpError("Failed to resend code.");
+    } finally {
+      setResendingOtp(false);
     }
   };
 
@@ -183,6 +263,80 @@ export default function Signup() {
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-4 py-8">
         <div className="w-full max-w-md">
+
+          {showOtpStep ? (
+            <>
+              {/* OTP Verification Step */}
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Mail className="w-8 h-8 text-primary" />
+                </div>
+                <h1 className="text-2xl font-display font-bold tracking-tight mb-2">Verify your email</h1>
+                <p className="text-sm text-muted-foreground">
+                  We sent a 6-digit code to <span className="font-medium text-foreground">{signupEmail}</span>
+                </p>
+              </div>
+
+              <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
+                <div className="space-y-4">
+                  {otpError && (
+                    <Alert variant="destructive" className="rounded-xl">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{otpError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="otp" className="text-sm font-medium">Verification code</Label>
+                    <Input
+                      id="otp"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="000000"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      className="h-14 text-center text-2xl font-mono tracking-[0.5em] rounded-xl"
+                      autoFocus
+                      onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
+                    />
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={handleVerifyOtp}
+                    disabled={verifyingOtp || otpCode.length !== 6}
+                    className="w-full h-11 rounded-xl font-bold"
+                  >
+                    {verifyingOtp ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...</>
+                    ) : (
+                      "Verify Email"
+                    )}
+                  </Button>
+
+                  <div className="text-center pt-2">
+                    <p className="text-xs text-muted-foreground mb-2">Didn't receive the code?</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleResendOtp}
+                      disabled={resendingOtp}
+                      className="text-primary text-xs"
+                    >
+                      {resendingOtp ? (
+                        <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Sending...</>
+                      ) : (
+                        "Resend code"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+          <>
           {/* Hero Section */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-display font-bold tracking-tight mb-2">Create account</h1>
@@ -200,23 +354,41 @@ export default function Signup() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium">Name <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Label htmlFor="name" className="text-sm font-medium">Full name *</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="name"
                     type="text"
-                    placeholder="Your name"
+                    placeholder="Your full name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="pl-10 h-11 rounded-xl"
+                    className={`pl-10 h-11 rounded-xl ${fieldError === "name" ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    required
                     autoComplete="name"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
+                <Label htmlFor="phone" className="text-sm font-medium">Mobile number *</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="04XX XXX XXX"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className={`pl-10 h-11 rounded-xl ${fieldError === "phone" ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    required
+                    autoComplete="tel"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">Email address *</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -416,6 +588,8 @@ export default function Signup() {
               ))}
             </div>
           </div>
+          </>
+          )}
         </div>
       </main>
 

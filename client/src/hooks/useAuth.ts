@@ -75,7 +75,7 @@ export async function initAuth(): Promise<void> {
 }
 
 // Auth API functions
-export async function signup(email: string, password: string, name?: string): Promise<{ success: boolean; error?: string; field?: string }> {
+export async function signup(email: string, password: string, name?: string, phone?: string): Promise<{ success: boolean; requiresOtp?: boolean; error?: string; field?: string }> {
   const csrfToken = useAuthStore.getState().csrfToken || await fetchCsrfToken();
   
   try {
@@ -86,7 +86,7 @@ export async function signup(email: string, password: string, name?: string): Pr
         'X-CSRF-Token': csrfToken || '',
       },
       credentials: 'include',
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, name, phone }),
     });
     
     const data = await res.json();
@@ -96,7 +96,7 @@ export async function signup(email: string, password: string, name?: string): Pr
       if (data.csrfToken) {
         useAuthStore.getState().setCsrfToken(data.csrfToken);
       }
-      return { success: true };
+      return { success: true, requiresOtp: data.requiresOtp };
     }
     
     return { success: false, error: data.message, field: data.field };

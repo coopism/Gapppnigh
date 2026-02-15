@@ -25,10 +25,10 @@ import {
   USER_SESSION_COOKIE,
   CSRF_COOKIE,
 } from "./user-auth";
-import { signupSchema, loginSchema, passwordSchema, bookings, userAlertPreferences, hotelReviews } from "@shared/schema";
+import { signupSchema, loginSchema, passwordSchema, bookings, userAlertPreferences, hotelReviews, propertyBookings } from "@shared/schema";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./user-email";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { storage } from "./storage";
 import * as rewards from "./rewards";
@@ -107,11 +107,27 @@ export function registerUserAuthRoutes(app: Express) {
       }
       
       // Create user
-      const user = await createUser(input.email, input.password, input.name);
+      const user = await createUser(input.email, input.password, input.name, input.phone);
       logSecurityEvent("signup_success", { userId: user.id, email: user.email, ip });
       
-      // Create verification token and send email
-      const verifyToken = await createEmailToken(user.id, "verify_email");
+      // Link any guest bookings made with this email to the new account
+      try {
+        const linked = await db.update(propertyBookings)
+          .set({ userId: user.id })
+          .where(and(
+            eq(propertyBookings.guestEmail, user.email),
+            isNull(propertyBookings.userId)
+          ));
+        if (linked.rowCount && linked.rowCount > 0) {
+          logSecurityEvent("guest_bookings_linked", { userId: user.id, email: user.email, count: linked.rowCount });
+        }
+      } catch (linkErr) {
+        console.error("Failed to link guest bookings:", linkErr);
+      }
+      
+      // Generate 6-digit OTP code and send via email
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const verifyToken = await createEmailToken(user.id, "verify_email", otpCode);
       await sendVerificationEmail(user.email, verifyToken, user.name);
       
       // Create session
@@ -132,9 +148,11 @@ export function registerUserAuthRoutes(app: Express) {
           id: user.id,
           email: user.email,
           name: user.name,
+          phone: user.phone,
           emailVerified: !!user.emailVerifiedAt,
         },
         csrfToken,
+        requiresOtp: true,
       });
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -288,12 +306,13 @@ export function registerUserAuthRoutes(app: Express) {
         return sendError(res, 429, "Too many resend attempts. Please try again later.");
       }
       
-      const verifyToken = await createEmailToken(user.id, "verify_email");
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const verifyToken = await createEmailToken(user.id, "verify_email", otpCode);
       await sendVerificationEmail(user.email, verifyToken, user.name);
       
       logSecurityEvent("verify_email_resent", { userId: user.id, email: user.email, ip });
       
-      res.json({ success: true, message: "Verification email sent" });
+      res.json({ success: true, message: "Verification code sent" });
     } catch (err) {
       console.error("Resend verification error:", err);
       sendError(res, 500, "Failed to resend verification email");

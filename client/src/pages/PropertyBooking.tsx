@@ -371,6 +371,19 @@ export default function PropertyBooking() {
               </div>
             </div>
 
+            {/* Prompt guest users to create an account */}
+            {!user && (
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 mb-6 text-left">
+                <h3 className="font-semibold text-foreground mb-1">Create an account to manage your booking</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Sign up with <span className="font-medium text-foreground">{form.getValues("email")}</span> to track your booking status, message the host, and get deal alerts.
+                </p>
+                <Link href={`/signup?redirect=/account`}>
+                  <Button size="sm" className="font-semibold">Create Free Account</Button>
+                </Link>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button onClick={() => setLocation("/deals")}>Browse More Deals</Button>
               <Button variant="outline" onClick={() => setLocation("/")}>Go to Homepage</Button>
@@ -429,31 +442,20 @@ export default function PropertyBooking() {
                   </div>
                 </div>
 
-                {/* Auth gate - must be logged in to proceed */}
-                {!user ? (
-                  <div className="bg-card rounded-xl p-8 border border-border/50 text-center">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <User className="w-8 h-8 text-primary" />
+                {/* Guest info banner for non-logged-in users */}
+                {!user && (
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Booking as a guest</p>
+                      <p className="text-xs text-muted-foreground">You can book without an account. Create one after to manage your booking.</p>
                     </div>
-                    <h2 className="text-xl font-bold text-foreground mb-2">Sign in to continue booking</h2>
-                    <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                      To book this property you need a GapNight account. Sign in or create one — it only takes a minute.
-                    </p>
-                    <div className="flex flex-wrap gap-3 justify-center mb-4">
-                      <Link href={`/login?redirect=${encodeURIComponent(`/booking/property/${propertyId}?checkIn=${checkInDate}&checkOut=${checkOutDate}&nights=${nightsParam}`)}`}>
-                        <Button size="lg" className="px-8">Sign In</Button>
-                      </Link>
-                      <Link href={`/signup?redirect=${encodeURIComponent(`/booking/property/${propertyId}?checkIn=${checkInDate}&checkOut=${checkOutDate}&nights=${nightsParam}`)}`}>
-                        <Button size="lg" variant="outline" className="px-8">Create Account</Button>
-                      </Link>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      You'll also need to verify your ID before completing payment.
-                    </p>
+                    <Link href={`/login?redirect=${encodeURIComponent(`/booking/property/${propertyId}?checkIn=${checkInDate}&checkOut=${checkOutDate}&nights=${nightsParam}`)}`}>
+                      <Button size="sm" variant="outline" className="shrink-0 text-xs">Sign In</Button>
+                    </Link>
                   </div>
-                ) : (
-                <>
-                {/* Guest details - matches Booking.tsx */}
+                )}
+
+                {/* Guest details */}
                 <div className="bg-card rounded-xl p-6 border border-border/50">
                   <h2 className="text-xl font-bold text-foreground mb-1 flex items-center gap-2">
                     <User className="w-5 h-5 text-primary" />
@@ -567,7 +569,8 @@ export default function PropertyBooking() {
                   )}
                 </div>
 
-                {/* ID Verification Step */}
+                {/* ID Verification Step - only for authenticated users */}
+                {user && (
                 <div className="bg-card rounded-xl p-6 border border-border/50">
                   <h2 className="text-xl font-bold text-foreground mb-1 flex items-center gap-2">
                     <ScanFace className="w-5 h-5 text-primary" />
@@ -684,8 +687,9 @@ export default function PropertyBooking() {
                     </div>
                   )}
                 </div>
+                )}
 
-                {/* Payment - gated behind ID verification */}
+                {/* Payment - gated behind ID verification for logged-in users, open for guests */}
                 <div className="bg-card rounded-xl p-6 border border-border/50">
                   <h2 className="text-xl font-bold text-foreground mb-1 flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-primary" />
@@ -695,7 +699,7 @@ export default function PropertyBooking() {
                     A temporary hold is placed on your card. You are only charged when the host approves.
                   </p>
 
-                  {idStatus !== "verified" && (
+                  {user && idStatus !== "verified" && (
                     <div className="bg-muted/50 border border-border rounded-lg p-4 mb-4">
                       <p className="text-sm text-muted-foreground flex items-center gap-2">
                         <Shield className="w-4 h-4" />
@@ -704,7 +708,7 @@ export default function PropertyBooking() {
                     </div>
                   )}
 
-                  {idStatus === "verified" && !guestDetailsValid && (
+                  {((!user) || idStatus === "verified") && !guestDetailsValid && (
                     <div className="bg-muted/50 border border-border rounded-lg p-4 mb-4">
                       <p className="text-sm text-muted-foreground flex items-center gap-2">
                         <AlertCircle className="w-4 h-4" />
@@ -723,7 +727,7 @@ export default function PropertyBooking() {
                         Your card has been authorized. Click below to submit your booking request.
                       </p>
                     </div>
-                  ) : idStatus === "verified" ? (
+                  ) : (!user || idStatus === "verified") ? (
                     <StripePaymentForm
                       amount={grandTotal}
                       currency="AUD"
@@ -754,8 +758,6 @@ export default function PropertyBooking() {
                   By submitting this request, you agree to our Terms of Service and Privacy Policy.
                   You won't be charged until the host approves your booking.
                 </p>
-                </>
-                )}
               </form>
             </Form>
           </div>

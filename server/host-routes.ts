@@ -1631,4 +1631,35 @@ router.post("/api/host/reviews/:reviewId/respond", requireHostAuth, async (req: 
   }
 });
 
+// ========================================
+// ADDRESS LOOKUP PROXY (Nominatim)
+// ========================================
+
+router.get("/api/address-search", async (req: Request, res: Response) => {
+  try {
+    const q = req.query.q as string;
+    if (!q || q.length < 3) {
+      return res.json([]);
+    }
+
+    const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=au&limit=5&q=${encodeURIComponent(q)}`;
+    const response = await fetch(url, {
+      headers: {
+        "Accept-Language": "en",
+        "User-Agent": "GapNight/1.0 (https://gapnight.com)",
+      },
+    });
+
+    if (!response.ok) {
+      return res.status(502).json({ error: "Address search unavailable" });
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error("Address search proxy error:", error);
+    res.status(500).json({ error: "Address search failed" });
+  }
+});
+
 export default router;

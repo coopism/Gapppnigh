@@ -665,6 +665,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name"),
+  phone: text("phone"),
   googleId: text("google_id"), // OAuth Google ID
   appleId: text("apple_id"), // OAuth Apple ID
   emailVerifiedAt: timestamp("email_verified_at"),
@@ -840,7 +841,8 @@ export const passwordSchema = z.string()
 export const signupSchema = z.object({
   email: z.string().email("Invalid email address").transform(e => e.trim().toLowerCase()),
   password: passwordSchema,
-  name: z.string().min(1).max(100).optional(),
+  name: z.string().min(1, "Full name is required").max(100),
+  phone: z.string().min(8, "Valid phone number is required").max(20).regex(/^[0-9+\s()-]+$/, "Invalid phone number format"),
 });
 
 // User login schema

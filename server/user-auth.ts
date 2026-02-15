@@ -46,7 +46,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 // USER CRUD OPERATIONS
 // ========================================
 
-export async function createUser(email: string, password: string, name?: string): Promise<User> {
+export async function createUser(email: string, password: string, name?: string, phone?: string): Promise<User> {
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
   const id = uuidv4();
   
@@ -55,6 +55,7 @@ export async function createUser(email: string, password: string, name?: string)
     email: email.trim().toLowerCase(),
     passwordHash,
     name: name || null,
+    phone: phone || null,
   }).returning();
   
   return user;
@@ -252,8 +253,8 @@ export async function revokeAllUserSessions(userId: string): Promise<void> {
 // EMAIL TOKENS (Verification & Reset)
 // ========================================
 
-export async function createEmailToken(userId: string, type: "verify_email" | "reset_password"): Promise<string> {
-  const token = generateToken(32);
+export async function createEmailToken(userId: string, type: "verify_email" | "reset_password", otpCode?: string): Promise<string> {
+  const token = otpCode || generateToken(32);
   const tokenHash = hashToken(token);
   const id = uuidv4();
   const expiresAt = new Date(Date.now() + (type === "verify_email" ? VERIFY_TOKEN_EXPIRY : RESET_TOKEN_EXPIRY));

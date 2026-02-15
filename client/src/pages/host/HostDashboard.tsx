@@ -742,10 +742,7 @@ function LocationStep({ form, setForm }: { form: any; setForm: (f: any) => void 
     setSearching(true);
     setSearchError("");
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=au&limit=5&q=${encodeURIComponent(q)}`,
-        { headers: { "Accept-Language": "en", "User-Agent": "GapNight/1.0 (gapnight.com)" } }
-      );
+      const res = await fetch(`/api/address-search?q=${encodeURIComponent(q)}`);
       if (res.ok) {
         const data = await res.json();
         setSuggestions(data);
