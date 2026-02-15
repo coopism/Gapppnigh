@@ -28,9 +28,9 @@ export function DealCard({ deal }: DealCardProps) {
 
   return (
     <Link href={`/deal/${deal.id}`} className="block group" data-testid={`deal-card-${deal.id}`}>
-      <div className="bg-card rounded-2xl overflow-visible border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all duration-300 hover-elevate flex flex-row sm:flex-col">
-        {/* Image Section */}
-        <div className="relative max-w-[140px] w-full h-[140px] sm:w-full sm:h-auto sm:aspect-[4/3] overflow-hidden shrink-0 rounded-l-2xl sm:rounded-l-none sm:rounded-t-2xl">
+      <div className="bg-card rounded-xl overflow-hidden border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all duration-300 flex flex-col h-full">
+        {/* Image Section - Consistent aspect ratio */}
+        <div className="relative w-full aspect-[4/3] overflow-hidden">
           <img
             src={deal.imageUrl}
             alt={deal.hotelName}
@@ -40,80 +40,71 @@ export function DealCard({ deal }: DealCardProps) {
             }}
           />
           
-          {/* Top badges - hidden on mobile compact layout */}
-          <div className="absolute top-3 left-3 hidden sm:flex items-center gap-2">
-            <Badge className="bg-card text-foreground font-semibold shadow-sm flex items-center gap-1.5 px-2.5 py-1">
-              <Heart className="w-3.5 h-3.5 fill-primary text-primary" />
-              <span>Rare Find</span>
+          {/* Top badges */}
+          <div className="absolute top-3 left-3 flex items-center gap-2">
+            <Badge className="bg-white/95 text-foreground font-semibold shadow-sm flex items-center gap-1.5 px-2.5 py-1">
+              <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+              <span className="text-xs">Rare Find</span>
             </Badge>
-            <Badge className="bg-amber-500 text-white font-bold shadow-sm px-2.5 py-1">
+            <Badge className="bg-rose-500 text-white font-bold shadow-sm px-2.5 py-1 text-xs">
               {discountPercent}% OFF
             </Badge>
           </div>
           
-          {/* Score badge at bottom right - hidden on mobile compact layout */}
-          <div className="absolute bottom-3 right-3 hidden sm:block">
+          {/* Score badge at bottom right */}
+          <div className="absolute bottom-3 right-3">
             <div className="bg-primary text-white font-bold rounded-full px-3 py-1.5 text-sm shadow-lg flex items-center gap-1">
-              <span className="text-xs font-medium opacity-90">SCORE</span>
+              <span className="text-[10px] font-medium opacity-90 uppercase">Score</span>
               <span className="text-base">{deal.dealScore}</span>
             </div>
           </div>
         </div>
 
         {/* Content Section */}
-        <div className="p-3 sm:p-4 bg-card flex-1 min-w-0">
-          {/* Mobile-only badges */}
-          <div className="flex items-center gap-2 mb-1.5 sm:hidden">
-            <Badge className="bg-amber-500 text-white font-bold text-[10px] px-1.5 py-0.5">
-              {discountPercent}% OFF
-            </Badge>
-            <span className="text-xs font-bold text-primary">SCORE {deal.dealScore}</span>
-          </div>
-
+        <div className="p-4 flex flex-col flex-1">
           {/* Hotel name + rating */}
-          <div className="flex items-start justify-between gap-2 mb-1 sm:mb-2">
-            <h3 className="font-bold text-foreground text-sm sm:text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h3 className="font-bold text-foreground text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors">
               {deal.hotelName}
             </h3>
             <div className="flex items-center gap-1 shrink-0">
               <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
               <span className="font-bold text-sm">{deal.rating}</span>
-              <span className="text-xs text-muted-foreground">({deal.reviewCount})</span>
             </div>
           </div>
 
           {/* Location */}
-          <div className="flex items-center text-muted-foreground text-sm mb-1.5">
-            <MapPin className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+          <div className="flex items-center text-muted-foreground text-sm mb-2">
+            <MapPin className="w-4 h-4 mr-1.5 shrink-0" />
             <span className="line-clamp-1">{deal.location}</span>
           </div>
 
-          {/* Nearby highlight - hidden on mobile */}
+          {/* Nearby highlight */}
           {deal.nearbyHighlight && (
-            <div className="hidden sm:flex items-center text-primary text-xs mb-1.5">
+            <div className="flex items-center text-primary text-xs mb-2">
               <Navigation className="w-3 h-3 mr-1.5 shrink-0" />
               <span>{deal.nearbyHighlight}</span>
             </div>
           )}
 
           {/* Room type + capacity */}
-          <div className="flex items-center text-muted-foreground text-xs sm:text-sm mb-1.5">
+          <div className="flex items-center text-muted-foreground text-xs mb-3">
             <Bed className="w-3.5 h-3.5 mr-1.5 shrink-0" />
             <span>{deal.roomType}</span>
-            <span className="mx-1.5 text-border">•</span>
+            <span className="mx-2 text-border">•</span>
             <Users className="w-3.5 h-3.5 mr-1 shrink-0" />
-            <span>{deal.maxGuests || 2}</span>
+            <span>{deal.maxGuests || 2} guests</span>
           </div>
 
-          {/* Amenities icons - hidden on mobile */}
+          {/* Amenities icons */}
           {deal.amenities && deal.amenities.length > 0 && (
-            <div className="hidden sm:flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-4">
               {deal.amenities.slice(0, 4).map((amenity) => {
                 const Icon = AMENITY_ICONS[amenity];
                 if (!Icon) return null;
                 return (
                   <div key={amenity} className="text-muted-foreground hover:text-primary transition-colors" title={amenity}>
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-4 h-4" />
                   </div>
                 );
               })}
@@ -123,16 +114,18 @@ export function DealCard({ deal }: DealCardProps) {
             </div>
           )}
 
-          {/* Availability hint + Price */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs text-primary">
+          {/* Bottom: Availability + Price */}
+          <div className="mt-auto pt-3 border-t border-border/50 flex items-end justify-between">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarDays className="w-3.5 h-3.5" />
-              <span className="font-medium">{deal.nights === 1 ? '1-3 nights available' : `${deal.nights}+ nights available`}</span>
+              <span>{deal.nights} night{deal.nights !== 1 ? 's' : ''}</span>
             </div>
             <div className="text-right">
-              <span className="text-xs line-through text-muted-foreground">{formatPrice(deal.normalPrice, deal.currency)}</span>
-              <span className="ml-1 font-bold text-primary">{formatPrice(deal.dealPrice, deal.currency)}</span>
-              <div className="text-[10px] text-muted-foreground">/night</div>
+              <div className="flex items-baseline gap-2 justify-end">
+                <span className="text-xs line-through text-muted-foreground">{formatPrice(deal.normalPrice, deal.currency)}</span>
+                <span className="font-bold text-lg text-primary">{formatPrice(deal.dealPrice, deal.currency)}</span>
+              </div>
+              <span className="text-xs text-muted-foreground">/night</span>
             </div>
           </div>
         </div>

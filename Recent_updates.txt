@@ -1,5 +1,15 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-13
+# Last Updated: 2026-02-16
+
+## Design Fixes - Feb 16, 2026
+
+60. **Deals Page Visual Redesign (`client/src/pages/Home.tsx`, `client/src/components/DealCard.tsx`)**
+    - **Issue:** Deal cards looked cramped and unprofessional - horizontal mobile layout was ugly, cards had no breathing room, search bar styling was inconsistent
+    - **Fix:**
+      - **DealCard**: Complete rewrite with proper vertical layout, consistent 4:3 aspect ratio images, cleaner badge placement (white "Rare Find" badge, rose discount badge), improved typography hierarchy, better spacing
+      - **Home.tsx**: Fixed main container max-width conflict, improved padding (pt-8 pb-12), cleaner search bar with consistent rounded-full styling, better category chips spacing (gap-3)
+      - **Grid**: Adjusted gap from gap-6 to gap-5 for optimal card spacing
+    - **Impact:** Deals page now looks polished and professional with clean card layouts
 
 ## Round 3 Fixes & Features - Feb 13, 2026
 

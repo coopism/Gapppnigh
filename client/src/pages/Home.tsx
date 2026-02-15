@@ -333,7 +333,7 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 w-full max-w-full">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12 w-full">
         {/* Mobile: Collapsed Search Bar */}
         <div className="lg:hidden mb-4">
           <CollapsedSearchBar
@@ -345,8 +345,8 @@ export default function Home() {
         </div>
 
         {/* Desktop: Full Search Bar - 3 sections */}
-        <div className="hidden lg:flex justify-center mb-8">
-          <div className="bg-card rounded-2xl sm:rounded-full shadow-lg border border-border/50 p-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-1 max-w-3xl w-full relative">
+        <div className="hidden lg:flex justify-center mb-10">
+          <div className="bg-card rounded-full shadow-lg border border-border/50 p-2 flex items-center gap-1 max-w-3xl w-full">
             {/* WHERE - with autocomplete */}
             <div className="flex-1 min-w-0 px-4 py-2 border-b sm:border-b-0 sm:border-r border-border/50 relative" ref={searchRef}>
               <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
@@ -692,8 +692,8 @@ export default function Home() {
         </div>
 
         {/* Category Chips */}
-        <div className="relative w-full mb-8">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 px-1" style={{ width: '100%', maxWidth: '100%' }}>
+        <div className="relative w-full mb-6">
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
@@ -813,7 +813,7 @@ export default function Home() {
             <DealsMap deals={deals || []} />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {combinedItems.map((item, idx) => (
               <div key={item._key} className="animate-fade-in">
                 {item._type === "deal" ? (
