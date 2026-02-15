@@ -365,7 +365,7 @@ export default function Home() {
 
               {/* Autocomplete Dropdown */}
               {showSuggestions && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-popover rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 min-w-[300px]">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-popover rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 min-w-0">
                   {recentSearches.length > 0 && !searchInput && (
                     <div className="p-3 border-b border-border/50">
                       <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">

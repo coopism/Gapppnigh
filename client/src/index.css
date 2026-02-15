@@ -71,6 +71,12 @@
   --popover-foreground: 210 40% 98%;
 }
 
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
