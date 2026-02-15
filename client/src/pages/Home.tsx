@@ -716,10 +716,19 @@ export default function Home() {
         </div>
 
         {/* Section Header + Sort + View Toggle */}
-        <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-          <h2 className="text-xl md:text-2xl font-bold text-foreground">Explore today's deals</h2>
+        <div className="flex items-center justify-between mb-6">
+          {/* Left: Results count */}
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg md:text-xl font-bold text-foreground">Explore today's deals</h2>
+            {!isLoading && deals && (
+              <span className="text-sm text-muted-foreground hidden sm:inline">
+                {deals.length} {deals.length === 1 ? 'deal' : 'deals'} found
+              </span>
+            )}
+          </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          {/* Right: Controls */}
+          <div className="flex items-center gap-2">
             {/* View Toggle */}
             <div className="flex items-center bg-muted rounded-lg p-1">
               <button
@@ -744,11 +753,12 @@ export default function Home() {
               </button>
             </div>
 
-            <span className="text-sm text-muted-foreground hidden md:inline">Sort by:</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="rounded-lg border-border gap-2 font-semibold" data-testid="button-sort">
-                  {currentSortLabel}
+                <Button variant="outline" size="sm" className="rounded-lg border-border gap-2 font-medium h-9" data-testid="button-sort">
+                  <span className="hidden sm:inline">Sort:</span>
+                  <span className="sm:hidden">{currentSortLabel}</span>
+                  <span className="hidden sm:inline">{currentSortLabel}</span>
                   <ChevronDown className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -813,7 +823,7 @@ export default function Home() {
             <DealsMap deals={deals || []} />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {combinedItems.map((item, idx) => (
               <div key={item._key} className="animate-fade-in">
                 {item._type === "deal" ? (

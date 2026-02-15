@@ -1,6 +1,17 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-16
 
+## Desktop Deals Page Redesign - Feb 16, 2026
+
+61. **Premium Desktop Grid Layout (`client/src/pages/Home.tsx`, `client/src/components/DealCard.tsx`)**
+    - **Issue:** Desktop /deals grid looked sparse and misaligned — cards had inconsistent spacing, toolbar controls floated awkwardly with flex-wrap, grid used suboptimal column distribution
+    - **Fix:**
+      - **Grid:** Changed from `sm:grid-cols-2 lg:grid-cols-4` to `md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4` for tighter, more premium density
+      - **Toolbar:** Clean single-row layout with results count left ("X deals found"), controls right (view toggle + compact sort dropdown), removed flex-wrap
+      - **DealCard:** Tighter desktop styling with responsive padding (p-3 mobile, md:p-4 desktop), smaller badges on mobile, removed redundant guests count from room type line, "per night" instead of "/night", better visual hierarchy
+      - **Mobile:** Completely unchanged — mobile maintains existing perfect single-column layout
+    - **Impact:** Desktop /deals now looks premium with tighter grid, better information density, cleaner scanning flow, and consistent card heights
+
 ## Design Fixes - Feb 16, 2026
 
 60. **Deals Page Visual Redesign (`client/src/pages/Home.tsx`, `client/src/components/DealCard.tsx`)**
