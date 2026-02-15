@@ -87,7 +87,7 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
     <Link href={`/stays/${property.id}`} className="block group" data-testid={`property-card-${property.id}`}>
       <div className="bg-card rounded-2xl overflow-visible border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all duration-300 hover-elevate flex flex-row sm:flex-col">
         {/* Image Section - identical to DealCard */}
-        <div className="relative w-[140px] h-[140px] sm:w-full sm:h-auto sm:aspect-[4/3] overflow-hidden shrink-0 rounded-l-2xl sm:rounded-l-none sm:rounded-t-2xl">
+        <div className="relative max-w-[140px] w-full h-[140px] sm:w-full sm:h-auto sm:aspect-[4/3] overflow-hidden shrink-0 rounded-l-2xl sm:rounded-l-none sm:rounded-t-2xl">
           <img
             src={property.coverImage || "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop"}
             alt={property.title}

@@ -30,7 +30,7 @@ export function DealCard({ deal }: DealCardProps) {
     <Link href={`/deal/${deal.id}`} className="block group" data-testid={`deal-card-${deal.id}`}>
       <div className="bg-card rounded-2xl overflow-visible border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all duration-300 hover-elevate flex flex-row sm:flex-col">
         {/* Image Section */}
-        <div className="relative w-[140px] h-[140px] sm:w-full sm:h-auto sm:aspect-[4/3] overflow-hidden shrink-0 rounded-l-2xl sm:rounded-l-none sm:rounded-t-2xl">
+        <div className="relative max-w-[140px] w-full h-[140px] sm:w-full sm:h-auto sm:aspect-[4/3] overflow-hidden shrink-0 rounded-l-2xl sm:rounded-l-none sm:rounded-t-2xl">
           <img
             src={deal.imageUrl}
             alt={deal.hotelName}
