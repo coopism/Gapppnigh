@@ -328,12 +328,12 @@ export default function Home() {
     <div className="min-h-screen bg-background pb-20">
       <Navigation />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 overflow-x-hidden">
         {/* Search Bar - 3 sections */}
         <div className="flex justify-center mb-8">
-          <div className="bg-card rounded-full shadow-lg border border-border/50 p-2 flex items-center gap-1 max-w-3xl w-full relative">
+          <div className="bg-card rounded-2xl sm:rounded-full shadow-lg border border-border/50 p-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-1 max-w-3xl w-full relative">
             {/* WHERE - with autocomplete */}
-            <div className="flex-1 px-4 py-2 border-r border-border/50 relative" ref={searchRef}>
+            <div className="flex-1 min-w-0 px-4 py-2 border-b sm:border-b-0 sm:border-r border-border/50 relative" ref={searchRef}>
               <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
                 Where
               </div>
@@ -424,7 +424,7 @@ export default function Home() {
 
             {/* WHEN - with date picker */}
             <div 
-              className="flex-1 px-4 py-2 border-r border-border/50 cursor-pointer hover-elevate rounded-lg transition-colors relative" 
+              className="flex-1 min-w-0 px-4 py-2 border-b sm:border-b-0 sm:border-r border-border/50 cursor-pointer hover-elevate rounded-lg transition-colors relative" 
               ref={dateRef}
               onClick={() => setShowDatePicker(!showDatePicker)}
               data-testid="date-picker-trigger"
@@ -441,7 +441,7 @@ export default function Home() {
               {/* Date Picker Dropdown */}
               {showDatePicker && (
                 <div 
-                  className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-popover rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[340px]"
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-popover rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[calc(100vw-2rem)] sm:w-[340px] max-w-[340px]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="p-4">
@@ -593,7 +593,7 @@ export default function Home() {
 
             {/* WHO - with guest picker */}
             <div 
-              className="flex-1 px-4 py-2 cursor-pointer hover-elevate rounded-lg transition-colors relative" 
+              className="flex-1 min-w-0 px-4 py-2 cursor-pointer hover-elevate rounded-lg transition-colors relative" 
               ref={guestRef}
               onClick={() => setShowGuestPicker(!showGuestPicker)}
               data-testid="guest-picker-trigger"
@@ -610,7 +610,7 @@ export default function Home() {
               {/* Guest Picker Dropdown */}
               {showGuestPicker && (
                 <div 
-                  className="absolute top-full right-0 mt-2 bg-popover rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[280px]"
+                  className="absolute top-full right-0 mt-2 bg-popover rounded-2xl shadow-xl border border-border/50 overflow-hidden z-50 w-[calc(100vw-2rem)] sm:w-[280px] max-w-[280px]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="p-4 space-y-4">
