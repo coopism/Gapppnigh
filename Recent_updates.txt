@@ -43,6 +43,11 @@
     - **Fix:** After creating a new user account, the signup endpoint runs an UPDATE query to set `userId` on all `propertyBookings` where `guestEmail` matches and `userId` is null
     - **Impact:** Guest bookings are automatically linked to the user's account when they sign up with the same email
 
+57. **Bootstrap Migration: Missing DB Columns (`server/bootstrap.ts`)**
+    - **Issue:** Production DB `users` table was created by `bootstrap.ts` which didn't include `phone`, `google_id`, or `apple_id` columns. `drizzle-kit push` only ran locally. Also `property_bookings.user_id` was NOT NULL, blocking guest bookings
+    - **Fix:** Added ALTER TABLE migrations in `bootstrap.ts` that run on server start: adds `phone`, `google_id`, `apple_id` to users if missing; makes `property_bookings.user_id` nullable
+    - **Impact:** Signup with phone number and guest bookings now work on production
+
 ## Round 2 Fixes - Feb 12, 2026
 
 45. **Footer Mobile Layout Fix (`client/src/components/Footer.tsx`)**

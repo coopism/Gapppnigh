@@ -420,6 +420,27 @@ async function createTables() {
     ALTER TABLE "property_qa" ALTER COLUMN "user_id" DROP NOT NULL;
   `);
 
+  // Migration: add phone, google_id, apple_id columns to users table
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='phone') THEN
+        ALTER TABLE "users" ADD COLUMN "phone" text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='google_id') THEN
+        ALTER TABLE "users" ADD COLUMN "google_id" text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='apple_id') THEN
+        ALTER TABLE "users" ADD COLUMN "apple_id" text;
+      END IF;
+    END $$;
+  `);
+
+  // Migration: make property_bookings.user_id nullable for guest bookings
+  await db.execute(sql`
+    ALTER TABLE "property_bookings" ALTER COLUMN "user_id" DROP NOT NULL;
+  `);
+
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "user_id_verifications" (
       "id" text PRIMARY KEY NOT NULL,
