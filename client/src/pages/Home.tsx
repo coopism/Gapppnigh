@@ -677,7 +677,8 @@ export default function Home() {
         </div>
 
         {/* Category Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 mb-8 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="w-full max-w-full overflow-hidden mb-8">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
@@ -696,6 +697,7 @@ export default function Home() {
               {cat}
             </button>
           ))}
+        </div>
         </div>
 
         {/* Section Header + Sort + View Toggle */}
