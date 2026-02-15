@@ -44,8 +44,11 @@
     - **Impact:** Guest bookings are automatically linked to the user's account when they sign up with the same email
 
 58. **Horizontal Scroll Overflow Fix (`client/src/pages/Account.tsx`, `client/src/index.css`, `client/src/pages/Home.tsx`)**
-    - **Issue:** Account page had horizontal scrolling on mobile/tablet — 6-column tab grid at `md:` (768px) was too wide, 4-column stats grid overflowed, email input row didn't shrink
+    - **Issue:** Multiple sources of horizontal overflow on mobile/tablet:
+      - Home page: category chip row used `-mx-4 px-4` negative margins which made the scrollable container exceed the viewport
+      - Account page: 6-column tab grid at `md:` (768px) was too wide, 4-column stats grid overflowed, email input row didn't shrink
     - **Fix:** 
+      - Chip row: removed `-mx-4 px-4 sm:mx-0 sm:px-0`, wrapped in `w-full max-w-full overflow-hidden` container, kept `overflow-x-auto` only on inner row
       - Tabs: changed from `grid grid-cols-2 md:grid-cols-6` to `flex flex-wrap` so tabs wrap naturally
       - Stats: changed from `md:grid-cols-4` to `grid-cols-2 lg:grid-cols-4` (2-col on mobile, 4-col at 1024px+)
       - Email row: added `min-w-0` to flex container and input so they shrink properly
