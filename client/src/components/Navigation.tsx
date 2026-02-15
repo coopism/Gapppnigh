@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Hotel, Menu, Home, UserPlus, User, LogOut } from "lucide-react";
+import { Hotel, Menu, Home, UserPlus, User, LogOut, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -62,6 +62,11 @@ export function Navigation() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem asChild>
+                      <Link href="/saved" className="cursor-pointer">
+                        <Heart className="w-4 h-4 mr-2" /> Saved Listings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link href="/account" className="cursor-pointer">
                         <User className="w-4 h-4 mr-2" /> My Account
                       </Link>
@@ -121,6 +126,11 @@ export function Navigation() {
                   {!isLoading && (
                     user ? (
                       <>
+                        <Link href="/saved">
+                          <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
+                            <Heart className="w-5 h-5 mr-3" /> Saved Listings
+                          </Button>
+                        </Link>
                         <Link href="/account">
                           <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
                             <User className="w-5 h-5 mr-3" /> My Account

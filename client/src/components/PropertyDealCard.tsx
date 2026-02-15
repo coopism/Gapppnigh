@@ -1,8 +1,17 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Star, MapPin, Bed, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation, CalendarDays, Wine, Umbrella, Bell, ConciergeBell, Users } from "lucide-react";
+import { Star, MapPin, Bed, Heart, Wifi, Dumbbell, Car, UtensilsCrossed, Waves, Sparkles, Navigation, CalendarDays, Wine, Umbrella, Bell, ConciergeBell, Users, LogIn, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/use-auth";
 
 const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "WiFi": Wifi,
@@ -72,7 +81,9 @@ function getGapNightRangeLabel(property: any): string {
 }
 
 export function PropertyDealCard({ property }: PropertyDealCardProps) {
+  const { isAuthenticated } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
   
   const lowestGapRate = property.gapNights?.length > 0
     ? Math.min(...property.gapNights.map((gn: any) => gn.discountedRate))
@@ -84,19 +95,22 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
 
   const basePrice = property.baseNightlyRate / 100;
   const dealPrice = lowestGapRate ? lowestGapRate / 100 : basePrice;
-  const dealScore = calculateDealScore(property);
-  
-  // Only show "Rare Find" for top 15% of deals (score >= 85)
-  const isRareFind = dealScore >= 85;
 
   const handleSaveClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      setShowLoginDialog(true);
+      return;
+    }
+    
     setIsSaved(!isSaved);
   };
 
   return (
-    <Link href={`/stays/${property.id}`} className="block group" data-testid={`property-card-${property.id}`}>
+    <>
+      <Link href={`/stays/${property.id}`} className="block group" data-testid={`property-card-${property.id}`}>
       <div className="bg-card rounded-xl overflow-hidden border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all duration-300 flex flex-col h-full">
         {/* Image Section */}
         <div className="relative w-full aspect-[4/3] overflow-hidden">
@@ -173,7 +187,7 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
 
           {/* Amenities - max 3 icons + +N */}
           {property.amenities && property.amenities.length > 0 && (
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex items-center gap-2 mb-2">
               {property.amenities.slice(0, 3).map((amenity: string) => {
                 const Icon = AMENITY_ICONS[amenity];
                 if (!Icon) return null;
@@ -186,14 +200,6 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
               {property.amenities.length > 3 && (
                 <span className="text-[10px] md:text-xs text-muted-foreground">+{property.amenities.length - 3}</span>
               )}
-            </div>
-          )}
-
-          {/* Rare Find tag - in content area, only for top 15% */}
-          {isRareFind && (
-            <div className="flex items-center gap-1 mb-1.5">
-              <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
-              <span className="text-xs font-medium text-rose-500">Rare Find</span>
             </div>
           )}
 
@@ -224,5 +230,32 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
         </div>
       </div>
     </Link>
+
+    {/* Login Dialog for unauthenticated users trying to save */}
+    <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Sign in to save properties</DialogTitle>
+          <DialogDescription>
+            Create an account or sign in to save your favorite properties and access them anytime.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3 mt-4">
+          <Link href="/login">
+            <Button className="w-full gap-2" onClick={() => setShowLoginDialog(false)}>
+              <LogIn className="w-4 h-4" />
+              Sign In
+            </Button>
+          </Link>
+          <Link href="/signup">
+            <Button variant="outline" className="w-full gap-2" onClick={() => setShowLoginDialog(false)}>
+              <UserPlus className="w-4 h-4" />
+              Create Account
+            </Button>
+          </Link>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
