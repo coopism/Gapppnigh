@@ -140,79 +140,72 @@ function PropertyCard({ property, onClick }: { property: any; onClick: () => voi
     : 0;
 
   return (
-    <Card className="overflow-hidden cursor-pointer group hover:shadow-lg transition-all border-border/50 rounded-xl" onClick={onClick}>
-      <div className="relative overflow-hidden">
+    <Card className="overflow-hidden cursor-pointer group hover:shadow-xl hover:border-primary/30 transition-all border-border/50 rounded-xl flex flex-col h-full" onClick={onClick}>
+      <div className="relative w-full aspect-[4/3] overflow-hidden">
         <img
           src={property.coverImage || "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800"}
           alt={property.title}
-          className="w-full h-44 sm:h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800"; }}
         />
-        <div className="absolute top-2.5 left-2.5 flex gap-1.5">
+        <div className="absolute top-2 left-2 md:top-3 md:left-3 flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
           {property.gapNightCount > 0 && (
-            <Badge className="bg-emerald-500 text-white text-xs shadow-sm">
+            <Badge className="bg-emerald-500 text-white text-[10px] md:text-xs font-semibold shadow-sm px-1.5 py-0.5 md:px-2 md:py-1">
               {property.gapNightCount} Gap Night{property.gapNightCount !== 1 ? "s" : ""}
             </Badge>
           )}
         </div>
         {maxDiscount > 0 && (
-          <Badge className="absolute top-2.5 right-2.5 bg-red-500 text-white text-xs shadow-sm">
+          <Badge className="absolute top-2 right-2 md:top-3 md:right-3 bg-rose-500 text-white text-[10px] md:text-xs font-bold shadow-sm px-1.5 py-0.5 md:px-2 md:py-1">
             {maxDiscount}% OFF
           </Badge>
         )}
       </div>
-      <CardContent className="p-3.5 sm:p-4">
-        <div className="flex justify-between items-start gap-2 mb-0.5">
-          <h3 className="font-semibold text-sm line-clamp-1 text-foreground">{property.title}</h3>
+      <CardContent className="p-3 md:p-4 flex flex-col flex-1">
+        <div className="flex justify-between items-start gap-2 mb-1 md:mb-1.5">
+          <h3 className="font-semibold text-sm md:text-base line-clamp-1 text-foreground group-hover:text-primary transition-colors">{property.title}</h3>
           {Number(property.averageRating) > 0 && (
-            <span className="text-xs flex items-center gap-0.5 shrink-0 text-foreground">
-              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+            <span className="text-xs md:text-sm flex items-center gap-0.5 shrink-0 text-foreground">
+              <Star className="w-3 h-3 md:w-3.5 md:h-3.5 fill-amber-400 text-amber-400" />
               {Number(property.averageRating).toFixed(1)}
             </span>
           )}
         </div>
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <MapPin className="w-3 h-3 shrink-0" />
-          {property.city}, {property.state}
+        <p className="text-xs md:text-sm text-muted-foreground flex items-center gap-1 mb-1 md:mb-1.5">
+          <MapPin className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
+          <span className="line-clamp-1">{property.city}, {property.state}</span>
         </p>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-muted-foreground line-clamp-1">
           {property.propertyType === "entire_place" ? "Entire place" :
            property.propertyType === "private_room" ? "Private room" :
            property.propertyType === "shared_room" ? "Shared room" : "Unique stay"}
           {" · "}{property.bedrooms} bed{property.bedrooms !== 1 ? "s" : ""}
-          {" · "}{property.maxGuests} guest{property.maxGuests !== 1 ? "s" : ""}
         </p>
         {property.nearbyHighlight && (
-          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">{property.nearbyHighlight}</p>
+          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 line-clamp-1">{property.nearbyHighlight}</p>
         )}
-        <div className="mt-2.5 flex items-baseline gap-1.5">
-          {lowestGapRate ? (
-            <>
-              <span className="text-xs line-through text-muted-foreground">
-                ${(property.baseNightlyRate / 100).toFixed(0)}
-              </span>
-              <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                ${(lowestGapRate / 100).toFixed(0)}
-              </span>
-              <span className="text-xs text-muted-foreground">/night</span>
-            </>
-          ) : (
-            <>
-              <span className="text-base font-bold">${(property.baseNightlyRate / 100).toFixed(0)}</span>
-              <span className="text-xs text-muted-foreground">/night</span>
-            </>
-          )}
+        <div className="mt-auto pt-2 md:pt-3 border-t border-border/50 mt-2 md:mt-3">
+          <div className="flex items-end justify-between">
+            <div className="text-xs text-muted-foreground">
+              {property.maxGuests} guest{property.maxGuests !== 1 ? "s" : ""}
+            </div>
+            <div className="text-right">
+              {lowestGapRate ? (
+                <div className="flex items-baseline gap-1.5 justify-end">
+                  <span className="text-xs line-through text-muted-foreground">
+                    ${(property.baseNightlyRate / 100).toFixed(0)}
+                  </span>
+                  <span className="text-base md:text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                    ${(lowestGapRate / 100).toFixed(0)}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-base md:text-lg font-bold">${(property.baseNightlyRate / 100).toFixed(0)}</span>
+              )}
+              <span className="text-[10px] md:text-xs text-muted-foreground"> per night</span>
+            </div>
+          </div>
         </div>
-        {property.host && (
-          <p className="text-xs text-muted-foreground mt-2 truncate">
-            Hosted by {property.host.name}
-            {property.host.averageResponseTime && (
-              <span> · ~{property.host.averageResponseTime < 60 
-                ? `${property.host.averageResponseTime}min` 
-                : `${Math.round(property.host.averageResponseTime / 60)}hr`} reply</span>
-            )}
-          </p>
-        )}
       </CardContent>
     </Card>
   );
