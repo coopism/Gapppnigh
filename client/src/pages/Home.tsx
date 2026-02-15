@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { CollapsedSearchBar } from "@/components/CollapsedSearchBar";
+import { SearchBottomSheet } from "@/components/SearchBottomSheet";
 import { format, addMonths, addDays, startOfMonth, endOfMonth } from "date-fns";
 
 const CATEGORIES = ["All Deals", "Last Minute", "Trending", "Beach", "City", "Luxury", "Boutique"];
@@ -119,6 +121,9 @@ export default function Home() {
 
   // View mode (grid or map)
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+
+  // Mobile search sheet state
+  const [showMobileSearchSheet, setShowMobileSearchSheet] = useState(false);
 
   // Calculate date filter values based on selection
   const getDateFilterParams = () => {
@@ -329,8 +334,18 @@ export default function Home() {
       <Navigation />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 w-full max-w-full">
-        {/* Search Bar - 3 sections */}
-        <div className="flex justify-center mb-8">
+        {/* Mobile: Collapsed Search Bar */}
+        <div className="lg:hidden mb-4">
+          <CollapsedSearchBar
+            searchInput={searchInput}
+            dateDisplay={getDateDisplayText()}
+            guests={guests}
+            onClick={() => setShowMobileSearchSheet(true)}
+          />
+        </div>
+
+        {/* Desktop: Full Search Bar - 3 sections */}
+        <div className="hidden lg:flex justify-center mb-8">
           <div className="bg-card rounded-2xl sm:rounded-full shadow-lg border border-border/50 p-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-1 max-w-3xl w-full relative">
             {/* WHERE - with autocomplete */}
             <div className="flex-1 min-w-0 px-4 py-2 border-b sm:border-b-0 sm:border-r border-border/50 relative" ref={searchRef}>
@@ -807,6 +822,37 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* Mobile Search Bottom Sheet */}
+      <SearchBottomSheet
+        isOpen={showMobileSearchSheet}
+        onClose={() => setShowMobileSearchSheet(false)}
+        onApply={() => {
+          setDebouncedSearch(searchInput);
+        }}
+        searchInput={searchInput}
+        setSearchInput={setSearchInput}
+        debouncedSearch={debouncedSearch}
+        setDebouncedSearch={setDebouncedSearch}
+        recentSearches={recentSearches}
+        setRecentSearches={setRecentSearches}
+        locationSuggestions={LOCATION_SUGGESTIONS}
+        dateMode={dateMode}
+        setDateMode={setDateMode}
+        withinOption={withinOption}
+        setWithinOption={setWithinOption}
+        selectedMonth={selectedMonth}
+        setSelectedMonth={setSelectedMonth}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        checkoutDate={checkoutDate}
+        setCheckoutDate={setCheckoutDate}
+        nights={nights}
+        setNights={setNights}
+        guests={guests}
+        setGuests={setGuests}
+      />
+
       <Footer />
     </div>
   );

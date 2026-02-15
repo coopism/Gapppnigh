@@ -125,6 +125,16 @@ html, body {
   animation: fade-in 0.4s ease-out forwards;
 }
 
+/* Slide up animation for bottom sheet */
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out forwards;
+}
+
 .glass-card {
   @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
 }
