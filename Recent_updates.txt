@@ -1,6 +1,19 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Bug Fix: Gap Night Bookings Bypass minNights - Feb 18, 2026
+
+108. **Fixed "Minimum X night(s) required" error on gap night bookings (`property-routes.ts`)**
+    - Root cause: booking validation enforced property's `minNights` (e.g. 3) even when the user was booking gap nights (1-2 night gaps)
+    - Fix: query `property_availability` for gap night dates before the minNights check; if any booked date is a gap night, skip the minNights restriction
+    - Non-gap-night bookings still respect the property's minNights setting
+    - This is the core value prop — gap nights are short unsold gaps, they must be bookable regardless of the property's normal minimum stay
+
+**Files Modified:**
+- `server/property-routes.ts` — Moved date list construction before minNights check, added gap night query, conditional bypass
+
+---
+
 ## Rewards System Overhaul + Tier Colors + Hero Animations - Feb 18, 2026
 
 104. **Rewards points system updated (`server/rewards.ts`)**

@@ -761,7 +761,25 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
     const endDate = new Date(checkOutDate);
     const nights = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (nights < property.minNights) {
+    // Build date list first (needed for gap night check)
+    const dateList: string[] = [];
+    for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
+      dateList.push(d.toISOString().split("T")[0]);
+    }
+
+    // Check if any booked dates are gap nights — gap night bookings bypass minNights
+    const gapNightCheck = await db
+      .select({ isGapNight: propertyAvailability.isGapNight })
+      .from(propertyAvailability)
+      .where(and(
+        eq(propertyAvailability.propertyId, propertyId),
+        inArray(propertyAvailability.date, dateList),
+        eq(propertyAvailability.isGapNight, true)
+      ))
+      .limit(1);
+    const isGapNightBooking = gapNightCheck.length > 0;
+
+    if (!isGapNightBooking && nights < property.minNights) {
       return res.status(400).json({ error: `Minimum ${property.minNights} night(s) required` });
     }
 
@@ -771,10 +789,6 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
 
     // Calculate pricing from availability entries
     let totalNightlyRate = 0;
-    const dateList: string[] = [];
-    for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
-      dateList.push(d.toISOString().split("T")[0]);
-    }
 
     // Fix #9 & #11: Use transaction for atomic booking creation
     const bookingResult = await db.transaction(async (trx) => {
