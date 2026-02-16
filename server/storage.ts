@@ -1418,5 +1418,5 @@ export class MemStorage implements IStorage {
   async getUserSavedDealIds(userId: string): Promise<string[]> { return []; }
 }
 
-// Use MemStorage since database is not connected
-export const storage: IStorage = new MemStorage();
+// Use DatabaseStorage for production (connected to Postgres)
+export const storage: IStorage = new DatabaseStorage();

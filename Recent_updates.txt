@@ -1,6 +1,18 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Fix Saved Listings Not Working - Feb 18, 2026
+
+122. **Root cause: App was using `MemStorage` instead of `DatabaseStorage`**
+    - `storage.ts` exported `new MemStorage()` which stubs all saved listing methods to return empty arrays
+    - Switched to `new DatabaseStorage()` so all DB operations (save/unsave, fetch saved IDs, fetch saved listings) actually hit Postgres
+    - This also fixes any other features that relied on the storage interface (bookings, reviews, etc.)
+
+**Files Modified:**
+- `server/storage.ts` — Changed `export const storage` from `new MemStorage()` to `new DatabaseStorage()`
+
+---
+
 ## Remove Seeded Hotel Deals — Stays-Only Mode - Feb 18, 2026
 
 121. **Disabled legacy hotel deals from appearing on the platform**
