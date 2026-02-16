@@ -1,6 +1,39 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Rewards System Overhaul + Tier Colors + Hero Animations - Feb 18, 2026
+
+104. **Rewards points system updated (`server/rewards.ts`)**
+    - POINTS_PER_DOLLAR: 5 → 1 ($1 spent = 1 point)
+    - REVIEW_BONUS_POINTS: 50 → 10
+    - POINTS_TO_CREDIT_RATIO: unchanged (100 pts = $1, so 1000 pts = $10)
+    - Tier thresholds scaled down: Bronze 0, Silver 100, Gold 500, Platinum 1000
+
+105. **Tier card colors overhauled (`Account.tsx`)**
+    - Bronze: muddy amber-700 → clean stone-600 via stone-500 gradient
+    - Silver: slate-500/400 → slate-600 via slate-400 gradient
+    - Gold: yellow-500/amber-400 → amber-500 via yellow-400 gradient
+    - Platinum: violet-600/purple-500 → violet-700 via purple-500 to indigo-600
+
+106. **Tier hero animations (`Account.tsx`)**
+    - BlurFade entrance on entire hero card
+    - Background tier icon rotates + scales in
+    - Tier badge slides in from left, points slide in from right
+    - Progress bar animates from 0% to actual width with spring easing
+    - Available points uses AnimatedCounter
+    - Stats row (Bookings, Saved, Points) stagger in with animated counters
+
+107. **Frontend text updated to match new rates**
+    - Benefits: "1 point per $1 spent", "10 bonus points per review"
+    - Explainer: "100 points = $1 (1,000 pts = $10)"
+    - How to Earn: "1 point per dollar spent", "10 bonus points"
+
+**Files Modified:**
+- `server/rewards.ts` — Updated constants + thresholds
+- `client/src/pages/Account.tsx` — Tier colors, animations, text updates
+
+---
+
 ## UI Animations - Framer Motion Integration - Feb 18, 2026
 
 98. **Reusable animation components (`client/src/components/ui/motion.tsx`)**

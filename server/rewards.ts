@@ -2,16 +2,16 @@ import { v4 as uuidv4 } from "uuid";
 import type { IStorage } from "./storage";
 
 // Points earning rates
-const POINTS_PER_DOLLAR = 5; // 5 points per $1 spent
-const REVIEW_BONUS_POINTS = 50; // 50 points for writing a review
-const POINTS_TO_CREDIT_RATIO = 100; // 100 points = $1 credit (in cents)
+const POINTS_PER_DOLLAR = 1; // $1 spent = 1 point
+const REVIEW_BONUS_POINTS = 10; // 10 points for writing a review
+const POINTS_TO_CREDIT_RATIO = 100; // 100 points = $1 credit (1000 pts = $10)
 
 // Tier thresholds based on total points earned
 const TIER_THRESHOLDS = {
   Bronze: 0,
-  Silver: 500,
-  Gold: 2000,
-  Platinum: 5000,
+  Silver: 100,
+  Gold: 500,
+  Platinum: 1000,
 };
 
 export function calculateTier(totalPointsEarned: number): string {
@@ -156,7 +156,7 @@ export async function convertPointsToCredit(
     }
 
     if (pointsToConvert < 100) {
-      return { success: false, creditAdded: 0, message: "Minimum 100 points required to convert" };
+      return { success: false, creditAdded: 0, message: "Minimum 100 points required to convert (100 pts = $1)" };
     }
 
     // Calculate credit (100 points = $1 = 100 cents)

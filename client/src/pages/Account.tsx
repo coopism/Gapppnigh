@@ -14,7 +14,7 @@ import {
   Star, Gift, TrendingUp, Award, MapPin, Clock, DollarSign, Tag, MessageSquare,
   ChevronDown, ChevronUp, Info, Zap, Crown, Gem, Medal
 } from "lucide-react";
-import { AnimatedCounter, FadeIn, BlurFade } from "@/components/ui/motion";
+import { AnimatedCounter, FadeIn, BlurFade, motion } from "@/components/ui/motion";
 import { 
   useAuthStore, logout, resendVerification, fetchCurrentUser,
   validatePassword, getPasswordStrength 
@@ -29,25 +29,25 @@ import { Footer } from "@/components/Footer";
 
 const TIERS = [
   { 
-    name: "Bronze", threshold: 0, color: "from-amber-700 to-amber-600", 
-    textColor: "text-amber-700", bgColor: "bg-amber-700", badgeBg: "bg-amber-100 text-amber-800 border-amber-200",
+    name: "Bronze", threshold: 0, color: "from-stone-600 via-stone-500 to-stone-600", 
+    textColor: "text-stone-600", bgColor: "bg-stone-600", badgeBg: "bg-stone-100 text-stone-700 border-stone-200",
     icon: Medal, 
-    benefits: ["5 points per $1 spent", "50 bonus points per review", "Access to all gap night deals"] 
+    benefits: ["1 point per $1 spent", "10 bonus points per review", "Access to all gap night deals"] 
   },
   { 
-    name: "Silver", threshold: 500, color: "from-slate-500 to-slate-400", 
+    name: "Silver", threshold: 100, color: "from-slate-600 via-slate-400 to-slate-500", 
     textColor: "text-slate-500", bgColor: "bg-slate-500", badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
     icon: Award, 
     benefits: ["All Bronze benefits", "Priority booking on popular deals", "Early access to new listings", "5% bonus points on bookings"] 
   },
   { 
-    name: "Gold", threshold: 2000, color: "from-yellow-500 to-amber-400", 
-    textColor: "text-yellow-600", bgColor: "bg-yellow-500", badgeBg: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    name: "Gold", threshold: 500, color: "from-amber-500 via-yellow-400 to-amber-500", 
+    textColor: "text-amber-600", bgColor: "bg-amber-500", badgeBg: "bg-amber-50 text-amber-800 border-amber-200",
     icon: Crown, 
     benefits: ["All Silver benefits", "10% bonus points on bookings", "Exclusive Gold-only deals", "Free cancellation on select stays", "Priority customer support"] 
   },
   { 
-    name: "Platinum", threshold: 5000, color: "from-violet-600 to-purple-500", 
+    name: "Platinum", threshold: 1000, color: "from-violet-700 via-purple-500 to-indigo-600", 
     textColor: "text-violet-600", bgColor: "bg-violet-600", badgeBg: "bg-violet-100 text-violet-800 border-violet-200",
     icon: Gem, 
     benefits: ["All Gold benefits", "15% bonus points on bookings", "VIP early access (48hr head start)", "Complimentary room upgrades (where available)", "Dedicated concierge support", "Annual $25 travel credit"] 
@@ -97,15 +97,22 @@ function RewardsTierHero({ rewardsData, totalBookings, totalSaved }: {
   return (
     <div className="mb-8 space-y-4">
       {/* Hero tier card */}
+      <BlurFade duration={0.6}>
       <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${tierConfig.color} text-white p-6 sm:p-8`}>
         {/* Background decoration */}
-        <div className="absolute top-0 right-0 w-40 h-40 opacity-10">
+        <motion.div 
+          className="absolute top-0 right-0 w-40 h-40 opacity-10"
+          initial={{ rotate: -20, scale: 0.8 }}
+          animate={{ rotate: 0, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+        >
           <TierIcon className="w-full h-full" />
-        </div>
+        </motion.div>
 
         <div className="relative z-10">
           {/* Tier badge + points */}
           <div className="flex items-start justify-between mb-6">
+            <FadeIn direction="left" delay={0.1} distance={16}>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                 <TierIcon className="w-7 h-7" />
@@ -115,44 +122,59 @@ function RewardsTierHero({ rewardsData, totalBookings, totalSaved }: {
                 <h2 className="text-2xl font-bold">{tier}</h2>
               </div>
             </div>
+            </FadeIn>
+            <FadeIn direction="right" delay={0.1} distance={16}>
             <div className="text-right">
               <p className="text-sm font-medium text-white/70">Available points</p>
-              <p className="text-2xl font-bold">{currentPoints.toLocaleString()}</p>
+              <p className="text-2xl font-bold"><AnimatedCounter value={currentPoints} /></p>
               {creditBalance > 0 && (
                 <p className="text-xs text-white/60 mt-0.5">${(creditBalance / 100).toFixed(2)} credit</p>
               )}
             </div>
+            </FadeIn>
           </div>
 
           {/* Progress bar */}
           {nextTier ? (
+            <FadeIn direction="up" delay={0.25} distance={12}>
             <div className="space-y-2">
               <div className="flex justify-between text-xs text-white/70">
                 <span>{tier} — {totalPoints.toLocaleString()} pts</span>
                 <span>{nextTier.name} — {nextTier.threshold.toLocaleString()} pts</span>
               </div>
               <div className="h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                <div 
-                  className="h-full bg-white rounded-full transition-all duration-700 ease-out"
-                  style={{ width: `${progressPercent}%` }}
+                <motion.div 
+                  className="h-full bg-white rounded-full"
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${progressPercent}%` }}
+                  transition={{ duration: 1, delay: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
                 />
               </div>
               <p className="text-sm text-white/80">
                 <span className="font-semibold">{pointsToNext.toLocaleString()}</span> points to {nextTier.name}
               </p>
             </div>
+            </FadeIn>
           ) : (
+            <FadeIn direction="up" delay={0.25} distance={12}>
             <div className="space-y-2">
               <div className="h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                <div className="h-full bg-white rounded-full w-full" />
+                <motion.div 
+                  className="h-full bg-white rounded-full"
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 1, delay: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+                />
               </div>
               <p className="text-sm text-white/80 flex items-center gap-1.5">
                 <Zap className="w-4 h-4" /> You've reached the highest tier!
               </p>
             </div>
+            </FadeIn>
           )}
         </div>
       </div>
+      </BlurFade>
 
       {/* Quick stats row */}
       <div className="grid grid-cols-3 gap-3">
@@ -231,8 +253,8 @@ function RewardsTierHero({ rewardsData, totalBookings, totalSaved }: {
             </div>
             <div className="bg-muted/30 rounded-lg p-3">
               <p className="text-xs text-muted-foreground">
-                <strong className="text-foreground">How to earn points:</strong> Earn 5 points per $1 spent on bookings, plus 50 bonus points for every review you write. 
-                Points can be converted to travel credit at a rate of 100 points = $1.
+                <strong className="text-foreground">How to earn points:</strong> Earn 1 point per $1 spent on bookings, plus 10 bonus points for every review you write. 
+                Points can be converted to travel credit at a rate of 100 points = $1 (1,000 pts = $10).
               </p>
             </div>
           </div>
@@ -1479,7 +1501,7 @@ function AccountRewards() {
               </div>
               <div>
                 <p className="font-medium">Book a stay</p>
-                <p className="text-sm text-muted-foreground">Earn 5 points per dollar spent</p>
+                <p className="text-sm text-muted-foreground">Earn 1 point per dollar spent</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -1488,7 +1510,7 @@ function AccountRewards() {
               </div>
               <div>
                 <p className="font-medium">Write a review</p>
-                <p className="text-sm text-muted-foreground">Earn 50 bonus points</p>
+                <p className="text-sm text-muted-foreground">Earn 10 bonus points</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
