@@ -1,6 +1,30 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Redesign Rewards Progress Bar + Phone Number on Profile - Feb 18, 2026
+
+123. **Redesigned rewards tier progress bar**
+    - Bronze: warm amber/gold gradient (`from-amber-900 via-amber-800 to-yellow-900`) with amber fill bar
+    - Silver: slate gradient with light silver fill bar
+    - Gold: rich amber/yellow gradient with golden fill bar
+    - Platinum: violet/purple gradient with purple fill bar
+    - Each tier has dedicated `progressBg` and `progressFill` classes for proper contrast
+    - Progress bar uses `border-white/10` border, animated gradient fill, and a colored dot indicator
+    - Labels show current points on left, next tier threshold on right
+
+124. **Added phone number to user profile**
+    - New phone input field on Profile tab with `tel` type and placeholder `+61 400 000 000`
+    - Backend: `updateUserPhone()` in `user-auth.ts`, phone accepted in `PUT /api/auth/profile`
+    - `/api/auth/me` now returns `phone` field
+    - Phone validated (max 20 chars), can be cleared to null
+
+**Files Modified:**
+- `client/src/pages/Account.tsx` — Redesigned TIERS config with progress bar styles, added phone state + field
+- `server/user-auth.ts` — Added `updateUserPhone()` function
+- `server/user-routes.ts` — Added phone to profile update endpoint and `/api/auth/me` response
+
+---
+
 ## Fix Saved Listings Not Working - Feb 18, 2026
 
 122. **Root cause: App was using `MemStorage` instead of `DatabaseStorage`**

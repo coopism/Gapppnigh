@@ -29,25 +29,37 @@ import { Footer } from "@/components/Footer";
 
 const TIERS = [
   { 
-    name: "Bronze", threshold: 0, color: "from-stone-600 via-stone-500 to-stone-600", 
-    textColor: "text-stone-600", bgColor: "bg-stone-600", badgeBg: "bg-stone-100 text-stone-700 border-stone-200",
+    name: "Bronze", threshold: 0, 
+    color: "from-amber-900 via-amber-800 to-yellow-900",
+    progressBg: "bg-amber-950/40",
+    progressFill: "from-amber-600 via-amber-500 to-yellow-500",
+    textColor: "text-amber-700", bgColor: "bg-amber-700", badgeBg: "bg-amber-50 text-amber-800 border-amber-200",
     icon: Medal, 
     benefits: ["1 point per $1 spent", "10 bonus points per review", "Access to all gap night deals"] 
   },
   { 
-    name: "Silver", threshold: 100, color: "from-slate-600 via-slate-400 to-slate-500", 
+    name: "Silver", threshold: 100, 
+    color: "from-slate-700 via-slate-500 to-slate-600",
+    progressBg: "bg-slate-800/40",
+    progressFill: "from-slate-300 via-gray-200 to-slate-300",
     textColor: "text-slate-500", bgColor: "bg-slate-500", badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
     icon: Award, 
     benefits: ["All Bronze benefits", "Priority booking on popular deals", "Early access to new listings", "5% bonus points on bookings"] 
   },
   { 
-    name: "Gold", threshold: 500, color: "from-amber-500 via-yellow-400 to-amber-500", 
+    name: "Gold", threshold: 500, 
+    color: "from-amber-600 via-yellow-500 to-amber-500",
+    progressBg: "bg-amber-800/40",
+    progressFill: "from-yellow-300 via-amber-300 to-yellow-400",
     textColor: "text-amber-600", bgColor: "bg-amber-500", badgeBg: "bg-amber-50 text-amber-800 border-amber-200",
     icon: Crown, 
     benefits: ["All Silver benefits", "10% bonus points on bookings", "Exclusive Gold-only deals", "Free cancellation on select stays", "Priority customer support"] 
   },
   { 
-    name: "Platinum", threshold: 1000, color: "from-violet-700 via-purple-500 to-indigo-600", 
+    name: "Platinum", threshold: 1000, 
+    color: "from-violet-800 via-purple-600 to-indigo-700",
+    progressBg: "bg-violet-900/40",
+    progressFill: "from-violet-400 via-purple-300 to-indigo-400",
     textColor: "text-violet-600", bgColor: "bg-violet-600", badgeBg: "bg-violet-100 text-violet-800 border-violet-200",
     icon: Gem, 
     benefits: ["All Gold benefits", "15% bonus points on bookings", "VIP early access (48hr head start)", "Complimentary room upgrades (where available)", "Dedicated concierge support", "Annual $25 travel credit"] 
@@ -137,33 +149,36 @@ function RewardsTierHero({ rewardsData, totalBookings, totalSaved }: {
           {/* Progress bar */}
           {nextTier ? (
             <FadeIn direction="up" delay={0.25} distance={12}>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs text-white/70">
-                <span>{tier} — {totalPoints.toLocaleString()} pts</span>
-                <span>{nextTier.name} — {nextTier.threshold.toLocaleString()} pts</span>
+            <div className="space-y-3">
+              <div className="flex justify-between items-end text-xs">
+                <div className="flex items-center gap-1.5">
+                  <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${tierConfig.progressFill}`} />
+                  <span className="text-white/90 font-medium">{totalPoints.toLocaleString()} pts</span>
+                </div>
+                <span className="text-white/60">{nextTier.name} at {nextTier.threshold.toLocaleString()} pts</span>
               </div>
-              <div className="h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+              <div className={`h-2.5 ${tierConfig.progressBg} rounded-full overflow-hidden border border-white/10`}>
                 <motion.div 
-                  className="h-full bg-white rounded-full"
+                  className={`h-full bg-gradient-to-r ${tierConfig.progressFill} rounded-full shadow-sm`}
                   initial={{ width: "0%" }}
-                  animate={{ width: `${progressPercent}%` }}
-                  transition={{ duration: 1, delay: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  animate={{ width: `${Math.max(progressPercent, 2)}%` }}
+                  transition={{ duration: 1.2, delay: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
                 />
               </div>
               <p className="text-sm text-white/80">
-                <span className="font-semibold">{pointsToNext.toLocaleString()}</span> points to {nextTier.name}
+                <span className="font-semibold text-white">{pointsToNext.toLocaleString()}</span> points to {nextTier.name}
               </p>
             </div>
             </FadeIn>
           ) : (
             <FadeIn direction="up" delay={0.25} distance={12}>
-            <div className="space-y-2">
-              <div className="h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+            <div className="space-y-3">
+              <div className={`h-2.5 ${tierConfig.progressBg} rounded-full overflow-hidden border border-white/10`}>
                 <motion.div 
-                  className="h-full bg-white rounded-full"
+                  className={`h-full bg-gradient-to-r ${tierConfig.progressFill} rounded-full shadow-sm`}
                   initial={{ width: "0%" }}
                   animate={{ width: "100%" }}
-                  transition={{ duration: 1, delay: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  transition={{ duration: 1.2, delay: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
                 />
               </div>
               <p className="text-sm text-white/80 flex items-center gap-1.5">
@@ -278,6 +293,7 @@ export default function Account() {
   
   // Profile state
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   
@@ -335,6 +351,7 @@ export default function Account() {
   useEffect(() => {
     if (user) {
       setName(user.name || "");
+      setPhone((user as any).phone || "");
     }
   }, [user]);
 
@@ -373,7 +390,7 @@ export default function Account() {
           "X-CSRF-Token": csrfToken || "",
         },
         credentials: "include",
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, phone: phone || null }),
       });
       
       if (res.ok) {
@@ -618,6 +635,18 @@ export default function Account() {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your name"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+61 400 000 000"
+                  />
+                  <p className="text-xs text-muted-foreground">Used for booking confirmations and support</p>
                 </div>
               </CardContent>
               <CardFooter>

@@ -106,6 +106,12 @@ export async function updateUserName(userId: string, name: string): Promise<void
     .where(eq(users.id, userId));
 }
 
+export async function updateUserPhone(userId: string, phone: string | null): Promise<void> {
+  await db.update(users)
+    .set({ phone, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+}
+
 export async function verifyUserEmail(userId: string): Promise<void> {
   await db.update(users)
     .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })

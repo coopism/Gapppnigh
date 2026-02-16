@@ -13,6 +13,7 @@ import {
   verifyUserEmail,
   updateUserPassword,
   updateUserName,
+  updateUserPhone,
   softDeleteUser,
   generateCsrfToken,
   userAuthMiddleware,
@@ -255,6 +256,7 @@ export function registerUserAuthRoutes(app: Express) {
         id: req.user.id,
         email: req.user.email,
         name: req.user.name,
+        phone: req.user.phone || null,
         emailVerified: !!req.user.emailVerifiedAt,
       },
     });
@@ -404,13 +406,24 @@ export function registerUserAuthRoutes(app: Express) {
   app.put("/api/auth/profile", userAuthMiddleware, async (req, res) => {
     try {
       const user = req.user!;
-      const { name } = req.body;
+      const { name, phone } = req.body;
       
       if (name !== undefined) {
         if (typeof name !== "string" || name.length > 100) {
           return sendError(res, 400, "Invalid name", "name");
         }
         await updateUserName(user.id, name.trim());
+      }
+
+      if (phone !== undefined) {
+        if (phone !== null && phone !== "") {
+          if (typeof phone !== "string" || phone.length > 20) {
+            return sendError(res, 400, "Invalid phone number", "phone");
+          }
+          await updateUserPhone(user.id, phone.trim());
+        } else {
+          await updateUserPhone(user.id, null);
+        }
       }
       
       res.json({ success: true, message: "Profile updated" });
