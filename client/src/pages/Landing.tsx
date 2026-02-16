@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useDeals } from "@/hooks/use-deals";
 import { Navigation } from "@/components/Navigation";
+import { PropertyDealCard } from "@/components/PropertyDealCard";
 import { Search, MapPin, ArrowRight, Sparkles, Star, Clock, Hotel, CheckCircle2, Building2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +54,22 @@ export default function Landing() {
   const dealsRef = useRef<HTMLElement>(null);
 
   const { data: deals, isLoading: dealsLoading } = useDeals({ sort: "best" });
+
+  // Fetch properties (stays) for the landing page
+  const { data: propertiesData, isLoading: propsLoading } = useQuery({
+    queryKey: ["landing-properties"],
+    queryFn: async () => {
+      const res = await fetch("/api/properties?limit=6");
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.properties || [];
+    },
+  });
+
+  const properties = propertiesData || [];
+  const hasDeals = deals && deals.length > 0;
+  const hasProperties = properties.length > 0;
+  const isLoading = dealsLoading || propsLoading;
 
   const filteredSuggestions = LOCATION_SUGGESTIONS.filter(loc => {
     const searchLower = search.toLowerCase();
@@ -221,7 +239,7 @@ export default function Landing() {
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
             <div>
               <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                Explore today's gap night deals
+                Explore today's gap night stays
               </h2>
               <p className="text-muted-foreground mt-1">Real discounts on real rooms — book before they're gone</p>
             </div>
@@ -238,21 +256,21 @@ export default function Landing() {
           </FadeIn>
 
           <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dealsLoading && (
+            {isLoading && (
               <div className="col-span-full flex flex-col items-center justify-center py-16">
                 <GapNightLogoLoader size={64} className="mb-4" />
                 <p className="text-muted-foreground text-sm animate-pulse">Finding gap nights...</p>
               </div>
             )}
-            {!dealsLoading && (!deals || deals.length === 0) && (
+            {!isLoading && !hasDeals && !hasProperties && (
               <div className="col-span-full flex flex-col items-center justify-center py-16">
                 <div className="text-center max-w-md">
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
                     <Search className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-xl font-bold text-foreground mb-2">No deals found</h3>
+                  <h3 className="text-xl font-bold text-foreground mb-2">No stays found</h3>
                   <p className="text-muted-foreground mb-6">
-                    No gap night deals available right now. Check back soon or try searching for a different location.
+                    No gap night stays available right now. Check back soon or try searching for a different location.
                   </p>
                   <Button 
                     onClick={() => setLocation("/deals")}
@@ -265,7 +283,8 @@ export default function Landing() {
                 </div>
               </div>
             )}
-            {!dealsLoading && deals && deals.length > 0 && deals.slice(0, 6).map((deal) => {
+            {/* Show deal cards if any */}
+            {!isLoading && hasDeals && deals!.slice(0, 6).map((deal) => {
               const discountPercent = Math.round(
                 ((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100
               );
@@ -319,6 +338,12 @@ export default function Landing() {
                 </StaggerItem>
               );
             })}
+            {/* Show property cards */}
+            {!isLoading && hasProperties && properties.slice(0, hasDeals ? 3 : 6).map((prop: any) => (
+              <StaggerItem key={prop.id}>
+                <PropertyDealCard property={prop} />
+              </StaggerItem>
+            ))}
           </StaggerContainer>
         </div>
       </section>

@@ -1,6 +1,20 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Fix Landing Page Not Showing Stays - Feb 18, 2026
+
+129. **Root cause: Landing.tsx (route `/`) only fetched `deals` via `useDeals()`, never fetched properties**
+    - The actual home page is `Landing.tsx` at route `/`, NOT `Home.tsx` (which is at `/deals`)
+    - Added `useQuery` to fetch properties from `/api/properties?limit=6`
+    - Properties now render via `PropertyDealCard` in the "Explore today's gap night stays" section
+    - Empty state only shows when BOTH deals and properties are empty
+    - Updated section heading from "deals" to "stays"
+
+**Files Modified:**
+- `client/src/pages/Landing.tsx` — Added property fetching + PropertyDealCard rendering
+
+---
+
 ## Fix Stays Not Showing - Properties Endpoint Filter Too Strict - Feb 18, 2026
 
 128. **Root cause: `/api/properties` only returned `status: "approved"` properties, but host-listed properties start as `pending_approval`**
