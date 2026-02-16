@@ -115,6 +115,10 @@ export class DatabaseStorage implements IStorage {
   // ========================================
   
   async getDeals(search?: string, category?: string, sort?: string): Promise<Deal[]> {
+    // Legacy hotel deals disabled — platform is stays-only now.
+    // Keeping code below intact for potential future use.
+    return [];
+
     let results = await db.select().from(deals);
     
     // Filter out booked deals
@@ -164,6 +168,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDeal(id: string): Promise<Deal | undefined> {
+    // Legacy hotel deals disabled — platform is stays-only now.
+    return undefined;
+
     const result = await db.select().from(deals).where(eq(deals.id, id));
     return result[0];
   }

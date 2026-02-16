@@ -1,6 +1,19 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Remove Seeded Hotel Deals — Stays-Only Mode - Feb 18, 2026
+
+121. **Disabled legacy hotel deals from appearing on the platform**
+    - `getDeals()` now returns `[]` — no seeded hotel deals (Crown City Suites, Crown Riverfront, Bayview Boutique, Bayview Coastal, Langham, Park Hyatt) appear on the deals/home page
+    - `getDeal()` now returns `undefined` — individual hotel deal pages return 404
+    - Code preserved below early returns for potential future use
+    - Only stays/properties (from hosts) now appear on the platform
+
+**Files Modified:**
+- `server/storage.ts` — `getDeals()` and `getDeal()` return empty, hiding all legacy hotel deals
+
+---
+
 ## Admin Reviews Management + Property Editing - Feb 18, 2026
 
 119. **Admin: Reviews management page**
