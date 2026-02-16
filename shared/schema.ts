@@ -619,6 +619,30 @@ export const gapNightRules = pgTable("gap_night_rules", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ========================================
+// SAVED LISTINGS (User favorites)
+// ========================================
+
+export const savedListings = pgTable("saved_listings", {
+  id: text("id").primaryKey(), // UUID
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  propertyId: text("property_id").references(() => properties.id, { onDelete: "cascade" }),
+  dealId: text("deal_id"), // references deals table (legacy hotel deals)
+  itemType: text("item_type").notNull().default("property"), // "property" | "deal"
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const savedListingsRelations = relations(savedListings, ({ one }) => ({
+  user: one(users, {
+    fields: [savedListings.userId],
+    references: [users.id],
+  }),
+  property: one(properties, {
+    fields: [savedListings.propertyId],
+    references: [properties.id],
+  }),
+}));
+
 // Relations for new tables
 export const draftListingsRelations = relations(draftListings, ({ one, many }) => ({
   host: one(airbnbHosts, {

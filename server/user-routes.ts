@@ -795,6 +795,89 @@ export function registerUserAuthRoutes(app: Express) {
   });
 
   // ========================================
+  // SAVED LISTINGS
+  // ========================================
+
+  // Get all saved item IDs (for checking save state on cards)
+  app.get("/api/auth/saved/ids", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const [propertyIds, dealIds] = await Promise.all([
+        storage.getUserSavedPropertyIds(user.id),
+        storage.getUserSavedDealIds(user.id),
+      ]);
+      res.json({ propertyIds, dealIds });
+    } catch (err) {
+      console.error("Get saved IDs error:", err);
+      sendError(res, 500, "Failed to get saved IDs");
+    }
+  });
+
+  // Get all saved listings with full data
+  app.get("/api/auth/saved", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const savedItems = await storage.getUserSavedListings(user.id);
+      res.json({ saved: savedItems });
+    } catch (err) {
+      console.error("Get saved listings error:", err);
+      sendError(res, 500, "Failed to get saved listings");
+    }
+  });
+
+  // Save a property
+  app.post("/api/auth/saved/property/:propertyId", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const propertyId = req.params.propertyId as string;
+      const saved = await storage.saveProperty(user.id, propertyId);
+      res.json({ saved, message: "Property saved" });
+    } catch (err) {
+      console.error("Save property error:", err);
+      sendError(res, 500, "Failed to save property");
+    }
+  });
+
+  // Unsave a property
+  app.delete("/api/auth/saved/property/:propertyId", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const propertyId = req.params.propertyId as string;
+      await storage.unsaveProperty(user.id, propertyId);
+      res.json({ message: "Property removed from saved" });
+    } catch (err) {
+      console.error("Unsave property error:", err);
+      sendError(res, 500, "Failed to unsave property");
+    }
+  });
+
+  // Save a deal
+  app.post("/api/auth/saved/deal/:dealId", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const dealId = req.params.dealId as string;
+      const saved = await storage.saveDeal(user.id, dealId);
+      res.json({ saved, message: "Deal saved" });
+    } catch (err) {
+      console.error("Save deal error:", err);
+      sendError(res, 500, "Failed to save deal");
+    }
+  });
+
+  // Unsave a deal
+  app.delete("/api/auth/saved/deal/:dealId", userAuthMiddleware, async (req, res) => {
+    try {
+      const user = req.user!;
+      const dealId = req.params.dealId as string;
+      await storage.unsaveDeal(user.id, dealId);
+      res.json({ message: "Deal removed from saved" });
+    } catch (err) {
+      console.error("Unsave deal error:", err);
+      sendError(res, 500, "Failed to unsave deal");
+    }
+  });
+
+  // ========================================
   // OAUTH AUTHENTICATION
   // ========================================
   

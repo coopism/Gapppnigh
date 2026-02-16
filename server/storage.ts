@@ -1,6 +1,6 @@
 import { 
   deals, waitlist, hotelInquiries, hotelOwners, hotels, roomTypes, availability, publishedDeals, ownerSessions, bookings, autoListingRules,
-  userRewards, rewardsTransactions, hotelReviews, promoCodes, promoCodeUsage,
+  userRewards, rewardsTransactions, hotelReviews, promoCodes, promoCodeUsage, savedListings,
   type Deal, type InsertDeal, type InsertWaitlist, type InsertHotelInquiry, 
   type HotelOwner, type InsertHotelOwner, type HotelProfile, type InsertHotel,
   type RoomTypeRecord, type InsertRoomType, type AvailabilityRecord, type InsertAvailability,
@@ -95,6 +95,17 @@ export interface IStorage {
   getUserBookings(userId: string): Promise<Booking[]>;
   markBookingPointsAwarded(bookingId: string): Promise<void>;
   markBookingReviewSubmitted(bookingId: string): Promise<void>;
+  
+  // Saved listings methods
+  saveProperty(userId: string, propertyId: string): Promise<any>;
+  unsaveProperty(userId: string, propertyId: string): Promise<void>;
+  saveDeal(userId: string, dealId: string): Promise<any>;
+  unsaveDeal(userId: string, dealId: string): Promise<void>;
+  getUserSavedListings(userId: string): Promise<any[]>;
+  isPropertySaved(userId: string, propertyId: string): Promise<boolean>;
+  isDealSaved(userId: string, dealId: string): Promise<boolean>;
+  getUserSavedPropertyIds(userId: string): Promise<string[]>;
+  getUserSavedDealIds(userId: string): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -681,6 +692,74 @@ export class DatabaseStorage implements IStorage {
       .update(bookings)
       .set({ reviewSubmitted: true })
       .where(eq(bookings.id, bookingId));
+  }
+
+  // ========================================
+  // SAVED LISTINGS
+  // ========================================
+
+  async saveProperty(userId: string, propertyId: string): Promise<any> {
+    const existing = await db.select().from(savedListings)
+      .where(and(eq(savedListings.userId, userId), eq(savedListings.propertyId, propertyId)))
+      .limit(1);
+    if (existing.length > 0) return existing[0];
+    const [saved] = await db.insert(savedListings).values({
+      id: uuidv4(), userId, propertyId, itemType: "property",
+    }).returning();
+    return saved;
+  }
+
+  async unsaveProperty(userId: string, propertyId: string): Promise<void> {
+    await db.delete(savedListings)
+      .where(and(eq(savedListings.userId, userId), eq(savedListings.propertyId, propertyId)));
+  }
+
+  async saveDeal(userId: string, dealId: string): Promise<any> {
+    const existing = await db.select().from(savedListings)
+      .where(and(eq(savedListings.userId, userId), eq(savedListings.dealId, dealId)))
+      .limit(1);
+    if (existing.length > 0) return existing[0];
+    const [saved] = await db.insert(savedListings).values({
+      id: uuidv4(), userId, dealId, itemType: "deal",
+    }).returning();
+    return saved;
+  }
+
+  async unsaveDeal(userId: string, dealId: string): Promise<void> {
+    await db.delete(savedListings)
+      .where(and(eq(savedListings.userId, userId), eq(savedListings.dealId, dealId)));
+  }
+
+  async getUserSavedListings(userId: string): Promise<any[]> {
+    return await db.select().from(savedListings)
+      .where(eq(savedListings.userId, userId))
+      .orderBy(desc(savedListings.createdAt));
+  }
+
+  async isPropertySaved(userId: string, propertyId: string): Promise<boolean> {
+    const result = await db.select().from(savedListings)
+      .where(and(eq(savedListings.userId, userId), eq(savedListings.propertyId, propertyId)))
+      .limit(1);
+    return result.length > 0;
+  }
+
+  async isDealSaved(userId: string, dealId: string): Promise<boolean> {
+    const result = await db.select().from(savedListings)
+      .where(and(eq(savedListings.userId, userId), eq(savedListings.dealId, dealId)))
+      .limit(1);
+    return result.length > 0;
+  }
+
+  async getUserSavedPropertyIds(userId: string): Promise<string[]> {
+    const results = await db.select({ propertyId: savedListings.propertyId }).from(savedListings)
+      .where(and(eq(savedListings.userId, userId), eq(savedListings.itemType, "property")));
+    return results.map(r => r.propertyId).filter(Boolean) as string[];
+  }
+
+  async getUserSavedDealIds(userId: string): Promise<string[]> {
+    const results = await db.select({ dealId: savedListings.dealId }).from(savedListings)
+      .where(and(eq(savedListings.userId, userId), eq(savedListings.itemType, "deal")));
+    return results.map(r => r.dealId).filter(Boolean) as string[];
   }
 }
 
@@ -1319,6 +1398,17 @@ export class MemStorage implements IStorage {
   async markBookingReviewSubmitted(bookingId: string): Promise<void> {
     return;
   }
+
+  // Saved listings stub methods for MemStorage
+  async saveProperty(userId: string, propertyId: string): Promise<any> { return { id: "stub", userId, propertyId, itemType: "property" }; }
+  async unsaveProperty(userId: string, propertyId: string): Promise<void> { return; }
+  async saveDeal(userId: string, dealId: string): Promise<any> { return { id: "stub", userId, dealId, itemType: "deal" }; }
+  async unsaveDeal(userId: string, dealId: string): Promise<void> { return; }
+  async getUserSavedListings(userId: string): Promise<any[]> { return []; }
+  async isPropertySaved(userId: string, propertyId: string): Promise<boolean> { return false; }
+  async isDealSaved(userId: string, dealId: string): Promise<boolean> { return false; }
+  async getUserSavedPropertyIds(userId: string): Promise<string[]> { return []; }
+  async getUserSavedDealIds(userId: string): Promise<string[]> { return []; }
 }
 
 // Use MemStorage since database is not connected

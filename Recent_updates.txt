@@ -1,6 +1,61 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Saved Listings - Full Backend Implementation - Feb 18, 2026
+
+87. **Database: saved_listings table (`schema.ts`, `bootstrap.ts`)**
+    - New `saved_listings` table with userId, propertyId, dealId, itemType columns
+    - Unique indexes on (user_id, property_id) and (user_id, deal_id) to prevent duplicates
+    - CASCADE delete when user or property is deleted
+
+88. **Storage methods (`storage.ts`)**
+    - saveProperty/unsaveProperty, saveDeal/unsaveDeal
+    - getUserSavedListings, getUserSavedPropertyIds, getUserSavedDealIds
+    - isPropertySaved, isDealSaved
+    - Implemented in DatabaseStorage + MemStorage stubs
+
+89. **API endpoints (`user-routes.ts`)**
+    - GET /api/auth/saved/ids — returns saved property + deal IDs (for card state)
+    - GET /api/auth/saved — returns all saved items
+    - POST /api/auth/saved/property/:propertyId — save a property
+    - DELETE /api/auth/saved/property/:propertyId — unsave a property
+    - POST /api/auth/saved/deal/:dealId — save a deal
+    - DELETE /api/auth/saved/deal/:dealId — unsave a deal
+
+90. **Frontend hook (`useSavedListings.ts`)**
+    - Global state with optimistic updates for instant UI feedback
+    - Fetches saved IDs on login, shared across all card components
+    - Reverts on API failure
+
+91. **Card components wired up (`DealCard.tsx`, `PropertyDealCard.tsx`)**
+    - Heart icon now persists save state to database via API
+    - Previously was local state only (lost on refresh)
+
+92. **Saved Listings page (`SavedListings.tsx`)**
+    - New /saved page showing all saved properties and deals
+    - Grid layout with property cards, remove button
+    - Empty state with CTA to browse deals
+    - Accessible from nav menu "Saved Listings"
+
+93. **Route added (`App.tsx`)**
+    - /saved route in both MainRouter and PublicRouter
+
+**Files Created:**
+- `client/src/hooks/useSavedListings.ts`
+- `client/src/pages/SavedListings.tsx`
+
+**Files Modified:**
+- `shared/schema.ts` — saved_listings table
+- `server/bootstrap.ts` — table creation + indexes
+- `server/storage.ts` — storage methods + interface
+- `server/user-routes.ts` — API endpoints
+- `client/src/components/DealCard.tsx` — wired to API
+- `client/src/components/PropertyDealCard.tsx` — wired to API
+- `client/src/App.tsx` — /saved route
+- `Recent_updates.txt` — This log
+
+---
+
 ## Profile Tab Revamp - Rewards Tier Hero - Feb 18, 2026
 
 84. **Rewards Tier Hero Card (`Account.tsx`)**

@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuthStore } from "@/hooks/useAuth";
+import { useSavedListings } from "@/hooks/useSavedListings";
 
 const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "WiFi": Wifi,
@@ -82,8 +83,9 @@ function getGapNightRangeLabel(property: any): string {
 
 export function PropertyDealCard({ property }: PropertyDealCardProps) {
   const { user } = useAuthStore();
-  const [isSaved, setIsSaved] = useState(false);
+  const { isPropertySaved, toggleSaveProperty } = useSavedListings();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const isSaved = isPropertySaved(property.id);
   
   const lowestGapRate = property.gapNights?.length > 0
     ? Math.min(...property.gapNights.map((gn: any) => gn.discountedRate))
@@ -96,7 +98,7 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
   const basePrice = property.baseNightlyRate / 100;
   const dealPrice = lowestGapRate ? lowestGapRate / 100 : basePrice;
 
-  const handleSaveClick = (e: React.MouseEvent) => {
+  const handleSaveClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -105,7 +107,7 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
       return;
     }
     
-    setIsSaved(!isSaved);
+    await toggleSaveProperty(property.id);
   };
 
   return (

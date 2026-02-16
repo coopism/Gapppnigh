@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuthStore } from "@/hooks/useAuth";
+import { useSavedListings } from "@/hooks/useSavedListings";
 
 const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "WiFi": Wifi,
@@ -33,15 +34,15 @@ interface DealCardProps {
 
 export function DealCard({ deal }: DealCardProps) {
   const { user } = useAuthStore();
-  const [isSaved, setIsSaved] = useState(false);
+  const { isDealSaved, toggleSaveDeal } = useSavedListings();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const isSaved = isDealSaved(deal.id);
   
   const discountPercent = Math.round(
     ((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100
   );
 
-
-  const handleSaveClick = (e: React.MouseEvent) => {
+  const handleSaveClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -50,7 +51,7 @@ export function DealCard({ deal }: DealCardProps) {
       return;
     }
     
-    setIsSaved(!isSaved);
+    await toggleSaveDeal(deal.id);
   };
 
   return (

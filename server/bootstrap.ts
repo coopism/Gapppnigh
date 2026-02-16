@@ -569,6 +569,18 @@ async function createTables() {
     )
   `);
 
+  // Saved listings table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "saved_listings" (
+      "id" text PRIMARY KEY,
+      "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+      "property_id" text REFERENCES "properties"("id") ON DELETE CASCADE,
+      "deal_id" text,
+      "item_type" text DEFAULT 'property' NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
   // Add manual_blocked_dates column if missing (for existing databases)
   await db.execute(sql`
     DO $$
@@ -627,6 +639,13 @@ async function createTables() {
   // Draft listings indexes
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_draft_listings_host_id ON "draft_listings"("host_id")`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_draft_listings_status ON "draft_listings"("status")`);
+
+  // Saved listings indexes
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_saved_listings_user_id ON "saved_listings"("user_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_saved_listings_property_id ON "saved_listings"("property_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_saved_listings_deal_id ON "saved_listings"("deal_id")`);
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_listings_user_property ON "saved_listings"("user_id", "property_id") WHERE "property_id" IS NOT NULL`);
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_listings_user_deal ON "saved_listings"("user_id", "deal_id") WHERE "deal_id" IS NOT NULL`);
 
   // iCal connections indexes
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ical_connections_host_id ON "ical_connections"("host_id")`);
