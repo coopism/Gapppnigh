@@ -3,8 +3,12 @@ import { storage } from "./storage";
 import { db } from "./db";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
-import { adminUsers, adminSessions, adminActivityLogs, users, bookings, deals, hotels, hotelReviews, promoCodes } from "@shared/schema";
-import { eq, desc, sql, and, gte, lte, count, ilike, or } from "drizzle-orm";
+import { 
+  adminUsers, adminSessions, adminActivityLogs, users, bookings, deals, hotels, hotelReviews, promoCodes,
+  featureFlags, siteConfig, supportTickets, cmsCityPages, cmsBanners, cmsStaticPages,
+  notificationTemplates, notificationLogs, properties, propertyBookings, propertyAvailability, airbnbHosts
+} from "@shared/schema";
+import { eq, desc, sql, and, gte, lte, count, ilike, or, asc, inArray, ne } from "drizzle-orm";
 import { LOG_RETENTION_DAYS } from "./config";
 
 const ADMIN_SESSION_COOKIE = "admin_session";
@@ -312,20 +316,15 @@ export function registerAdminRoutes(app: Router) {
       const validatedPage = Math.max(parseInt(page as string), 1);
       const offset = (validatedPage - 1) * validatedLimit;
 
-      let query = db.select().from(users);
-
-      if (search) {
-        // Sanitize search input to prevent SQL injection
-        const sanitizedSearch = search.replace(/[%_\\]/g, "\\$&");
-        query = query.where(
-          or(
-            ilike(users.email, `%${sanitizedSearch}%`),
-            ilike(users.name, `%${sanitizedSearch}%`)
+      const searchCondition = search
+        ? or(
+            ilike(users.email, `%${(search as string).replace(/[%_\\]/g, "\\$&")}%`),
+            ilike(users.name, `%${(search as string).replace(/[%_\\]/g, "\\$&")}%`)
           )
-        );
-      }
+        : undefined;
 
-      const allUsers = await query
+      const allUsers = await db.select().from(users)
+        .where(searchCondition)
         .orderBy(desc(users.createdAt))
         .limit(validatedLimit)
         .offset(offset);
@@ -337,7 +336,9 @@ export function registerAdminRoutes(app: Router) {
           id: u.id,
           email: u.email,
           name: u.name,
-          emailVerified: u.emailVerified,
+          emailVerified: !!u.emailVerifiedAt,
+          status: u.status,
+          fraudRisk: u.fraudRisk,
           createdAt: u.createdAt,
         })),
         total: totalCount.count,
@@ -352,7 +353,7 @@ export function registerAdminRoutes(app: Router) {
 
   app.get(`${ADMIN_PREFIX}/users/:userId`, adminAuthMiddleware, async (req, res) => {
     try {
-      const { userId } = req.params;
+      const userId = req.params.userId as string;
 
       const [user] = await db
         .select()
@@ -368,25 +369,28 @@ export function registerAdminRoutes(app: Router) {
       const userBookings = await db
         .select()
         .from(bookings)
-        .where(eq(bookings.userId, userId))
+        .where(eq(bookings.userId, userId as string))
         .orderBy(desc(bookings.createdAt));
 
       // Get user's reviews
       const userReviews = await db
         .select()
         .from(hotelReviews)
-        .where(eq(hotelReviews.userId, userId))
+        .where(eq(hotelReviews.userId, userId as string))
         .orderBy(desc(hotelReviews.createdAt));
 
       // Get user's rewards
-      const userRewards = await storage.getUserRewards(userId);
+      const userRewards = await storage.getUserRewards(userId as string);
 
       res.json({
         user: {
           id: user.id,
           email: user.email,
           name: user.name,
-          emailVerified: user.emailVerified,
+          emailVerified: !!user.emailVerifiedAt,
+          status: user.status,
+          fraudRisk: user.fraudRisk,
+          adminNotes: user.adminNotes,
           googleId: user.googleId,
           appleId: user.appleId,
           createdAt: user.createdAt,
@@ -414,13 +418,10 @@ export function registerAdminRoutes(app: Router) {
       const validatedPage = Math.max(parseInt(page as string), 1);
       const offset = (validatedPage - 1) * validatedLimit;
 
-      let query = db.select().from(bookings);
+      const statusCondition = status ? eq(bookings.status, status as string) : undefined;
 
-      if (status) {
-        query = query.where(eq(bookings.status, status as string));
-      }
-
-      const allBookings = await query
+      const allBookings = await db.select().from(bookings)
+        .where(statusCondition)
         .orderBy(desc(bookings.createdAt))
         .limit(validatedLimit)
         .offset(offset);

@@ -1,15 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   BarChart3, Users, DollarSign, Calendar, TrendingUp, Shield,
   Activity, Settings, LogOut, Search, Plus, Trash2, Eye,
-  AlertCircle, CheckCircle, Loader2, Gift, Star, MapPin
+  AlertCircle, CheckCircle, Loader2, Gift, Star, MapPin,
+  Building2, Home, CreditCard, FileText, Bell, Headphones,
+  Flag, ClipboardList, ChevronRight, Menu, X, UserCog,
+  Ban, MessageSquare, ToggleLeft, Globe, Megaphone,
+  BookOpen, Ticket, PanelLeftClose, PanelLeft
 } from "lucide-react";
 import {
   Table,
@@ -31,25 +35,60 @@ import { Textarea } from "@/components/ui/textarea";
 // Obfuscated admin API prefix
 const ADMIN_API = "/api/x9k2p7m4";
 
-interface AdminStats {
-  totalUsers: number;
-  totalBookings: number;
-  totalDeals: number;
-  totalHotels: number;
-  totalReviews: number;
-  totalRevenue: number;
-  avgBookingValue: number;
-  recentUsers: number;
-  recentBookings: number;
+// ========================================
+// SIDEBAR NAV CONFIGURATION
+// ========================================
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: any;
+  children?: { id: string; label: string }[];
 }
+
+const NAV_ITEMS: NavItem[] = [
+  { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+  { id: "properties", label: "Properties", icon: Home, children: [
+    { id: "properties-all", label: "All Properties" },
+    { id: "properties-pending", label: "Pending Approval" },
+  ]},
+  { id: "bookings", label: "Bookings", icon: Calendar, children: [
+    { id: "bookings-all", label: "All Bookings" },
+    { id: "bookings-legacy", label: "Deal Bookings" },
+  ]},
+  { id: "users", label: "Users & Trust", icon: Users, children: [
+    { id: "users-all", label: "All Users" },
+    { id: "users-hosts", label: "Hosts" },
+  ]},
+  { id: "payments", label: "Payments", icon: CreditCard },
+  { id: "promos", label: "Promotions", icon: Gift },
+  { id: "content", label: "Content (CMS)", icon: FileText, children: [
+    { id: "content-cities", label: "City Pages" },
+    { id: "content-banners", label: "Banners" },
+    { id: "content-pages", label: "Static Pages" },
+  ]},
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "support", label: "Support", icon: Headphones },
+  { id: "system", label: "System", icon: Settings, children: [
+    { id: "system-flags", label: "Feature Flags" },
+    { id: "system-config", label: "Site Config" },
+    { id: "system-admins", label: "Admin Users" },
+    { id: "system-health", label: "System Health" },
+  ]},
+  { id: "audit", label: "Audit Logs", icon: ClipboardList },
+];
+
+// ========================================
+// MAIN ADMIN DASHBOARD
+// ========================================
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const [admin, setAdmin] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [topCities, setTopCities] = useState<any[]>([]);
+  const [activePage, setActivePage] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [expandedNav, setExpandedNav] = useState<string[]>(["properties", "system"]);
 
   useEffect(() => {
     checkAuth();
@@ -57,472 +96,350 @@ export default function AdminDashboard() {
 
   const checkAuth = async () => {
     try {
-      const res = await fetch(`${ADMIN_API}/me`, {
-        credentials: "include",
-      });
-
+      const res = await fetch(`${ADMIN_API}/me`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setAdmin(data.admin);
-        await loadDashboardData();
       } else {
         setLocation("/admin/login");
       }
     } catch (error) {
-      console.error("Auth check failed:", error);
       setLocation("/admin/login");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadDashboardData = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/stats/overview`, {
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data.overview);
-        setTopCities(data.topCities);
-      }
-    } catch (error) {
-      console.error("Failed to load dashboard data:", error);
-    }
-  };
-
   const handleLogout = async () => {
     try {
-      await fetch(`${ADMIN_API}/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
+      await fetch(`${ADMIN_API}/logout`, { method: "POST", credentials: "include" });
       setLocation("/admin/login");
     } catch (error) {
       console.error("Logout failed:", error);
     }
   };
 
+  const toggleNavExpand = (id: string) => {
+    setExpandedNav(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+          <span className="text-sm text-slate-400">Loading admin console...</span>
+        </div>
       </div>
     );
   }
 
-  if (!admin) {
-    return null;
-  }
+  if (!admin) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Admin Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Shield className="w-8 h-8 text-primary" />
-              <div>
-                <h1 className="text-xl font-bold">GapNight Admin Panel</h1>
-                <p className="text-sm text-muted-foreground">
-                  Welcome back, {admin.name}
-                </p>
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Sidebar */}
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-slate-900 text-white flex flex-col transition-all duration-200 fixed h-full z-40`}>
+        {/* Logo */}
+        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+          {sidebarOpen && (
+            <div className="flex items-center gap-2">
+              <Shield className="w-6 h-6 text-indigo-400" />
+              <span className="font-bold text-sm">GapNight Ops</span>
+            </div>
+          )}
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 hover:bg-slate-800 rounded">
+            {sidebarOpen ? <PanelLeftClose className="w-4 h-4 text-slate-400" /> : <PanelLeft className="w-4 h-4 text-slate-400" />}
+          </button>
+        </div>
+
+        {/* Nav Items */}
+        <nav className="flex-1 overflow-y-auto py-2">
+          {NAV_ITEMS.map(item => {
+            const Icon = item.icon;
+            const isActive = activePage === item.id || activePage.startsWith(item.id + "-");
+            const isExpanded = expandedNav.includes(item.id);
+
+            return (
+              <div key={item.id}>
+                <button
+                  onClick={() => {
+                    if (item.children) {
+                      toggleNavExpand(item.id);
+                      if (!isActive) setActivePage(item.children[0].id);
+                    } else {
+                      setActivePage(item.id);
+                    }
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                    isActive ? 'bg-indigo-600/20 text-indigo-300 border-r-2 border-indigo-400' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                  title={!sidebarOpen ? item.label : undefined}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  {sidebarOpen && (
+                    <>
+                      <span className="flex-1 text-left">{item.label}</span>
+                      {item.children && (
+                        <ChevronRight className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                      )}
+                    </>
+                  )}
+                </button>
+                {sidebarOpen && item.children && isExpanded && (
+                  <div className="ml-7 border-l border-slate-700">
+                    {item.children.map(child => (
+                      <button
+                        key={child.id}
+                        onClick={() => setActivePage(child.id)}
+                        className={`w-full text-left px-4 py-2 text-xs transition-colors ${
+                          activePage === child.id ? 'text-indigo-300 bg-indigo-600/10' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {child.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* Admin Info */}
+        {sidebarOpen && (
+          <div className="p-4 border-t border-slate-700">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold">
+                {admin.name?.charAt(0)?.toUpperCase() || "A"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate">{admin.name}</p>
+                <p className="text-[10px] text-slate-400 truncate">{admin.role}</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="w-full text-slate-400 hover:text-white hover:bg-slate-800 text-xs">
+              <LogOut className="w-3 h-3 mr-2" /> Logout
             </Button>
           </div>
+        )}
+      </aside>
+
+      {/* Main Content */}
+      <main className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-16'} transition-all duration-200`}>
+        {/* Top Bar */}
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-semibold text-slate-800">
+              {NAV_ITEMS.find(n => n.id === activePage || n.children?.some(c => c.id === activePage))?.label || "Dashboard"}
+              {activePage.includes("-") && (
+                <span className="text-slate-400 font-normal text-sm ml-2">
+                  / {NAV_ITEMS.flatMap(n => n.children || []).find(c => c.id === activePage)?.label}
+                </span>
+              )}
+            </h1>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">{admin.role}</Badge>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <div className="p-6">
+          {activePage === "dashboard" && <DashboardPage />}
+          {(activePage === "properties-all" || activePage === "properties") && <PropertiesPage />}
+          {activePage === "properties-pending" && <PropertiesPage filterStatus="pending_approval" />}
+          {activePage === "bookings-all" && <PropertyBookingsPage />}
+          {activePage === "bookings-legacy" && <LegacyBookingsPage />}
+          {(activePage === "users-all" || activePage === "users") && <UsersPage />}
+          {activePage === "users-hosts" && <HostsPage />}
+          {activePage === "payments" && <PaymentsStubPage />}
+          {activePage === "promos" && <PromoCodesPage />}
+          {(activePage === "content-cities" || activePage === "content") && <CityPagesPage />}
+          {activePage === "content-banners" && <BannersPage />}
+          {activePage === "content-pages" && <StaticPagesPage />}
+          {activePage === "notifications" && <NotificationsStubPage />}
+          {activePage === "support" && <SupportTicketsPage />}
+          {(activePage === "system-flags" || activePage === "system") && <FeatureFlagsPage />}
+          {activePage === "system-config" && <SiteConfigPage />}
+          {activePage === "system-admins" && <AdminUsersPage />}
+          {activePage === "system-health" && <SystemHealthPage />}
+          {activePage === "audit" && <AuditLogsPage />}
         </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6 mb-8">
-            <TabsTrigger value="overview">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="users">
-              <Users className="w-4 h-4 mr-2" />
-              Users
-            </TabsTrigger>
-            <TabsTrigger value="bookings">
-              <Calendar className="w-4 h-4 mr-2" />
-              Bookings
-            </TabsTrigger>
-            <TabsTrigger value="promos">
-              <Gift className="w-4 h-4 mr-2" />
-              Promo Codes
-            </TabsTrigger>
-            <TabsTrigger value="activity">
-              <Activity className="w-4 h-4 mr-2" />
-              Activity Logs
-            </TabsTrigger>
-            <TabsTrigger value="system">
-              <Settings className="w-4 h-4 mr-2" />
-              System
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview">
-            <OverviewTab stats={stats} topCities={topCities} />
-          </TabsContent>
-
-          {/* Users Tab */}
-          <TabsContent value="users">
-            <UsersTab />
-          </TabsContent>
-
-          {/* Bookings Tab */}
-          <TabsContent value="bookings">
-            <BookingsTab />
-          </TabsContent>
-
-          {/* Promo Codes Tab */}
-          <TabsContent value="promos">
-            <PromoCodesTab />
-          </TabsContent>
-
-          {/* Activity Logs Tab */}
-          <TabsContent value="activity">
-            <ActivityLogsTab />
-          </TabsContent>
-
-          {/* System Tab */}
-          <TabsContent value="system">
-            <SystemTab />
-          </TabsContent>
-        </Tabs>
       </main>
     </div>
   );
 }
 
-// Overview Tab Component
-function OverviewTab({ stats, topCities }: { stats: AdminStats | null; topCities: any[] }) {
-  if (!stats) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+// ========================================
+// A) DASHBOARD PAGE
+// ========================================
+function DashboardPage() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState("30");
+
+  useEffect(() => { loadData(); }, [period]);
+
+  const loadData = async () => {
+    try {
+      const [enhanced, legacy] = await Promise.all([
+        fetch(`${ADMIN_API}/stats/enhanced?period=${period}`, { credentials: "include" }).then(r => r.ok ? r.json() : null),
+        fetch(`${ADMIN_API}/stats/overview`, { credentials: "include" }).then(r => r.ok ? r.json() : null),
+      ]);
+      setData({ ...enhanced, legacy: legacy?.overview, legacyCities: legacy?.topCities });
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  if (!data) return <div className="text-center py-12 text-slate-400">Failed to load dashboard data</div>;
+
+  const m = data.metrics || {};
+  const legacy = data.legacy || {};
 
   return (
     <div className="space-y-6">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              +{stats.recentUsers} in last 30 days
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalBookings.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              +{stats.recentBookings} in last 30 days
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Avg: ${stats.avgBookingValue.toLocaleString()} per booking
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Hotels</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalHotels.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.totalDeals.toLocaleString()} active deals
-            </p>
-          </CardContent>
-        </Card>
+      {/* Period Selector */}
+      <div className="flex items-center gap-2">
+        {["7", "30", "90"].map(p => (
+          <Button key={p} size="sm" variant={period === p ? "default" : "outline"} onClick={() => setPeriod(p)}>
+            {p}d
+          </Button>
+        ))}
       </div>
 
-      {/* Secondary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Alerts */}
+      {data.alerts?.length > 0 && (
+        <div className="space-y-2">
+          {data.alerts.map((a: any, i: number) => (
+            <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-sm ${
+              a.type === "error" ? "bg-red-50 border-red-200 text-red-700" :
+              a.type === "warning" ? "bg-amber-50 border-amber-200 text-amber-700" :
+              "bg-blue-50 border-blue-200 text-blue-700"
+            }`}>
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span className="flex-1">{a.message}</span>
+              <Badge variant="secondary">{a.count}</Badge>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <MetricCard title="Total Users" value={m.totalUsers || legacy.totalUsers || 0} sub={`+${m.newUsers || legacy.recentUsers || 0} new`} icon={Users} />
+        <MetricCard title="Properties" value={m.totalProperties || 0} sub={`${m.activeProperties || 0} active`} icon={Home} />
+        <MetricCard title="Bookings" value={m.totalBookings || legacy.totalBookings || 0} sub={`+${m.recentBookings || legacy.recentBookings || 0} recent`} icon={Calendar} />
+        <MetricCard title="Revenue" value={`$${(m.totalRevenue || legacy.totalRevenue || 0).toLocaleString()}`} sub="Total confirmed" icon={DollarSign} />
+        <MetricCard title="Open Tickets" value={m.openTickets || 0} sub={`${m.cancellations || 0} cancellations`} icon={Headphones} color={m.openTickets > 0 ? "text-red-600" : undefined} />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Cities */}
         <Card>
-          <CardHeader>
-            <CardTitle>Top Cities by Bookings</CardTitle>
-            <CardDescription>Most popular destinations</CardDescription>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-sm">Top Cities</CardTitle></CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {topCities.map((city, index) => (
-                <div key={index} className="flex items-center justify-between">
+            <div className="space-y-2">
+              {(data.topCities || data.legacyCities || []).slice(0, 8).map((c: any, i: number) => (
+                <div key={i} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium">{city.city}</span>
+                    <MapPin className="w-3 h-3 text-slate-400" />
+                    <span>{c.city || "Unknown"}</span>
                   </div>
-                  <Badge variant="secondary">{city.bookings} bookings</Badge>
+                  <Badge variant="secondary" className="text-xs">{c.bookings}</Badge>
                 </div>
               ))}
+              {(!data.topCities?.length && !data.legacyCities?.length) && <p className="text-xs text-slate-400">No data yet</p>}
             </div>
           </CardContent>
         </Card>
 
+        {/* Revenue Chart (simple bar representation) */}
         <Card>
-          <CardHeader>
-            <CardTitle>Platform Metrics</CardTitle>
-            <CardDescription>Additional statistics</CardDescription>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-sm">Daily Revenue (last {period} days)</CardTitle></CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Total Reviews</span>
-                <span className="font-semibold">{stats.totalReviews.toLocaleString()}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Active Deals</span>
-                <span className="font-semibold">{stats.totalDeals.toLocaleString()}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Conversion Rate</span>
-                <span className="font-semibold">
-                  {stats.totalUsers > 0 
-                    ? ((stats.totalBookings / stats.totalUsers) * 100).toFixed(1)
-                    : 0}%
-                </span>
-              </div>
+            <div className="space-y-1">
+              {(data.dailyRevenue || []).slice(-10).map((d: any, i: number) => {
+                const max = Math.max(...(data.dailyRevenue || []).map((x: any) => x.revenue || 0), 1);
+                return (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className="w-16 text-slate-400">{d.date?.slice(5)}</span>
+                    <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
+                      <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${Math.max((d.revenue / max) * 100, 2)}%` }} />
+                    </div>
+                    <span className="w-16 text-right font-mono">${d.revenue}</span>
+                  </div>
+                );
+              })}
+              {!data.dailyRevenue?.length && <p className="text-xs text-slate-400">No revenue data yet</p>}
             </div>
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
-}
 
-// Users Tab Component
-function UsersTab() {
-  const [users, setUsers] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-
-  useEffect(() => {
-    loadUsers();
-  }, [searchTerm]);
-
-  const loadUsers = async () => {
-    try {
-      const res = await fetch(
-        `${ADMIN_API}/users?search=${encodeURIComponent(searchTerm)}`,
-        { credentials: "include" }
-      );
-
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data.users || []);
-      } else {
-        console.error("Failed to load users:", res.status, res.statusText);
-        setUsers([]);
-      }
-    } catch (error) {
-      console.error("Failed to load users:", error);
-      setUsers([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const viewUserDetails = async (userId: string) => {
-    try {
-      const res = await fetch(`${ADMIN_API}/users/${userId}`, {
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setSelectedUser(data);
-      }
-    } catch (error) {
-      console.error("Failed to load user details:", error);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
+      {/* Quick Actions */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>View and manage platform users</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-64"
-                />
-              </div>
-            </div>
-          </div>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-sm">Quick Actions</CardTitle></CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : users.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No users found
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.email}</TableCell>
-                    <TableCell>{user.name || "—"}</TableCell>
-                    <TableCell>
-                      {user.emailVerified ? (
-                        <Badge variant="default">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Verified
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          <AlertCircle className="w-3 h-3 mr-1" />
-                          Unverified
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => viewUserDetails(user.id)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline"><Plus className="w-3 h-3 mr-1" /> Create Promo</Button>
+            <Button size="sm" variant="outline"><Home className="w-3 h-3 mr-1" /> Approve Properties</Button>
+            <Button size="sm" variant="outline"><Bell className="w-3 h-3 mr-1" /> Send Notification</Button>
+            <Button size="sm" variant="outline"><Flag className="w-3 h-3 mr-1" /> Feature Flags</Button>
+          </div>
         </CardContent>
       </Card>
-
-      {/* User Details Modal */}
-      {selectedUser && (
-        <Card>
-          <CardHeader>
-            <CardTitle>User Details</CardTitle>
-            <CardDescription>{selectedUser.user.email}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Total Bookings</Label>
-                  <p className="text-2xl font-bold">{selectedUser.bookings.length}</p>
-                </div>
-                <div>
-                  <Label>Total Reviews</Label>
-                  <p className="text-2xl font-bold">{selectedUser.reviews.length}</p>
-                </div>
-                <div>
-                  <Label>Rewards Points</Label>
-                  <p className="text-2xl font-bold">
-                    {selectedUser.rewards?.currentPoints || 0}
-                  </p>
-                </div>
-                <div>
-                  <Label>Tier</Label>
-                  <p className="text-2xl font-bold">
-                    {selectedUser.rewards?.tier || "Bronze"}
-                  </p>
-                </div>
-              </div>
-              <Button variant="outline" onClick={() => setSelectedUser(null)}>
-                Close
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
 
-// Bookings Tab Component
-function BookingsTab() {
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("");
+function MetricCard({ title, value, sub, icon: Icon, color }: { title: string; value: any; sub: string; icon: any; color?: string }) {
+  return (
+    <Card>
+      <CardContent className="pt-4 pb-3">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-slate-500">{title}</span>
+          <Icon className="w-4 h-4 text-slate-400" />
+        </div>
+        <div className={`text-xl font-bold ${color || ""}`}>{typeof value === "number" ? value.toLocaleString() : value}</div>
+        <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p>
+      </CardContent>
+    </Card>
+  );
+}
 
-  useEffect(() => {
-    loadBookings();
-  }, [statusFilter]);
+// ========================================
+// B) PROPERTIES PAGE
+// ========================================
+function PropertiesPage({ filterStatus }: { filterStatus?: string }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
-  const loadBookings = async () => {
+  useEffect(() => { load(); }, [filterStatus, search]);
+
+  const load = async () => {
     try {
-      const res = await fetch(
-        `${ADMIN_API}/bookings?status=${statusFilter}`,
-        { credentials: "include" }
-      );
+      const params = new URLSearchParams({ limit: "50" });
+      if (filterStatus) params.set("status", filterStatus);
+      if (search) params.set("search", search);
+      const res = await fetch(`${ADMIN_API}/properties?${params}`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setItems(d.properties || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
 
-      if (res.ok) {
-        const data = await res.json();
-        setBookings(data.bookings || []);
-      } else {
-        console.error("Failed to load bookings:", res.status, res.statusText);
-        setBookings([]);
-      }
-    } catch (error) {
-      console.error("Failed to load bookings:", error);
-      setBookings([]);
-    } finally {
-      setIsLoading(false);
-    }
+  const updateStatus = async (id: string, status: string, reason?: string) => {
+    await fetch(`${ADMIN_API}/properties/${id}/status`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, reason }),
+    });
+    load();
   };
 
   return (
@@ -530,15 +447,190 @@ function BookingsTab() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Booking Management</CardTitle>
-            <CardDescription>View all platform bookings</CardDescription>
+            <CardTitle>{filterStatus === "pending_approval" ? "Pending Approval" : "All Properties"}</CardTitle>
+            <CardDescription>{items.length} properties</CardDescription>
           </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 w-56" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        items.length === 0 ? <p className="text-center py-8 text-slate-400">No properties found</p> : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>City</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Rate</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map(p => (
+                <TableRow key={p.id}>
+                  <TableCell className="font-medium max-w-[200px] truncate">{p.title}</TableCell>
+                  <TableCell>{p.city}, {p.state}</TableCell>
+                  <TableCell><Badge variant="outline" className="text-xs">{p.propertyType}</Badge></TableCell>
+                  <TableCell>${((p.baseNightlyRate || 0) / 100).toFixed(0)}/night</TableCell>
+                  <TableCell>
+                    <Badge variant={p.status === "approved" ? "default" : p.status === "rejected" ? "destructive" : "secondary"} className="text-xs">
+                      {p.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {p.status === "pending_approval" && (
+                        <>
+                          <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => updateStatus(p.id, "approved")}>
+                            <CheckCircle className="w-3 h-3 mr-1" /> Approve
+                          </Button>
+                          <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => {
+                            const reason = prompt("Rejection reason:");
+                            if (reason) updateStatus(p.id, "rejected", reason);
+                          }}>Reject</Button>
+                        </>
+                      )}
+                      {p.status === "approved" && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatus(p.id, "suspended")}>Suspend</Button>
+                      )}
+                      {p.status === "suspended" && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatus(p.id, "approved")}>Reactivate</Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// E) PROPERTY BOOKINGS PAGE
+// ========================================
+function PropertyBookingsPage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("");
+
+  useEffect(() => { load(); }, [statusFilter]);
+
+  const load = async () => {
+    try {
+      const params = new URLSearchParams({ limit: "50" });
+      if (statusFilter) params.set("status", statusFilter);
+      const res = await fetch(`${ADMIN_API}/property-bookings?${params}`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setItems(d.bookings || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const cancelBooking = async (id: string) => {
+    const reason = prompt("Cancel reason:");
+    if (!reason) return;
+    await fetch(`${ADMIN_API}/property-bookings/${id}/cancel`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    load();
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div><CardTitle>Property Bookings</CardTitle><CardDescription>{items.length} bookings</CardDescription></div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
+            <SelectTrigger className="w-[160px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All statuses</SelectItem>
+              <SelectItem value="">All</SelectItem>
+              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        items.length === 0 ? <p className="text-center py-8 text-slate-400">No bookings found</p> : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Check-in</TableHead>
+                <TableHead>Nights</TableHead>
+                <TableHead>Guests</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.slice(0, 50).map(b => (
+                <TableRow key={b.id}>
+                  <TableCell className="font-mono text-xs">{b.id?.substring(0, 10)}</TableCell>
+                  <TableCell>{b.checkInDate}</TableCell>
+                  <TableCell>{b.nights}</TableCell>
+                  <TableCell>{b.guests}</TableCell>
+                  <TableCell>${((b.totalPrice || 0) / 100).toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Badge variant={b.status === "confirmed" ? "default" : b.status === "cancelled" ? "destructive" : "secondary"} className="text-xs">
+                      {b.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {b.status === "confirmed" && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs text-red-600" onClick={() => cancelBooking(b.id)}>
+                        Cancel
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Legacy deal bookings (existing)
+function LegacyBookingsPage() {
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("");
+
+  useEffect(() => { load(); }, [statusFilter]);
+
+  const load = async () => {
+    try {
+      const res = await fetch(`${ADMIN_API}/bookings?status=${statusFilter}`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setBookings(d.bookings || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div><CardTitle>Deal Bookings (Legacy)</CardTitle></div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[160px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All</SelectItem>
               <SelectItem value="CONFIRMED">Confirmed</SelectItem>
               <SelectItem value="CANCELLED">Cancelled</SelectItem>
               <SelectItem value="COMPLETED">Completed</SelectItem>
@@ -547,49 +639,24 @@ function BookingsTab() {
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : bookings.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            No bookings found
-          </div>
-        ) : (
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        bookings.length === 0 ? <p className="text-center py-8 text-slate-400">No bookings</p> : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Booking ID</TableHead>
-                <TableHead>Hotel</TableHead>
-                <TableHead>Guest</TableHead>
-                <TableHead>Check-in</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>ID</TableHead><TableHead>Hotel</TableHead><TableHead>Guest</TableHead>
+                <TableHead>Check-in</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {bookings.slice(0, 50).map((booking) => (
-                <TableRow key={booking.id}>
-                  <TableCell className="font-mono text-xs">
-                    {booking.id?.substring(0, 8) || 'N/A'}...
-                  </TableCell>
-                  <TableCell>{booking.hotelName || 'N/A'}</TableCell>
-                  <TableCell>{booking.guestEmail || 'N/A'}</TableCell>
-                  <TableCell>{booking.checkInDate || 'N/A'}</TableCell>
-                  <TableCell>${((booking.totalPrice || 0) / 100).toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        booking.status === "CONFIRMED"
-                          ? "default"
-                          : booking.status === "CANCELLED"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                    >
-                      {booking.status || 'UNKNOWN'}
-                    </Badge>
-                  </TableCell>
+              {bookings.slice(0, 50).map(b => (
+                <TableRow key={b.id}>
+                  <TableCell className="font-mono text-xs">{b.id?.substring(0, 8)}...</TableCell>
+                  <TableCell>{b.hotelName || "N/A"}</TableCell>
+                  <TableCell>{b.guestEmail || "N/A"}</TableCell>
+                  <TableCell>{b.checkInDate || "N/A"}</TableCell>
+                  <TableCell>${((b.totalPrice || 0) / 100).toFixed(2)}</TableCell>
+                  <TableCell><Badge variant={b.status === "CONFIRMED" ? "default" : b.status === "CANCELLED" ? "destructive" : "secondary"} className="text-xs">{b.status}</Badge></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -600,216 +667,79 @@ function BookingsTab() {
   );
 }
 
-// Promo Codes Tab Component
-function PromoCodesTab() {
-  const [promoCodes, setPromoCodes] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newCode, setNewCode] = useState({
-    code: "",
-    type: "POINTS",
-    value: "",
-    description: "",
-    maxUses: "",
-    expiresAt: "",
-  });
+// ========================================
+// G) USERS PAGE (Enhanced with trust/safety)
+// ========================================
+function UsersPage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<any>(null);
 
-  useEffect(() => {
-    loadPromoCodes();
-  }, []);
+  useEffect(() => { load(); }, [search]);
 
-  const loadPromoCodes = async () => {
+  const load = async () => {
     try {
-      const res = await fetch(`${ADMIN_API}/promo-codes`, {
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setPromoCodes(data.promoCodes || []);
-      } else {
-        console.error("Failed to load promo codes:", res.status, res.statusText);
-        setPromoCodes([]);
-      }
-    } catch (error) {
-      console.error("Failed to load promo codes:", error);
-      setPromoCodes([]);
-    } finally {
-      setIsLoading(false);
-    }
+      const res = await fetch(`${ADMIN_API}/users?search=${encodeURIComponent(search)}`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setItems(d.users || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   };
 
-  const createPromoCode = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/promo-codes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          ...newCode,
-          value: parseInt(newCode.value),
-          maxUses: newCode.maxUses ? parseInt(newCode.maxUses) : null,
-        }),
-      });
-
-      if (res.ok) {
-        setShowCreateForm(false);
-        setNewCode({
-          code: "",
-          type: "POINTS",
-          value: "",
-          description: "",
-          maxUses: "",
-          expiresAt: "",
-        });
-        loadPromoCodes();
-      }
-    } catch (error) {
-      console.error("Failed to create promo code:", error);
-    }
+  const viewDetails = async (userId: string) => {
+    const res = await fetch(`${ADMIN_API}/users/${userId}`, { credentials: "include" });
+    if (res.ok) setSelected(await res.json());
   };
 
-  const deletePromoCode = async (codeId: string) => {
-    if (!confirm("Are you sure you want to delete this promo code?")) return;
-
-    try {
-      await fetch(`${ADMIN_API}/promo-codes/${codeId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      loadPromoCodes();
-    } catch (error) {
-      console.error("Failed to delete promo code:", error);
-    }
+  const updateUserStatus = async (userId: string, status: string) => {
+    const reason = status !== "active" ? prompt(`Reason for ${status}:`) : undefined;
+    if (status !== "active" && !reason) return;
+    await fetch(`${ADMIN_API}/users/${userId}/status`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, reason }),
+    });
+    load();
+    setSelected(null);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Promo Code Management</CardTitle>
-              <CardDescription>Create and manage promotional codes</CardDescription>
+            <div><CardTitle>User Management</CardTitle><CardDescription>View and manage platform users</CardDescription></div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 w-64" />
             </div>
-            <Button onClick={() => setShowCreateForm(!showCreateForm)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Code
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {showCreateForm && (
-            <div className="mb-6 p-4 border rounded-lg space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Code</Label>
-                  <Input
-                    placeholder="WELCOME50"
-                    value={newCode.code}
-                    onChange={(e) =>
-                      setNewCode({ ...newCode, code: e.target.value.toUpperCase() })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Type</Label>
-                  <Select
-                    value={newCode.type}
-                    onValueChange={(v) => setNewCode({ ...newCode, type: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="POINTS">Points</SelectItem>
-                      <SelectItem value="PERCENTAGE">Percentage</SelectItem>
-                      <SelectItem value="FIXED_AMOUNT">Fixed Amount</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Value</Label>
-                  <Input
-                    type="number"
-                    placeholder="50"
-                    value={newCode.value}
-                    onChange={(e) => setNewCode({ ...newCode, value: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Max Uses (optional)</Label>
-                  <Input
-                    type="number"
-                    placeholder="100"
-                    value={newCode.maxUses}
-                    onChange={(e) => setNewCode({ ...newCode, maxUses: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Textarea
-                  placeholder="Welcome bonus for new users"
-                  value={newCode.description}
-                  onChange={(e) => setNewCode({ ...newCode, description: e.target.value })}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={createPromoCode}>Create</Button>
-                <Button variant="outline" onClick={() => setShowCreateForm(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : promoCodes.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No promo codes found
-            </div>
-          ) : (
+          {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+          items.length === 0 ? <p className="text-center py-8 text-slate-400">No users found</p> : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead>Uses</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>Email</TableHead><TableHead>Name</TableHead><TableHead>Verified</TableHead>
+                  <TableHead>Status</TableHead><TableHead>Risk</TableHead><TableHead>Joined</TableHead><TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {promoCodes.map((code) => (
-                  <TableRow key={code.id}>
-                    <TableCell className="font-mono font-bold">{code.code}</TableCell>
+                {items.map(u => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.email}</TableCell>
+                    <TableCell>{u.name || "—"}</TableCell>
+                    <TableCell>{u.emailVerified ? <Badge variant="default" className="text-xs"><CheckCircle className="w-3 h-3 mr-1" />Yes</Badge> : <Badge variant="secondary" className="text-xs">No</Badge>}</TableCell>
+                    <TableCell><Badge variant={u.status === "active" ? "default" : "destructive"} className="text-xs">{u.status || "active"}</Badge></TableCell>
+                    <TableCell><Badge variant={u.fraudRisk === "none" || !u.fraudRisk ? "secondary" : "destructive"} className="text-xs">{u.fraudRisk || "none"}</Badge></TableCell>
+                    <TableCell className="text-xs">{new Date(u.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{code.type}</Badge>
-                    </TableCell>
-                    <TableCell>{code.value}</TableCell>
-                    <TableCell>
-                      {code.currentUses} / {code.maxUses || "∞"}
-                    </TableCell>
-                    <TableCell>
-                      {code.isActive ? (
-                        <Badge variant="default">Active</Badge>
-                      ) : (
-                        <Badge variant="secondary">Inactive</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deletePromoCode(code.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" className="h-7" onClick={() => viewDetails(u.id)}><Eye className="w-3 h-3" /></Button>
+                        {u.status !== "suspended" && <Button size="sm" variant="ghost" className="h-7 text-amber-600" onClick={() => updateUserStatus(u.id, "suspended")}><Ban className="w-3 h-3" /></Button>}
+                        {u.status === "suspended" && <Button size="sm" variant="ghost" className="h-7 text-green-600" onClick={() => updateUserStatus(u.id, "active")}><CheckCircle className="w-3 h-3" /></Button>}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -818,82 +748,629 @@ function PromoCodesTab() {
           )}
         </CardContent>
       </Card>
+
+      {selected && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div><CardTitle>User Details</CardTitle><CardDescription>{selected.user.email}</CardDescription></div>
+              <Button variant="outline" size="sm" onClick={() => setSelected(null)}>Close</Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 gap-4 mb-4">
+              <div><Label className="text-xs">Bookings</Label><p className="text-xl font-bold">{selected.bookings?.length || 0}</p></div>
+              <div><Label className="text-xs">Reviews</Label><p className="text-xl font-bold">{selected.reviews?.length || 0}</p></div>
+              <div><Label className="text-xs">Points</Label><p className="text-xl font-bold">{selected.rewards?.currentPoints || 0}</p></div>
+              <div><Label className="text-xs">Tier</Label><p className="text-xl font-bold">{selected.rewards?.tier || "Bronze"}</p></div>
+            </div>
+            {selected.user.adminNotes && (
+              <div className="p-3 bg-slate-50 rounded text-xs whitespace-pre-wrap mb-3">{selected.user.adminNotes}</div>
+            )}
+            <div className="flex gap-2">
+              <Button size="sm" variant="destructive" onClick={() => updateUserStatus(selected.user.id, "banned")}>Ban User</Button>
+              <Button size="sm" variant="outline" onClick={() => updateUserStatus(selected.user.id, "active")}>Activate</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
 
-// Activity Logs Tab Component
-function ActivityLogsTab() {
-  const [logs, setLogs] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+// ========================================
+// D) HOSTS PAGE
+// ========================================
+function HostsPage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    loadLogs();
-  }, []);
+  useEffect(() => { load(); }, [search]);
 
-  const loadLogs = async () => {
+  const load = async () => {
     try {
-      const res = await fetch(`${ADMIN_API}/activity-logs`, {
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setLogs(data.logs || []);
-      } else {
-        console.error("Failed to load activity logs:", res.status, res.statusText);
-        setLogs([]);
-      }
-    } catch (error) {
-      console.error("Failed to load activity logs:", error);
-      setLogs([]);
-    } finally {
-      setIsLoading(false);
-    }
+      const res = await fetch(`${ADMIN_API}/hosts?search=${encodeURIComponent(search)}`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setItems(d.hosts || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Admin Activity Logs</CardTitle>
-        <CardDescription>Track all administrative actions</CardDescription>
+        <div className="flex items-center justify-between">
+          <div><CardTitle>Host Management</CardTitle><CardDescription>{items.length} hosts</CardDescription></div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input placeholder="Search hosts..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 w-56" />
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : logs.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            No activity logs found
-          </div>
-        ) : (
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        items.length === 0 ? <p className="text-center py-8 text-slate-400">No hosts found</p> : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Admin</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Target</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>IP Address</TableHead>
+                <TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead>
+                <TableHead>Superhost</TableHead><TableHead>Active</TableHead><TableHead>Joined</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logs.slice(0, 100).map((log) => (
-                <TableRow key={log.id}>
+              {items.map(h => (
+                <TableRow key={h.id}>
+                  <TableCell className="font-medium">{h.name}</TableCell>
+                  <TableCell>{h.email}</TableCell>
+                  <TableCell>{h.phone || "—"}</TableCell>
+                  <TableCell>{h.isSuperhost ? <Badge variant="default" className="text-xs">Yes</Badge> : <Badge variant="secondary" className="text-xs">No</Badge>}</TableCell>
+                  <TableCell>{h.isActive ? <Badge variant="default" className="text-xs">Active</Badge> : <Badge variant="destructive" className="text-xs">Inactive</Badge>}</TableCell>
+                  <TableCell className="text-xs">{new Date(h.createdAt).toLocaleDateString()}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// F) PAYMENTS STUB
+// ========================================
+function PaymentsStubPage() {
+  return (
+    <Card>
+      <CardHeader><CardTitle>Payments & Payouts</CardTitle><CardDescription>Stripe integration — coming in Phase 2</CardDescription></CardHeader>
+      <CardContent>
+        <div className="text-center py-12 text-slate-400">
+          <CreditCard className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+          <p className="text-sm">Payment tracking, failed payment triage, payout management, and reconciliation will be available here.</p>
+          <p className="text-xs mt-2">Requires Stripe webhook integration.</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// H) PROMO CODES PAGE (Enhanced)
+// ========================================
+function PromoCodesPage() {
+  const [codes, setCodes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ code: "", type: "POINTS", value: "", description: "", maxUses: "", expiresAt: "" });
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    try {
+      const res = await fetch(`${ADMIN_API}/promo-codes`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setCodes(d.promoCodes || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const create = async () => {
+    const res = await fetch(`${ADMIN_API}/promo-codes`, {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, value: parseInt(form.value), maxUses: form.maxUses ? parseInt(form.maxUses) : null }),
+    });
+    if (res.ok) { setShowForm(false); setForm({ code: "", type: "POINTS", value: "", description: "", maxUses: "", expiresAt: "" }); load(); }
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("Delete this promo code?")) return;
+    await fetch(`${ADMIN_API}/promo-codes/${id}`, { method: "DELETE", credentials: "include" });
+    load();
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div><CardTitle>Promo Codes</CardTitle><CardDescription>{codes.length} codes</CardDescription></div>
+          <Button size="sm" onClick={() => setShowForm(!showForm)}><Plus className="w-3 h-3 mr-1" /> Create</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {showForm && (
+          <div className="mb-4 p-4 border rounded-lg space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Code</Label><Input placeholder="WELCOME50" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} /></div>
+              <div><Label className="text-xs">Type</Label>
+                <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="POINTS">Points</SelectItem><SelectItem value="PERCENTAGE">Percentage</SelectItem><SelectItem value="FIXED_AMOUNT">Fixed Amount</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <div><Label className="text-xs">Value</Label><Input type="number" placeholder="50" value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} /></div>
+              <div><Label className="text-xs">Max Uses</Label><Input type="number" placeholder="100" value={form.maxUses} onChange={e => setForm({ ...form, maxUses: e.target.value })} /></div>
+            </div>
+            <div><Label className="text-xs">Description</Label><Textarea placeholder="Description..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+            <div className="flex gap-2"><Button size="sm" onClick={create}>Create</Button><Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button></div>
+          </div>
+        )}
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        codes.length === 0 ? <p className="text-center py-8 text-slate-400">No promo codes</p> : (
+          <Table>
+            <TableHeader><TableRow><TableHead>Code</TableHead><TableHead>Type</TableHead><TableHead>Value</TableHead><TableHead>Uses</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {codes.map(c => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-mono font-bold">{c.code}</TableCell>
+                  <TableCell><Badge variant="outline" className="text-xs">{c.type}</Badge></TableCell>
+                  <TableCell>{c.value}</TableCell>
+                  <TableCell>{c.currentUses} / {c.maxUses || "∞"}</TableCell>
+                  <TableCell>{c.isActive ? <Badge variant="default" className="text-xs">Active</Badge> : <Badge variant="secondary" className="text-xs">Inactive</Badge>}</TableCell>
+                  <TableCell><Button variant="ghost" size="sm" onClick={() => remove(c.id)}><Trash2 className="w-3 h-3 text-red-500" /></Button></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// I) CMS - CITY PAGES
+// ========================================
+function CityPagesPage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    try {
+      const res = await fetch(`${ADMIN_API}/cms/cities`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setItems(d.cities || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div><CardTitle>City Pages</CardTitle><CardDescription>Manage city landing page content</CardDescription></div>
+          <Button size="sm"><Plus className="w-3 h-3 mr-1" /> Add City</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        items.length === 0 ? <p className="text-center py-8 text-slate-400">No city pages yet. Create one to manage city-specific content.</p> : (
+          <Table>
+            <TableHeader><TableRow><TableHead>City</TableHead><TableHead>State</TableHead><TableHead>Hero Title</TableHead><TableHead>Published</TableHead><TableHead>Updated</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {items.map(c => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">{c.city}</TableCell>
+                  <TableCell>{c.state || "—"}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{c.heroTitle || "—"}</TableCell>
+                  <TableCell>{c.isPublished ? <Badge variant="default" className="text-xs">Published</Badge> : <Badge variant="secondary" className="text-xs">Draft</Badge>}</TableCell>
+                  <TableCell className="text-xs">{new Date(c.updatedAt).toLocaleDateString()}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// I) CMS - BANNERS
+// ========================================
+function BannersPage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    try {
+      const res = await fetch(`${ADMIN_API}/cms/banners`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setItems(d.banners || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("Delete this banner?")) return;
+    await fetch(`${ADMIN_API}/cms/banners/${id}`, { method: "DELETE", credentials: "include" });
+    load();
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div><CardTitle>Banners & Announcements</CardTitle><CardDescription>Global and city-specific alerts</CardDescription></div>
+          <Button size="sm"><Plus className="w-3 h-3 mr-1" /> Create Banner</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        items.length === 0 ? <p className="text-center py-8 text-slate-400">No banners yet</p> : (
+          <Table>
+            <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Type</TableHead><TableHead>Placement</TableHead><TableHead>Active</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {items.map(b => (
+                <TableRow key={b.id}>
+                  <TableCell className="font-medium">{b.title}</TableCell>
+                  <TableCell><Badge variant="outline" className="text-xs">{b.type}</Badge></TableCell>
+                  <TableCell>{b.placement}</TableCell>
+                  <TableCell>{b.isActive ? <Badge variant="default" className="text-xs">Active</Badge> : <Badge variant="secondary" className="text-xs">Inactive</Badge>}</TableCell>
+                  <TableCell><Button variant="ghost" size="sm" onClick={() => remove(b.id)}><Trash2 className="w-3 h-3 text-red-500" /></Button></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// I) CMS - STATIC PAGES
+// ========================================
+function StaticPagesPage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    try {
+      const res = await fetch(`${ADMIN_API}/cms/pages`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setItems(d.pages || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div><CardTitle>Static Pages</CardTitle><CardDescription>Terms, Privacy, Help content</CardDescription></div>
+          <Button size="sm"><Plus className="w-3 h-3 mr-1" /> Create Page</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        items.length === 0 ? <p className="text-center py-8 text-slate-400">No static pages yet. Create pages for Terms, Privacy, Help, etc.</p> : (
+          <Table>
+            <TableHeader><TableRow><TableHead>Slug</TableHead><TableHead>Title</TableHead><TableHead>SEO Title</TableHead><TableHead>Updated</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {items.map(p => (
+                <TableRow key={p.id}>
+                  <TableCell className="font-mono text-xs">{p.slug}</TableCell>
+                  <TableCell className="font-medium">{p.title}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{p.seoTitle || "—"}</TableCell>
+                  <TableCell className="text-xs">{new Date(p.updatedAt).toLocaleDateString()}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// J) NOTIFICATIONS STUB
+// ========================================
+function NotificationsStubPage() {
+  return (
+    <Card>
+      <CardHeader><CardTitle>Notifications</CardTitle><CardDescription>Send email/push notifications to user segments</CardDescription></CardHeader>
+      <CardContent>
+        <div className="text-center py-12 text-slate-400">
+          <Bell className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+          <p className="text-sm">Notification composer, templates, and delivery logs will be available here.</p>
+          <p className="text-xs mt-2">Coming in Phase 3.</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// K) SUPPORT TICKETS
+// ========================================
+function SupportTicketsPage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("");
+
+  useEffect(() => { load(); }, [statusFilter]);
+
+  const load = async () => {
+    try {
+      const params = new URLSearchParams({ limit: "50" });
+      if (statusFilter) params.set("status", statusFilter);
+      const res = await fetch(`${ADMIN_API}/support/tickets?${params}`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setItems(d.tickets || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div><CardTitle>Support Tickets</CardTitle><CardDescription>{items.length} tickets</CardDescription></div>
+          <div className="flex gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="resolved">Resolved</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        items.length === 0 ? <p className="text-center py-8 text-slate-400">No support tickets yet</p> : (
+          <Table>
+            <TableHeader><TableRow><TableHead>Subject</TableHead><TableHead>Category</TableHead><TableHead>Priority</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {items.map(t => (
+                <TableRow key={t.id}>
+                  <TableCell className="font-medium max-w-[250px] truncate">{t.subject}</TableCell>
+                  <TableCell><Badge variant="outline" className="text-xs">{t.category}</Badge></TableCell>
+                  <TableCell><Badge variant={t.priority === "urgent" ? "destructive" : t.priority === "high" ? "default" : "secondary"} className="text-xs">{t.priority}</Badge></TableCell>
+                  <TableCell><Badge variant={t.status === "open" ? "default" : t.status === "resolved" ? "secondary" : "outline"} className="text-xs">{t.status}</Badge></TableCell>
+                  <TableCell className="text-xs">{new Date(t.createdAt).toLocaleDateString()}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// L) FEATURE FLAGS
+// ========================================
+function FeatureFlagsPage() {
+  const [flags, setFlags] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ key: "", label: "", description: "", enabled: false, category: "feature" });
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    try {
+      const res = await fetch(`${ADMIN_API}/feature-flags`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setFlags(d.flags || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const toggle = async (id: string, enabled: boolean) => {
+    await fetch(`${ADMIN_API}/feature-flags/${id}`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    });
+    load();
+  };
+
+  const create = async () => {
+    await fetch(`${ADMIN_API}/feature-flags`, {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setShowForm(false);
+    setForm({ key: "", label: "", description: "", enabled: false, category: "feature" });
+    load();
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div><CardTitle>Feature Flags</CardTitle><CardDescription>Toggle features without code changes</CardDescription></div>
+          <Button size="sm" onClick={() => setShowForm(!showForm)}><Plus className="w-3 h-3 mr-1" /> Add Flag</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {showForm && (
+          <div className="mb-4 p-4 border rounded-lg space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Key</Label><Input placeholder="feature_name" value={form.key} onChange={e => setForm({ ...form, key: e.target.value })} /></div>
+              <div><Label className="text-xs">Label</Label><Input placeholder="Feature Name" value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
+            </div>
+            <div><Label className="text-xs">Description</Label><Input placeholder="What this flag controls..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+            <div className="flex gap-2"><Button size="sm" onClick={create}>Create</Button><Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button></div>
+          </div>
+        )}
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        flags.length === 0 ? <p className="text-center py-8 text-slate-400">No feature flags yet. Create one to toggle features.</p> : (
+          <div className="space-y-3">
+            {flags.map(f => (
+              <div key={f.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-medium">{f.key}</span>
+                    <Badge variant="outline" className="text-[10px]">{f.category}</Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">{f.label} — {f.description || "No description"}</p>
+                </div>
+                <Switch checked={f.enabled} onCheckedChange={(v) => toggle(f.id, v)} />
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// L) SITE CONFIG
+// ========================================
+function SiteConfigPage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    try {
+      const res = await fetch(`${ADMIN_API}/site-config`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setItems(d.config || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const save = async (id: string) => {
+    await fetch(`${ADMIN_API}/site-config/${id}`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: editValue }),
+    });
+    setEditing(null);
+    load();
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div><CardTitle>Site Configuration</CardTitle><CardDescription>Platform settings (fees, limits, etc.)</CardDescription></div>
+          <Button size="sm"><Plus className="w-3 h-3 mr-1" /> Add Config</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        items.length === 0 ? <p className="text-center py-8 text-slate-400">No configuration entries yet. Add platform settings like fees, limits, etc.</p> : (
+          <div className="space-y-2">
+            {items.map(c => (
+              <div key={c.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm">{c.key}</span>
+                    <Badge variant="outline" className="text-[10px]">{c.category}</Badge>
+                  </div>
+                  <p className="text-xs text-slate-500">{c.label} — {c.description || ""}</p>
+                </div>
+                {editing === c.id ? (
+                  <div className="flex items-center gap-2">
+                    <Input value={editValue} onChange={e => setEditValue(e.target.value)} className="w-32 h-8 text-sm" />
+                    <Button size="sm" className="h-8" onClick={() => save(c.id)}>Save</Button>
+                    <Button size="sm" variant="outline" className="h-8" onClick={() => setEditing(null)}>Cancel</Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-bold">{c.value}</span>
+                    <Button size="sm" variant="ghost" className="h-7" onClick={() => { setEditing(c.id); setEditValue(c.value); }}>Edit</Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// L) ADMIN USERS (RBAC)
+// ========================================
+function AdminUsersPage() {
+  const [admins, setAdmins] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    try {
+      const res = await fetch(`${ADMIN_API}/admin-users`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setAdmins(d.admins || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const changeRole = async (id: string, role: string) => {
+    await fetch(`${ADMIN_API}/admin-users/${id}/role`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
+    load();
+  };
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>Admin Users & Roles</CardTitle><CardDescription>Manage admin team access</CardDescription></CardHeader>
+      <CardContent>
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        admins.length === 0 ? <p className="text-center py-8 text-slate-400">No admin users found (owner access required)</p> : (
+          <Table>
+            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead>Active</TableHead><TableHead>Last Login</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {admins.map(a => (
+                <TableRow key={a.id}>
+                  <TableCell className="font-medium">{a.name}</TableCell>
+                  <TableCell>{a.email}</TableCell>
+                  <TableCell><Badge variant="outline" className="text-xs">{a.role}</Badge></TableCell>
+                  <TableCell>{a.isActive ? <Badge variant="default" className="text-xs">Active</Badge> : <Badge variant="destructive" className="text-xs">Inactive</Badge>}</TableCell>
+                  <TableCell className="text-xs">{a.lastLoginAt ? new Date(a.lastLoginAt).toLocaleString() : "Never"}</TableCell>
                   <TableCell>
-                    {new Date(log.createdAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{log.action}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {log.targetType && log.targetId
-                      ? `${log.targetType}: ${log.targetId.substring(0, 8)}...`
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {log.ipAddress || "—"}
+                    <Select value={a.role} onValueChange={v => changeRole(a.id, v)}>
+                      <SelectTrigger className="w-[130px] h-7 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="owner">Owner</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="support">Support</SelectItem>
+                        <SelectItem value="finance">Finance</SelectItem>
+                        <SelectItem value="content_manager">Content</SelectItem>
+                        <SelectItem value="readonly">Read-only</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                 </TableRow>
               ))}
@@ -905,80 +1382,103 @@ function ActivityLogsTab() {
   );
 }
 
-// System Tab Component
-function SystemTab() {
+// ========================================
+// L) SYSTEM HEALTH
+// ========================================
+function SystemHealthPage() {
   const [health, setHealth] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadSystemHealth();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const loadSystemHealth = async () => {
+  const load = async () => {
     try {
-      const res = await fetch(`${ADMIN_API}/system/health`, {
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setHealth(data);
-      } else {
-        console.error("Failed to load system health:", res.status, res.statusText);
-        setHealth(null);
-      }
-    } catch (error) {
-      console.error("Failed to load system health:", error);
-      setHealth(null);
-    } finally {
-      setIsLoading(false);
-    }
+      const res = await fetch(`${ADMIN_API}/system/health`, { credentials: "include" });
+      if (res.ok) setHealth(await res.json());
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  return (
+    <Card>
+      <CardHeader><CardTitle>System Health</CardTitle><CardDescription>Monitor system status and performance</CardDescription></CardHeader>
+      <CardContent>
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> : !health ? <p className="text-center py-8 text-slate-400">Failed to load</p> : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between"><span className="text-sm">Status</span><Badge variant={health.status === "healthy" ? "default" : "destructive"}>{health.status}</Badge></div>
+            <div className="flex items-center justify-between"><span className="text-sm">Database</span><Badge variant={health.database === "connected" ? "default" : "destructive"}>{health.database}</Badge></div>
+            <div className="flex items-center justify-between"><span className="text-sm">Uptime</span><span className="text-sm font-mono">{health.uptime ? `${Math.floor(health.uptime / 3600)}h ${Math.floor((health.uptime % 3600) / 60)}m` : "—"}</span></div>
+            <div className="flex items-center justify-between"><span className="text-sm">Memory</span><span className="text-sm font-mono">{health.memory?.heapUsed || 0} MB / {health.memory?.heapTotal || 0} MB</span></div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// M) AUDIT LOGS (Enhanced)
+// ========================================
+function AuditLogsPage() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [moduleFilter, setModuleFilter] = useState("");
+
+  useEffect(() => { load(); }, [moduleFilter]);
+
+  const load = async () => {
+    try {
+      const params = new URLSearchParams({ limit: "100" });
+      if (moduleFilter) params.set("module", moduleFilter);
+      const res = await fetch(`${ADMIN_API}/audit-logs?${params}`, { credentials: "include" });
+      if (res.ok) { const d = await res.json(); setLogs(d.logs || []); }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>System Health</CardTitle>
-          <CardDescription>Monitor system status and performance</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Status</span>
-              <Badge variant={health?.status === "healthy" ? "default" : "destructive"}>
-                {health?.status || "Unknown"}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Database</span>
-              <Badge variant={health?.database === "connected" ? "default" : "destructive"}>
-                {health?.database || "Unknown"}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Uptime</span>
-              <span className="text-sm">
-                {health?.uptime ? `${Math.floor(health.uptime / 3600)}h ${Math.floor((health.uptime % 3600) / 60)}m` : "—"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Memory Usage</span>
-              <span className="text-sm">
-                {health?.memory?.heapUsed || 0} MB / {health?.memory?.heapTotal || 0} MB
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div><CardTitle>Audit Logs</CardTitle><CardDescription>Complete admin activity trail</CardDescription></div>
+          <Select value={moduleFilter} onValueChange={setModuleFilter}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="All modules" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All</SelectItem>
+              <SelectItem value="users">Users</SelectItem>
+              <SelectItem value="bookings">Bookings</SelectItem>
+              <SelectItem value="properties">Properties</SelectItem>
+              <SelectItem value="promotions">Promotions</SelectItem>
+              <SelectItem value="content">Content</SelectItem>
+              <SelectItem value="support">Support</SelectItem>
+              <SelectItem value="system">System</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        logs.length === 0 ? <p className="text-center py-8 text-slate-400">No audit logs found</p> : (
+          <Table>
+            <TableHeader><TableRow>
+              <TableHead>Time</TableHead><TableHead>Admin</TableHead><TableHead>Action</TableHead>
+              <TableHead>Module</TableHead><TableHead>Target</TableHead><TableHead>IP</TableHead>
+            </TableRow></TableHeader>
+            <TableBody>
+              {logs.map(l => (
+                <TableRow key={l.id}>
+                  <TableCell className="text-xs">{new Date(l.createdAt).toLocaleString()}</TableCell>
+                  <TableCell className="text-xs font-medium">{l.adminName || "—"}</TableCell>
+                  <TableCell><Badge variant="outline" className="text-[10px]">{l.action}</Badge></TableCell>
+                  <TableCell><Badge variant="secondary" className="text-[10px]">{l.module || "—"}</Badge></TableCell>
+                  <TableCell className="text-xs font-mono">{l.targetType && l.targetId ? `${l.targetType}: ${l.targetId.substring(0, 8)}...` : "—"}</TableCell>
+                  <TableCell className="text-xs font-mono">{l.ipAddress || "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }

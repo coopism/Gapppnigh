@@ -218,7 +218,8 @@ export const adminUsers = pgTable("admin_users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
-  role: text("role").notNull().default("admin"), // admin, super_admin
+  role: text("role").notNull().default("admin"), // owner, admin, support, finance, content_manager, readonly
+  permissions: text("permissions").array().default([]), // granular permission overrides
   isActive: boolean("is_active").notNull().default(true),
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -238,10 +239,130 @@ export const adminActivityLogs = pgTable("admin_activity_logs", {
   id: text("id").primaryKey(), // UUID
   adminId: text("admin_id").notNull().references(() => adminUsers.id),
   action: text("action").notNull(), // e.g., "user_banned", "deal_deleted", "promo_created"
+  module: text("module"), // e.g., "users", "bookings", "deals", "system", "content"
   targetType: text("target_type"), // e.g., "user", "booking", "deal"
   targetId: text("target_id"),
   details: jsonb("details"), // Additional context
+  beforeSnapshot: jsonb("before_snapshot"), // State before mutation
+  afterSnapshot: jsonb("after_snapshot"), // State after mutation
   ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ========================================
+// ADMIN OPS: FEATURE FLAGS, SITE CONFIG, SUPPORT, CMS, NOTIFICATIONS
+// ========================================
+
+export const featureFlags = pgTable("feature_flags", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  label: text("label").notNull(),
+  description: text("description"),
+  enabled: boolean("enabled").notNull().default(false),
+  category: text("category").default("feature"), // feature, experiment, ops
+  updatedBy: text("updated_by").references(() => adminUsers.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const siteConfig = pgTable("site_config", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  valueType: text("value_type").notNull().default("string"), // string, number, boolean, json
+  label: text("label").notNull(),
+  description: text("description"),
+  category: text("category").default("general"), // general, pricing, search, limits, rewards
+  updatedBy: text("updated_by").references(() => adminUsers.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const supportTickets = pgTable("support_tickets", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").references(() => users.id),
+  bookingId: text("booking_id"),
+  subject: text("subject").notNull(),
+  category: text("category").notNull().default("other"), // booking_issue, refund_request, account, bug, other
+  priority: text("priority").notNull().default("medium"), // low, medium, high, urgent
+  status: text("status").notNull().default("open"), // open, in_progress, waiting_on_user, resolved, closed
+  assignedTo: text("assigned_to").references(() => adminUsers.id),
+  messages: jsonb("messages").default([]), // [{sender, message, timestamp, isInternal}]
+  slaDeadline: timestamp("sla_deadline"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+export const cmsCityPages = pgTable("cms_city_pages", {
+  id: text("id").primaryKey(),
+  city: text("city").notNull().unique(),
+  state: text("state"),
+  heroTitle: text("hero_title"),
+  heroSubtitle: text("hero_subtitle"),
+  seoTitle: text("seo_title"),
+  seoDescription: text("seo_description"),
+  featuredPropertyIds: text("featured_property_ids").array().default([]),
+  faqs: jsonb("faqs").default([]), // [{question, answer}]
+  isPublished: boolean("is_published").default(false),
+  updatedBy: text("updated_by").references(() => adminUsers.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const cmsBanners = pgTable("cms_banners", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull().default("info"), // info, warning, promo
+  placement: text("placement").notNull().default("global"), // global, city
+  cityFilter: text("city_filter").array().default([]),
+  bgColor: text("bg_color"),
+  textColor: text("text_color"),
+  linkUrl: text("link_url"),
+  linkText: text("link_text"),
+  startsAt: timestamp("starts_at"),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true),
+  priority: integer("priority").default(0),
+  createdBy: text("created_by").references(() => adminUsers.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const cmsStaticPages = pgTable("cms_static_pages", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull().unique(), // terms, privacy, help, about
+  title: text("title").notNull(),
+  content: text("content").notNull().default(""),
+  seoTitle: text("seo_title"),
+  seoDescription: text("seo_description"),
+  lastEditedBy: text("last_edited_by").references(() => adminUsers.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const notificationTemplates = pgTable("notification_templates", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  variables: text("variables").array().default([]),
+  category: text("category").default("marketing"), // marketing, transactional, system
+  createdBy: text("created_by").references(() => adminUsers.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const notificationLogs = pgTable("notification_logs", {
+  id: text("id").primaryKey(),
+  templateId: text("template_id").references(() => notificationTemplates.id),
+  recipientEmail: text("recipient_email").notNull(),
+  channel: text("channel").notNull().default("email"), // email, push, in_app
+  subject: text("subject"),
+  status: text("status").notNull().default("sent"), // sent, delivered, bounced, failed
+  errorMessage: text("error_message"),
+  sentBy: text("sent_by").references(() => adminUsers.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -842,6 +963,12 @@ export const users = pgTable("users", {
   googleId: text("google_id"), // OAuth Google ID
   appleId: text("apple_id"), // OAuth Apple ID
   emailVerifiedAt: timestamp("email_verified_at"),
+  status: text("status").default("active"), // active, suspended, banned
+  fraudRisk: text("fraud_risk").default("none"), // none, low, medium, high
+  adminNotes: text("admin_notes"),
+  suspendedAt: timestamp("suspended_at"),
+  suspendedBy: text("suspended_by"),
+  suspensionReason: text("suspension_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),

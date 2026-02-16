@@ -14,6 +14,7 @@ import { registerUserAuthRoutes } from "./user-routes";
 import { optionalUserAuthMiddleware } from "./user-auth";
 import ownerRoutes from "./owner-routes";
 import { registerAdminRoutes } from "./admin-routes";
+import { registerAdminOpsRoutes } from "./admin-ops-routes";
 import hostRoutes from "./host-routes";
 import listingRoutes from "./listing-routes";
 import propertyRoutes from "./property-routes";
@@ -136,6 +137,7 @@ export async function registerRoutes(
   // ADMIN ROUTES (Obfuscated path for security)
   // ========================================
   registerAdminRoutes(app);
+  registerAdminOpsRoutes(app);
   
   // ========================================
   // EXISTING PUBLIC ROUTES

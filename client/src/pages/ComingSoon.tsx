@@ -141,7 +141,7 @@ export default function ComingSoon({ onPartnerAccess }: ComingSoonProps) {
                 Gap Night
               </h1>
               <div className="flex items-center gap-3 text-muted-foreground">
-                <span className="text-lg md:text-xl italic">[gap-nahyt]</span>
+                <span className="text-lg md:text-xl italic">gap-night /ˈgæp nite/</span>
                 <span className="text-xs md:text-sm bg-muted px-3 py-1 rounded-full font-medium">noun</span>
               </div>
             </div>

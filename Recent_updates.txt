@@ -1,6 +1,80 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Pronunciation Text Update - Feb 18, 2026
+
+113. **Updated pronunciation on Landing and Coming Soon pages**
+    - Changed `[gap-nahyt]` → `gap-night /ˈgæp nite/` on both pages
+    - Files: `client/src/pages/Landing.tsx`, `client/src/pages/ComingSoon.tsx`
+
+---
+
+## Admin Panel Revamp - Site Operations Console - Feb 18, 2026
+
+109. **Complete Admin Panel Rewrite — Tab-based → Sidebar Operations Console**
+    - **Architecture:** Replaced 6-tab monolith with 11-section sidebar navigation with collapsible sub-menus
+    - **RBAC System:** 6 roles (Owner, Admin, Support, Finance, Content Manager, Read-only) with granular permission matrix
+    - **Permission Middleware:** `requirePermission()` gates every mutation endpoint; `hasPermission()` checks role + per-admin overrides
+    - **Enhanced Audit Logging:** Every admin action logged with module, before/after snapshots, IP address, admin ID
+
+110. **New Backend Routes (`server/admin-ops-routes.ts` — 1170+ lines)**
+    - **Dashboard:** `/stats/enhanced` — metrics, daily revenue/signups charts, top cities, alerts (pending properties, open tickets, cancellations)
+    - **Properties:** CRUD + approve/reject/suspend with reason tracking, search/filter by status/city
+    - **Inventory:** View/update property availability per date (gap night flags, rates, discounts)
+    - **Hosts:** List/search hosts with superhost status
+    - **Property Bookings:** List with status filter, admin cancel with reason, internal notes
+    - **User Actions:** Suspend/ban/activate with reason, fraud risk levels (none/low/medium/high), admin notes
+    - **Promo Codes:** Update existing codes (enhanced)
+    - **CMS:** City pages (CRUD), banners (CRUD + delete), static pages (CRUD) — all with audit trails
+    - **Notifications:** Template CRUD, delivery logs with pagination
+    - **Support Tickets:** CRUD, reply (public/internal), status/priority/assignment updates
+    - **Feature Flags:** CRUD with toggle, category grouping
+    - **Site Config:** Key-value config with inline editing, categories
+    - **Admin Users:** List admins (owner-only), change roles
+    - **Audit Logs:** Enhanced with module filter, admin name resolution, before/after snapshots
+
+111. **New Schema Tables (`shared/schema.ts`)**
+    - `feature_flags` — key, label, description, enabled, category
+    - `site_config` — key-value store with valueType, category, labels
+    - `support_tickets` — subject, category, priority, status, messages (JSONB), assignment
+    - `cms_city_pages` — city landing page content, SEO, featured properties, FAQs
+    - `cms_banners` — announcements with type, placement, scheduling, city filter
+    - `cms_static_pages` — slug-based pages (terms, privacy, help)
+    - `notification_templates` — email/push templates with variables
+    - `notification_logs` — delivery tracking
+    - Enhanced `admin_users` with permissions array, role field
+    - Enhanced `admin_activity_logs` with module, beforeSnapshot, afterSnapshot
+    - Enhanced `users` with status, fraudRisk, adminNotes, suspension tracking
+
+112. **New Frontend (`client/src/pages/admin/AdminDashboard.tsx` — 1485 lines)**
+    - **Sidebar:** Dark slate-900 collapsible sidebar with indigo accent, expandable sub-menus, admin info footer
+    - **Dashboard:** 5 metric cards, period selector (7/30/90d), alerts banner, top cities, daily revenue bar chart, quick actions
+    - **Properties:** Table with approve/reject/suspend actions, search, status badges
+    - **Bookings:** Property bookings + legacy deal bookings, cancel with reason, status filters
+    - **Users:** Enhanced with trust/safety columns (status, fraud risk), suspend/ban/activate, user detail panel with bookings/reviews/rewards
+    - **Hosts:** Host listing with superhost badges, search
+    - **Promos:** Create/delete promo codes with form
+    - **CMS:** City pages, banners, static pages — all with tables and CRUD stubs
+    - **Support:** Ticket listing with status/priority/category filters
+    - **Feature Flags:** Toggle switches with create form, category badges
+    - **Site Config:** Inline value editing with save/cancel
+    - **Admin Users:** Role management with dropdown selector (owner-only)
+    - **System Health:** Status, database, uptime, memory monitoring
+    - **Audit Logs:** Enhanced with module filter, admin names, before/after data
+
+**Files Created:**
+- `server/admin-ops-routes.ts` — Extended admin API routes with RBAC + audit logging
+- `ADMIN_PANEL_SPEC.md` — Comprehensive architecture specification
+
+**Files Modified:**
+- `shared/schema.ts` — 8 new tables + enhanced existing tables + user trust fields
+- `server/admin-routes.ts` — Fixed lint errors (emailVerified→emailVerifiedAt, query builder types, duplicate userId)
+- `server/routes.ts` — Register admin ops routes
+- `client/src/pages/admin/AdminDashboard.tsx` — Complete rewrite from tabs to sidebar ops console
+- `Recent_updates.txt` — This log
+
+---
+
 ## Bug Fix: Gap Night Bookings Bypass minNights - Feb 18, 2026
 
 108. **Fixed "Minimum X night(s) required" error on gap night bookings (`property-routes.ts`)**
