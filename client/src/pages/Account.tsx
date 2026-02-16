@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { 
   User, Mail, Lock, Bell, Calendar, LogOut, Loader2, 
   AlertCircle, CheckCircle, Eye, EyeOff, Trash2, Shield, Check, X,
-  Star, Gift, TrendingUp, Award, MapPin, Clock, DollarSign, Tag, MessageSquare
+  Star, Gift, TrendingUp, Award, MapPin, Clock, DollarSign, Tag, MessageSquare,
+  ChevronDown, ChevronUp, Info, Zap, Crown, Gem, Medal
 } from "lucide-react";
 import { 
   useAuthStore, logout, resendVerification, fetchCurrentUser,
@@ -20,6 +21,219 @@ import {
 import { useRewards } from "@/hooks/useRewards";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+
+// ========================================
+// TIER CONFIGURATION
+// ========================================
+
+const TIERS = [
+  { 
+    name: "Bronze", threshold: 0, color: "from-amber-700 to-amber-600", 
+    textColor: "text-amber-700", bgColor: "bg-amber-700", badgeBg: "bg-amber-100 text-amber-800 border-amber-200",
+    icon: Medal, 
+    benefits: ["5 points per $1 spent", "50 bonus points per review", "Access to all gap night deals"] 
+  },
+  { 
+    name: "Silver", threshold: 500, color: "from-slate-500 to-slate-400", 
+    textColor: "text-slate-500", bgColor: "bg-slate-500", badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
+    icon: Award, 
+    benefits: ["All Bronze benefits", "Priority booking on popular deals", "Early access to new listings", "5% bonus points on bookings"] 
+  },
+  { 
+    name: "Gold", threshold: 2000, color: "from-yellow-500 to-amber-400", 
+    textColor: "text-yellow-600", bgColor: "bg-yellow-500", badgeBg: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    icon: Crown, 
+    benefits: ["All Silver benefits", "10% bonus points on bookings", "Exclusive Gold-only deals", "Free cancellation on select stays", "Priority customer support"] 
+  },
+  { 
+    name: "Platinum", threshold: 5000, color: "from-violet-600 to-purple-500", 
+    textColor: "text-violet-600", bgColor: "bg-violet-600", badgeBg: "bg-violet-100 text-violet-800 border-violet-200",
+    icon: Gem, 
+    benefits: ["All Gold benefits", "15% bonus points on bookings", "VIP early access (48hr head start)", "Complimentary room upgrades (where available)", "Dedicated concierge support", "Annual $25 travel credit"] 
+  },
+];
+
+function getTierConfig(tierName: string) {
+  return TIERS.find(t => t.name === tierName) || TIERS[0];
+}
+
+function getNextTierConfig(tierName: string) {
+  const idx = TIERS.findIndex(t => t.name === tierName);
+  if (idx < TIERS.length - 1) return TIERS[idx + 1];
+  return null;
+}
+
+// ========================================
+// REWARDS TIER HERO COMPONENT
+// ========================================
+
+function RewardsTierHero({ rewardsData, totalBookings, totalSaved }: { 
+  rewardsData: any; 
+  totalBookings: number; 
+  totalSaved: number;
+}) {
+  const [showBenefits, setShowBenefits] = useState(false);
+
+  const tier = rewardsData?.tier || "Bronze";
+  const totalPoints = rewardsData?.totalPointsEarned || 0;
+  const currentPoints = rewardsData?.currentPoints || 0;
+  const creditBalance = rewardsData?.creditBalance || 0;
+
+  const tierConfig = getTierConfig(tier);
+  const nextTier = getNextTierConfig(tier);
+  const TierIcon = tierConfig.icon;
+
+  // Progress calculation
+  const currentThreshold = tierConfig.threshold;
+  const nextThreshold = nextTier ? nextTier.threshold : tierConfig.threshold;
+  const pointsInTier = totalPoints - currentThreshold;
+  const tierRange = nextThreshold - currentThreshold;
+  const progressPercent = nextTier 
+    ? Math.min(100, Math.max(0, (pointsInTier / tierRange) * 100)) 
+    : 100;
+  const pointsToNext = nextTier ? nextThreshold - totalPoints : 0;
+
+  return (
+    <div className="mb-8 space-y-4">
+      {/* Hero tier card */}
+      <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${tierConfig.color} text-white p-6 sm:p-8`}>
+        {/* Background decoration */}
+        <div className="absolute top-0 right-0 w-40 h-40 opacity-10">
+          <TierIcon className="w-full h-full" />
+        </div>
+
+        <div className="relative z-10">
+          {/* Tier badge + points */}
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <TierIcon className="w-7 h-7" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white/70">Your tier</p>
+                <h2 className="text-2xl font-bold">{tier}</h2>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-medium text-white/70">Available points</p>
+              <p className="text-2xl font-bold">{currentPoints.toLocaleString()}</p>
+              {creditBalance > 0 && (
+                <p className="text-xs text-white/60 mt-0.5">${(creditBalance / 100).toFixed(2)} credit</p>
+              )}
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          {nextTier ? (
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-white/70">
+                <span>{tier} — {totalPoints.toLocaleString()} pts</span>
+                <span>{nextTier.name} — {nextTier.threshold.toLocaleString()} pts</span>
+              </div>
+              <div className="h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                <div 
+                  className="h-full bg-white rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <p className="text-sm text-white/80">
+                <span className="font-semibold">{pointsToNext.toLocaleString()}</span> points to {nextTier.name}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                <div className="h-full bg-white rounded-full w-full" />
+              </div>
+              <p className="text-sm text-white/80 flex items-center gap-1.5">
+                <Zap className="w-4 h-4" /> You've reached the highest tier!
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick stats row */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-card border border-border rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold">{totalBookings}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Bookings</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-emerald-600">${totalSaved.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Total saved</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold">{totalPoints.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Lifetime pts</p>
+        </div>
+      </div>
+
+      {/* Tier benefits expandable */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <button 
+          onClick={() => setShowBenefits(!showBenefits)}
+          className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold">Rewards tiers & benefits</span>
+          </div>
+          {showBenefits ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+        </button>
+
+        {showBenefits && (
+          <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-4">
+            <div className="grid gap-3">
+              {TIERS.map((t) => {
+                const isCurrentTier = t.name === tier;
+                const isAchieved = totalPoints >= t.threshold;
+                const Icon = t.icon;
+                return (
+                  <div 
+                    key={t.name} 
+                    className={`rounded-xl border p-4 transition-all ${
+                      isCurrentTier 
+                        ? `${t.badgeBg} border-2` 
+                        : isAchieved 
+                          ? "bg-muted/30 border-border" 
+                          : "bg-muted/10 border-border/50 opacity-60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Icon className={`w-5 h-5 ${isCurrentTier ? t.textColor : "text-muted-foreground"}`} />
+                        <span className="font-semibold text-sm">{t.name}</span>
+                        {isCurrentTier && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-foreground text-background px-1.5 py-0.5 rounded">Current</span>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground">{t.threshold.toLocaleString()} pts</span>
+                    </div>
+                    <ul className="space-y-1">
+                      {t.benefits.map((b, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                          <Check className={`w-3 h-3 shrink-0 mt-0.5 ${isAchieved ? "text-emerald-500" : "text-muted-foreground/40"}`} />
+                          {b}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="bg-muted/30 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground">
+                <strong className="text-foreground">How to earn points:</strong> Earn 5 points per $1 spent on bookings, plus 50 bonus points for every review you write. 
+                Points can be converted to travel credit at a rate of 100 points = $1.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Account() {
   const [, setLocation] = useLocation();
@@ -269,53 +483,12 @@ export default function Account() {
           </Button>
         </div>
 
-        {/* Account Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Bookings</p>
-                  <p className="text-2xl font-bold">{accountStats.totalBookings}</p>
-                </div>
-                <Calendar className="w-8 h-8 text-primary opacity-20" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Saved</p>
-                  <p className="text-2xl font-bold">${accountStats.totalSaved.toFixed(2)}</p>
-                </div>
-                <TrendingUp className="w-8 h-8 text-green-500 opacity-20" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Rewards Points</p>
-                  <p className="text-2xl font-bold">{accountStats.rewardsPoints}</p>
-                </div>
-                <Award className="w-8 h-8 text-amber-500 opacity-20" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Reviews</p>
-                  <p className="text-2xl font-bold">{accountStats.reviewsCount}</p>
-                </div>
-                <Star className="w-8 h-8 text-yellow-500 opacity-20" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Rewards Tier Hero */}
+        <RewardsTierHero 
+          rewardsData={rewardsData} 
+          totalBookings={accountStats.totalBookings} 
+          totalSaved={accountStats.totalSaved} 
+        />
 
         {!user.emailVerified && (
           <Alert className="mb-6 border-yellow-500 bg-yellow-50">

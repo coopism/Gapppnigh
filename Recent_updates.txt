@@ -1,6 +1,33 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Profile Tab Revamp - Rewards Tier Hero - Feb 18, 2026
+
+84. **Rewards Tier Hero Card (`Account.tsx`)**
+    - Replaced 4 small stat cards (Bookings, Saved, Points, Reviews) with a premium gradient hero card
+    - Hero shows current tier name + icon, available points, credit balance
+    - Large progress bar showing distance to next tier (e.g. "500 points to Silver")
+    - Tier-specific gradient colors: Bronze (amber), Silver (slate), Gold (yellow), Platinum (violet)
+    - Background decoration with oversized tier icon at 10% opacity
+
+85. **Compact Stats Row (`Account.tsx`)**
+    - 3-column grid below hero: Bookings, Total Saved ($), Lifetime Points
+    - Dropped Reviews count as a main stat per user request
+    - Dropped tiny Rewards Points card — replaced by the large progress bar
+
+86. **Expandable Tier Benefits (`Account.tsx`)**
+    - "Rewards tiers & benefits" accordion below stats
+    - Shows all 4 tiers (Bronze → Platinum) with benefits list
+    - Current tier highlighted with colored badge + "CURRENT" label
+    - Achieved tiers shown normally, unachieved tiers dimmed at 60% opacity
+    - "How to earn points" explainer at bottom (5 pts/$1, 50 pts/review, 100 pts = $1 credit)
+
+**Files Modified:**
+- `client/src/pages/Account.tsx` — Full Profile tab revamp
+- `Recent_updates.txt` — This log
+
+---
+
 ## Required Fields, Manual Dates & Skip Logic - Feb 18, 2026
 
 79. **Required fields enforcement (`CreateListing.tsx`)**
