@@ -77,14 +77,6 @@ export function Footer() {
             © {currentYear} GapNight. All rights reserved.
           </p>
           <div className="flex items-center gap-3 text-xs">
-            <Link 
-              href="/owner/login" 
-              className="text-white/50 hover:text-white transition-colors"
-              data-testid="link-developer-portal"
-            >
-              Developer Portal
-            </Link>
-            <span className="text-white/20">·</span>
             <span className="text-white/40">Made with care in Australia</span>
           </div>
         </div>

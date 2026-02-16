@@ -1,6 +1,39 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Stays-Only Pivot - Drop Seeded Hotels, Hide Hotel Dashboard - Feb 18, 2026
+
+94. **Removed all seeded hotel data (`bootstrap.ts`)**
+    - Gutted ~500 lines of hotel seed data (owners, hotels, rooms, availability, published deals, consumer deals)
+    - Database starts clean — no fake Crown/Bayview/Langham/Hyatt hotels
+    - Cleaned up unused imports (bcrypt, uuid, schema tables)
+
+95. **Hidden hotel dashboard routes (`App.tsx`)**
+    - Commented out all owner/hotel dashboard imports and routes
+    - Removed: /owner/login, /owner/dashboard, /owner/hotels/*, /gap-night-deals, /hotels/*, /hotel/dashboard/*
+    - Kept: /list-your-hotel (inquiry page for future hotel partnerships)
+
+96. **Navigation cleaned up (`Navigation.tsx`)**
+    - Removed "For Hotels" link from desktop and mobile nav
+    - "Become a Host" (Airbnb hosts) remains as primary CTA
+
+97. **Footer cleaned up (`Footer.tsx`, `Landing.tsx`)**
+    - Removed "Developer Portal" (/owner/login) link from Footer
+    - Removed "Developer Portal" link from Landing page footer
+    - "For Hotels" link in Footer still points to /list-your-hotel (kept for inquiries)
+
+**Rationale:** SiteMinder integration request rejected. Pivoting to build Airbnb host client base first, then re-request hotel integration with traction.
+
+**Files Modified:**
+- `server/bootstrap.ts` — Removed all hotel seed data + unused imports
+- `client/src/App.tsx` — Commented out hotel dashboard routes
+- `client/src/components/Navigation.tsx` — Removed "For Hotels" nav link
+- `client/src/components/Footer.tsx` — Removed Developer Portal link
+- `client/src/pages/Landing.tsx` — Removed Developer Portal link
+- `Recent_updates.txt` — This log
+
+---
+
 ## Saved Listings - Full Backend Implementation - Feb 18, 2026
 
 87. **Database: saved_listings table (`schema.ts`, `bootstrap.ts`)**

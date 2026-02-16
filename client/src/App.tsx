@@ -16,16 +16,17 @@ import ListYourHotel from "@/pages/ListYourHotel";
 import Waitlist from "@/pages/Waitlist";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
-import OrphanNightsDashboard from "@/pages/hotel/dashboard/OrphanNights";
+// Hotel dashboard imports hidden — Stays-only mode (SiteMinder integration pending)
+// import OrphanNightsDashboard from "@/pages/hotel/dashboard/OrphanNights";
 import NotFound from "@/pages/NotFound";
 
-import OwnerLogin from "@/pages/owner/Login";
-import OwnerDashboard from "@/pages/owner/Dashboard";
-import HotelNew from "@/pages/owner/HotelNew";
-import HotelManage from "@/pages/owner/HotelManage";
-import HotelDeals from "@/pages/owner/HotelDeals";
-import AutoListingRules from "@/pages/owner/AutoListingRules";
-import HotelDealsPublic, { HotelDealDetail } from "@/pages/HotelDealsPublic";
+// import OwnerLogin from "@/pages/owner/Login";
+// import OwnerDashboard from "@/pages/owner/Dashboard";
+// import HotelNew from "@/pages/owner/HotelNew";
+// import HotelManage from "@/pages/owner/HotelManage";
+// import HotelDeals from "@/pages/owner/HotelDeals";
+// import AutoListingRules from "@/pages/owner/AutoListingRules";
+// import HotelDealsPublic, { HotelDealDetail } from "@/pages/HotelDealsPublic";
 import Booking from "@/pages/Booking";
 
 import Login from "@/pages/Login";
@@ -58,15 +59,6 @@ function MainRouter() {
       <Route path="/waitlist" component={Waitlist} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
-      <Route path="/hotel/dashboard/orphan-nights" component={OrphanNightsDashboard} />
-      <Route path="/owner/login" component={OwnerLogin} />
-      <Route path="/owner/dashboard" component={OwnerDashboard} />
-      <Route path="/owner/hotels/new" component={HotelNew} />
-      <Route path="/owner/hotels/:hotelId" component={HotelManage} />
-      <Route path="/owner/hotels/:hotelId/deals" component={HotelDeals} />
-      <Route path="/owner/hotels/:hotelId/auto-listing" component={AutoListingRules} />
-      <Route path="/gap-night-deals" component={HotelDealsPublic} />
-      <Route path="/hotels/:hotelId/deals" component={HotelDealDetail} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/forgot-password" component={ForgotPassword} />
@@ -94,14 +86,6 @@ function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/list-your-hotel" component={ListYourHotel} />
-      <Route path="/owner/login" component={OwnerLogin} />
-      <Route path="/owner/dashboard" component={OwnerDashboard} />
-      <Route path="/owner/hotels/new" component={HotelNew} />
-      <Route path="/owner/hotels/:hotelId" component={HotelManage} />
-      <Route path="/owner/hotels/:hotelId/deals" component={HotelDeals} />
-      <Route path="/owner/hotels/:hotelId/auto-listing" component={AutoListingRules} />
-      <Route path="/gap-night-deals" component={HotelDealsPublic} />
-      <Route path="/hotels/:hotelId/deals" component={HotelDealDetail} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/forgot-password" component={ForgotPassword} />

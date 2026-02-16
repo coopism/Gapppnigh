@@ -450,18 +450,8 @@ export default function Landing() {
             <div className="text-sm text-white/80">
               © 2026 GapNight. All rights reserved.
             </div>
-            <div className="flex items-center gap-4">
-              <a 
-                href="/owner/login" 
-                className="text-sm text-white/70 hover:text-white transition-colors"
-                data-testid="link-developer-portal"
-              >
-                Developer Portal
-              </a>
-              <span className="text-white/30">|</span>
-              <div className="text-xs text-white/40">
-                Discounts vary by property and availability.
-              </div>
+            <div className="text-xs text-white/40">
+              Discounts vary by property and availability.
             </div>
           </div>
         </div>

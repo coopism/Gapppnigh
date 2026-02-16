@@ -45,9 +45,6 @@ export function Navigation() {
             <Link href="/deals" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/deals") ? "text-primary" : "text-muted-foreground"}`}>
               Browse Deals
             </Link>
-            <Link href="/list-your-hotel" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/list-your-hotel") ? "text-primary" : "text-muted-foreground"}`}>
-              For Hotels
-            </Link>
             <Link href="/host/login" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/host/login") || isActive("/host/dashboard") ? "text-primary" : "text-muted-foreground"}`}>
               Become a Host
             </Link>
@@ -111,11 +108,6 @@ export function Navigation() {
                   <Link href="/deals">
                     <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
                       <Home className="w-5 h-5 mr-3" /> Browse Deals
-                    </Button>
-                  </Link>
-                  <Link href="/list-your-hotel">
-                    <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
-                      <Hotel className="w-5 h-5 mr-3" /> For Hotels
                     </Button>
                   </Link>
                   <Link href="/host/login">
