@@ -13,7 +13,8 @@ import {
   Building2, Home, CreditCard, FileText, Bell, Headphones,
   Flag, ClipboardList, ChevronRight, Menu, X, UserCog,
   Ban, MessageSquare, ToggleLeft, Globe, Megaphone,
-  BookOpen, Ticket, PanelLeftClose, PanelLeft
+  BookOpen, Ticket, PanelLeftClose, PanelLeft, Stethoscope,
+  RefreshCw, Database, ServerCrash, ShieldAlert
 } from "lucide-react";
 import {
   Table,
@@ -34,6 +35,41 @@ import { Textarea } from "@/components/ui/textarea";
 
 // Obfuscated admin API prefix
 const ADMIN_API = "/api/x9k2p7m4";
+
+// ========================================
+// SAFE FETCH HELPER — wraps every API call
+// ========================================
+async function adminFetch(path: string, options?: RequestInit): Promise<{ ok: boolean; data: any; status: number; error?: string }> {
+  try {
+    const res = await fetch(`${ADMIN_API}${path}`, { credentials: "include", ...options });
+    if (res.ok) {
+      const data = await res.json();
+      return { ok: true, data, status: res.status };
+    }
+    // Handle specific error codes
+    let errorMsg = `Request failed (${res.status})`;
+    try {
+      const errBody = await res.json();
+      errorMsg = errBody.message || errorMsg;
+    } catch {}
+    if (res.status === 403) errorMsg = "You don't have permission to access this resource";
+    if (res.status === 401) errorMsg = "Session expired — please log in again";
+    return { ok: false, data: null, status: res.status, error: errorMsg };
+  } catch (e: any) {
+    return { ok: false, data: null, status: 0, error: e.message || "Network error" };
+  }
+}
+
+// Reusable error state component
+function ErrorState({ error, onRetry }: { error: string; onRetry?: () => void }) {
+  return (
+    <div className="text-center py-8">
+      <ShieldAlert className="w-8 h-8 mx-auto mb-2 text-red-400" />
+      <p className="text-sm text-red-600 mb-2">{error}</p>
+      {onRetry && <Button size="sm" variant="outline" onClick={onRetry}><RefreshCw className="w-3 h-3 mr-1" /> Retry</Button>}
+    </div>
+  );
+}
 
 // ========================================
 // SIDEBAR NAV CONFIGURATION
@@ -74,6 +110,7 @@ const NAV_ITEMS: NavItem[] = [
     { id: "system-config", label: "Site Config" },
     { id: "system-admins", label: "Admin Users" },
     { id: "system-health", label: "System Health" },
+    { id: "system-diagnostics", label: "Diagnostics" },
   ]},
   { id: "audit", label: "Audit Logs", icon: ClipboardList },
 ];
@@ -266,6 +303,7 @@ export default function AdminDashboard() {
           {activePage === "system-config" && <SiteConfigPage />}
           {activePage === "system-admins" && <AdminUsersPage />}
           {activePage === "system-health" && <SystemHealthPage />}
+          {activePage === "system-diagnostics" && <DiagnosticsPage />}
           {activePage === "audit" && <AuditLogsPage />}
         </div>
       </main>
@@ -279,22 +317,28 @@ export default function AdminDashboard() {
 function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [period, setPeriod] = useState("30");
 
   useEffect(() => { loadData(); }, [period]);
 
   const loadData = async () => {
+    setLoading(true);
+    setError("");
     try {
       const [enhanced, legacy] = await Promise.all([
-        fetch(`${ADMIN_API}/stats/enhanced?period=${period}`, { credentials: "include" }).then(r => r.ok ? r.json() : null),
-        fetch(`${ADMIN_API}/stats/overview`, { credentials: "include" }).then(r => r.ok ? r.json() : null),
+        adminFetch(`/stats/enhanced?period=${period}`),
+        adminFetch(`/stats/overview`),
       ]);
-      setData({ ...enhanced, legacy: legacy?.overview, legacyCities: legacy?.topCities });
-    } catch (e) { console.error(e); }
+      const eData = enhanced.ok ? enhanced.data : {};
+      const lData = legacy.ok ? legacy.data : {};
+      setData({ ...eData, legacy: lData?.overview, legacyCities: lData?.topCities });
+    } catch (e: any) { setError(e.message || "Failed to load"); }
     finally { setLoading(false); }
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  if (error) return <ErrorState error={error} onRetry={loadData} />;
   if (!data) return <div className="text-center py-12 text-slate-400">Failed to load dashboard data</div>;
 
   const m = data.metrics || {};
@@ -418,24 +462,26 @@ function MetricCard({ title, value, sub, icon: Icon, color }: { title: string; v
 function PropertiesPage({ filterStatus }: { filterStatus?: string }) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 
   useEffect(() => { load(); }, [filterStatus, search]);
 
   const load = async () => {
-    try {
-      const params = new URLSearchParams({ limit: "50" });
-      if (filterStatus) params.set("status", filterStatus);
-      if (search) params.set("search", search);
-      const res = await fetch(`${ADMIN_API}/properties?${params}`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setItems(d.properties || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const params = new URLSearchParams({ limit: "50" });
+    if (filterStatus) params.set("status", filterStatus);
+    if (search) params.set("search", search);
+    const res = await adminFetch(`/properties?${params}`);
+    if (res.ok) { setItems(res.data.properties || []); }
+    else { setError(res.error || "Failed to load properties"); setItems([]); }
+    setLoading(false);
   };
 
   const updateStatus = async (id: string, status: string, reason?: string) => {
-    await fetch(`${ADMIN_API}/properties/${id}/status`, {
-      method: "PATCH", credentials: "include",
+    await adminFetch(`/properties/${id}/status`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, reason }),
     });
@@ -458,6 +504,7 @@ function PropertiesPage({ filterStatus }: { filterStatus?: string }) {
       </CardHeader>
       <CardContent>
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         items.length === 0 ? <p className="text-center py-8 text-slate-400">No properties found</p> : (
           <Table>
             <TableHeader>
@@ -519,25 +566,27 @@ function PropertiesPage({ filterStatus }: { filterStatus?: string }) {
 function PropertyBookingsPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => { load(); }, [statusFilter]);
 
   const load = async () => {
-    try {
-      const params = new URLSearchParams({ limit: "50" });
-      if (statusFilter) params.set("status", statusFilter);
-      const res = await fetch(`${ADMIN_API}/property-bookings?${params}`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setItems(d.bookings || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const params = new URLSearchParams({ limit: "50" });
+    if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+    const res = await adminFetch(`/property-bookings?${params}`);
+    if (res.ok) { setItems(res.data.bookings || []); }
+    else { setError(res.error || "Failed to load bookings"); setItems([]); }
+    setLoading(false);
   };
 
   const cancelBooking = async (id: string) => {
     const reason = prompt("Cancel reason:");
     if (!reason) return;
-    await fetch(`${ADMIN_API}/property-bookings/${id}/cancel`, {
-      method: "PATCH", credentials: "include",
+    await adminFetch(`/property-bookings/${id}/cancel`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason }),
     });
@@ -552,7 +601,7 @@ function PropertyBookingsPage() {
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="confirmed">Confirmed</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -563,6 +612,7 @@ function PropertyBookingsPage() {
       </CardHeader>
       <CardContent>
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         items.length === 0 ? <p className="text-center py-8 text-slate-400">No bookings found</p> : (
           <Table>
             <TableHeader>
@@ -610,16 +660,19 @@ function PropertyBookingsPage() {
 function LegacyBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => { load(); }, [statusFilter]);
 
   const load = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/bookings?status=${statusFilter}`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setBookings(d.bookings || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const status = statusFilter !== "all" ? statusFilter : "";
+    const res = await adminFetch(`/bookings?status=${status}`);
+    if (res.ok) { setBookings(res.data.bookings || []); }
+    else { setError(res.error || "Failed to load bookings"); setBookings([]); }
+    setLoading(false);
   };
 
   return (
@@ -630,7 +683,7 @@ function LegacyBookingsPage() {
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="CONFIRMED">Confirmed</SelectItem>
               <SelectItem value="CANCELLED">Cancelled</SelectItem>
               <SelectItem value="COMPLETED">Completed</SelectItem>
@@ -640,6 +693,7 @@ function LegacyBookingsPage() {
       </CardHeader>
       <CardContent>
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         bookings.length === 0 ? <p className="text-center py-8 text-slate-400">No bookings</p> : (
           <Table>
             <TableHeader>
@@ -673,29 +727,31 @@ function LegacyBookingsPage() {
 function UsersPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<any>(null);
 
   useEffect(() => { load(); }, [search]);
 
   const load = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/users?search=${encodeURIComponent(search)}`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setItems(d.users || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const res = await adminFetch(`/users?search=${encodeURIComponent(search)}`);
+    if (res.ok) { setItems(res.data.users || []); }
+    else { setError(res.error || "Failed to load users"); setItems([]); }
+    setLoading(false);
   };
 
   const viewDetails = async (userId: string) => {
-    const res = await fetch(`${ADMIN_API}/users/${userId}`, { credentials: "include" });
-    if (res.ok) setSelected(await res.json());
+    const res = await adminFetch(`/users/${userId}`);
+    if (res.ok) setSelected(res.data);
   };
 
   const updateUserStatus = async (userId: string, status: string) => {
     const reason = status !== "active" ? prompt(`Reason for ${status}:`) : undefined;
     if (status !== "active" && !reason) return;
-    await fetch(`${ADMIN_API}/users/${userId}/status`, {
-      method: "PATCH", credentials: "include",
+    await adminFetch(`/users/${userId}/status`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, reason }),
     });
@@ -717,6 +773,7 @@ function UsersPage() {
         </CardHeader>
         <CardContent>
           {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+          error ? <ErrorState error={error} onRetry={load} /> :
           items.length === 0 ? <p className="text-center py-8 text-slate-400">No users found</p> : (
             <Table>
               <TableHeader>
@@ -784,16 +841,18 @@ function UsersPage() {
 function HostsPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 
   useEffect(() => { load(); }, [search]);
 
   const load = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/hosts?search=${encodeURIComponent(search)}`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setItems(d.hosts || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const res = await adminFetch(`/hosts?search=${encodeURIComponent(search)}`);
+    if (res.ok) { setItems(res.data.hosts || []); }
+    else { setError(res.error || "Failed to load hosts"); setItems([]); }
+    setLoading(false);
   };
 
   return (
@@ -809,6 +868,7 @@ function HostsPage() {
       </CardHeader>
       <CardContent>
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         items.length === 0 ? <p className="text-center py-8 text-slate-400">No hosts found</p> : (
           <Table>
             <TableHeader>
@@ -860,22 +920,24 @@ function PaymentsStubPage() {
 function PromoCodesPage() {
   const [codes, setCodes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ code: "", type: "POINTS", value: "", description: "", maxUses: "", expiresAt: "" });
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/promo-codes`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setCodes(d.promoCodes || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const res = await adminFetch(`/promo-codes`);
+    if (res.ok) { setCodes(res.data.promoCodes || []); }
+    else { setError(res.error || "Failed to load promo codes"); setCodes([]); }
+    setLoading(false);
   };
 
   const create = async () => {
-    const res = await fetch(`${ADMIN_API}/promo-codes`, {
-      method: "POST", credentials: "include",
+    const res = await adminFetch(`/promo-codes`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, value: parseInt(form.value), maxUses: form.maxUses ? parseInt(form.maxUses) : null }),
     });
@@ -884,7 +946,7 @@ function PromoCodesPage() {
 
   const remove = async (id: string) => {
     if (!confirm("Delete this promo code?")) return;
-    await fetch(`${ADMIN_API}/promo-codes/${id}`, { method: "DELETE", credentials: "include" });
+    await adminFetch(`/promo-codes/${id}`, { method: "DELETE" });
     load();
   };
 
@@ -915,6 +977,7 @@ function PromoCodesPage() {
           </div>
         )}
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         codes.length === 0 ? <p className="text-center py-8 text-slate-400">No promo codes</p> : (
           <Table>
             <TableHeader><TableRow><TableHead>Code</TableHead><TableHead>Type</TableHead><TableHead>Value</TableHead><TableHead>Uses</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
@@ -938,20 +1001,35 @@ function PromoCodesPage() {
 }
 
 // ========================================
-// I) CMS - CITY PAGES
+// I) CMS - CITY PAGES (with create form)
 // ========================================
 function CityPagesPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ city: "", state: "", heroTitle: "", heroSubtitle: "", seoTitle: "", seoDescription: "", isPublished: false });
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/cms/cities`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setItems(d.cities || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const res = await adminFetch(`/cms/cities`);
+    if (res.ok) { setItems(res.data.cities || []); }
+    else { setError(res.error || "Failed to load city pages"); setItems([]); }
+    setLoading(false);
+  };
+
+  const create = async () => {
+    if (!form.city.trim()) return alert("City name is required");
+    const res = await adminFetch(`/cms/cities`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    if (res.ok) { setShowForm(false); setForm({ city: "", state: "", heroTitle: "", heroSubtitle: "", seoTitle: "", seoDescription: "", isPublished: false }); load(); }
+    else { alert(res.error || "Failed to create city page"); }
   };
 
   return (
@@ -959,11 +1037,29 @@ function CityPagesPage() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div><CardTitle>City Pages</CardTitle><CardDescription>Manage city landing page content</CardDescription></div>
-          <Button size="sm"><Plus className="w-3 h-3 mr-1" /> Add City</Button>
+          <Button size="sm" onClick={() => setShowForm(!showForm)}><Plus className="w-3 h-3 mr-1" /> Add City</Button>
         </div>
       </CardHeader>
       <CardContent>
+        {showForm && (
+          <div className="mb-4 p-4 border rounded-lg space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">City *</Label><Input placeholder="Melbourne" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} /></div>
+              <div><Label className="text-xs">State</Label><Input placeholder="VIC" value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} /></div>
+              <div><Label className="text-xs">Hero Title</Label><Input placeholder="Gap Night Deals in Melbourne" value={form.heroTitle} onChange={e => setForm({ ...form, heroTitle: e.target.value })} /></div>
+              <div><Label className="text-xs">Hero Subtitle</Label><Input placeholder="Save up to 60% on..." value={form.heroSubtitle} onChange={e => setForm({ ...form, heroSubtitle: e.target.value })} /></div>
+              <div><Label className="text-xs">SEO Title</Label><Input placeholder="Melbourne Gap Night Deals" value={form.seoTitle} onChange={e => setForm({ ...form, seoTitle: e.target.value })} /></div>
+              <div><Label className="text-xs">SEO Description</Label><Input placeholder="Find discounted stays..." value={form.seoDescription} onChange={e => setForm({ ...form, seoDescription: e.target.value })} /></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={form.isPublished} onCheckedChange={v => setForm({ ...form, isPublished: v })} />
+              <Label className="text-xs">Publish immediately</Label>
+            </div>
+            <div className="flex gap-2"><Button size="sm" onClick={create}>Create</Button><Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button></div>
+          </div>
+        )}
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         items.length === 0 ? <p className="text-center py-8 text-slate-400">No city pages yet. Create one to manage city-specific content.</p> : (
           <Table>
             <TableHeader><TableRow><TableHead>City</TableHead><TableHead>State</TableHead><TableHead>Hero Title</TableHead><TableHead>Published</TableHead><TableHead>Updated</TableHead></TableRow></TableHeader>
@@ -974,7 +1070,7 @@ function CityPagesPage() {
                   <TableCell>{c.state || "—"}</TableCell>
                   <TableCell className="max-w-[200px] truncate">{c.heroTitle || "—"}</TableCell>
                   <TableCell>{c.isPublished ? <Badge variant="default" className="text-xs">Published</Badge> : <Badge variant="secondary" className="text-xs">Draft</Badge>}</TableCell>
-                  <TableCell className="text-xs">{new Date(c.updatedAt).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-xs">{c.updatedAt ? new Date(c.updatedAt).toLocaleDateString() : "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -986,25 +1082,40 @@ function CityPagesPage() {
 }
 
 // ========================================
-// I) CMS - BANNERS
+// I) CMS - BANNERS (with create form)
 // ========================================
 function BannersPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ title: "", message: "", type: "info", placement: "global", linkUrl: "", linkText: "", isActive: true });
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/cms/banners`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setItems(d.banners || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const res = await adminFetch(`/cms/banners`);
+    if (res.ok) { setItems(res.data.banners || []); }
+    else { setError(res.error || "Failed to load banners"); setItems([]); }
+    setLoading(false);
+  };
+
+  const create = async () => {
+    if (!form.title.trim() || !form.message.trim()) return alert("Title and message are required");
+    const res = await adminFetch(`/cms/banners`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    if (res.ok) { setShowForm(false); setForm({ title: "", message: "", type: "info", placement: "global", linkUrl: "", linkText: "", isActive: true }); load(); }
+    else { alert(res.error || "Failed to create banner"); }
   };
 
   const remove = async (id: string) => {
     if (!confirm("Delete this banner?")) return;
-    await fetch(`${ADMIN_API}/cms/banners/${id}`, { method: "DELETE", credentials: "include" });
+    await adminFetch(`/cms/banners/${id}`, { method: "DELETE" });
     load();
   };
 
@@ -1013,11 +1124,29 @@ function BannersPage() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div><CardTitle>Banners & Announcements</CardTitle><CardDescription>Global and city-specific alerts</CardDescription></div>
-          <Button size="sm"><Plus className="w-3 h-3 mr-1" /> Create Banner</Button>
+          <Button size="sm" onClick={() => setShowForm(!showForm)}><Plus className="w-3 h-3 mr-1" /> Create Banner</Button>
         </div>
       </CardHeader>
       <CardContent>
+        {showForm && (
+          <div className="mb-4 p-4 border rounded-lg space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Title *</Label><Input placeholder="Summer Sale!" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
+              <div><Label className="text-xs">Type</Label>
+                <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="info">Info</SelectItem><SelectItem value="warning">Warning</SelectItem><SelectItem value="promo">Promo</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <div><Label className="text-xs">Link URL</Label><Input placeholder="https://..." value={form.linkUrl} onChange={e => setForm({ ...form, linkUrl: e.target.value })} /></div>
+              <div><Label className="text-xs">Link Text</Label><Input placeholder="Learn more" value={form.linkText} onChange={e => setForm({ ...form, linkText: e.target.value })} /></div>
+            </div>
+            <div><Label className="text-xs">Message *</Label><Textarea placeholder="Banner message..." value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} /></div>
+            <div className="flex gap-2"><Button size="sm" onClick={create}>Create</Button><Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button></div>
+          </div>
+        )}
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         items.length === 0 ? <p className="text-center py-8 text-slate-400">No banners yet</p> : (
           <Table>
             <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Type</TableHead><TableHead>Placement</TableHead><TableHead>Active</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
@@ -1040,20 +1169,35 @@ function BannersPage() {
 }
 
 // ========================================
-// I) CMS - STATIC PAGES
+// I) CMS - STATIC PAGES (with create form)
 // ========================================
 function StaticPagesPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ slug: "", title: "", content: "", seoTitle: "", seoDescription: "" });
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/cms/pages`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setItems(d.pages || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const res = await adminFetch(`/cms/pages`);
+    if (res.ok) { setItems(res.data.pages || []); }
+    else { setError(res.error || "Failed to load static pages"); setItems([]); }
+    setLoading(false);
+  };
+
+  const create = async () => {
+    if (!form.slug.trim() || !form.title.trim()) return alert("Slug and title are required");
+    const res = await adminFetch(`/cms/pages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    if (res.ok) { setShowForm(false); setForm({ slug: "", title: "", content: "", seoTitle: "", seoDescription: "" }); load(); }
+    else { alert(res.error || "Failed to create page"); }
   };
 
   return (
@@ -1061,11 +1205,24 @@ function StaticPagesPage() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div><CardTitle>Static Pages</CardTitle><CardDescription>Terms, Privacy, Help content</CardDescription></div>
-          <Button size="sm"><Plus className="w-3 h-3 mr-1" /> Create Page</Button>
+          <Button size="sm" onClick={() => setShowForm(!showForm)}><Plus className="w-3 h-3 mr-1" /> Create Page</Button>
         </div>
       </CardHeader>
       <CardContent>
+        {showForm && (
+          <div className="mb-4 p-4 border rounded-lg space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Slug *</Label><Input placeholder="terms-of-service" value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })} /></div>
+              <div><Label className="text-xs">Title *</Label><Input placeholder="Terms of Service" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
+              <div><Label className="text-xs">SEO Title</Label><Input placeholder="Terms | GapNight" value={form.seoTitle} onChange={e => setForm({ ...form, seoTitle: e.target.value })} /></div>
+              <div><Label className="text-xs">SEO Description</Label><Input placeholder="Our terms of service..." value={form.seoDescription} onChange={e => setForm({ ...form, seoDescription: e.target.value })} /></div>
+            </div>
+            <div><Label className="text-xs">Content</Label><Textarea placeholder="Page content (HTML or Markdown)..." rows={6} value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} /></div>
+            <div className="flex gap-2"><Button size="sm" onClick={create}>Create</Button><Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button></div>
+          </div>
+        )}
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         items.length === 0 ? <p className="text-center py-8 text-slate-400">No static pages yet. Create pages for Terms, Privacy, Help, etc.</p> : (
           <Table>
             <TableHeader><TableRow><TableHead>Slug</TableHead><TableHead>Title</TableHead><TableHead>SEO Title</TableHead><TableHead>Updated</TableHead></TableRow></TableHeader>
@@ -1075,7 +1232,7 @@ function StaticPagesPage() {
                   <TableCell className="font-mono text-xs">{p.slug}</TableCell>
                   <TableCell className="font-medium">{p.title}</TableCell>
                   <TableCell className="max-w-[200px] truncate">{p.seoTitle || "—"}</TableCell>
-                  <TableCell className="text-xs">{new Date(p.updatedAt).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-xs">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -1087,41 +1244,158 @@ function StaticPagesPage() {
 }
 
 // ========================================
-// J) NOTIFICATIONS STUB
+// J) NOTIFICATIONS (functional with templates + send + logs)
 // ========================================
 function NotificationsStubPage() {
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState<"templates" | "logs">("templates");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: "", subject: "", body: "", category: "marketing" });
+
+  useEffect(() => { load(); }, [tab]);
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    if (tab === "templates") {
+      const res = await adminFetch(`/notifications/templates`);
+      if (res.ok) { setTemplates(res.data.templates || []); }
+      else { setError(res.error || "Failed to load templates"); setTemplates([]); }
+    } else {
+      const res = await adminFetch(`/notifications/logs?limit=50`);
+      if (res.ok) { setLogs(res.data.logs || []); }
+      else { setError(res.error || "Failed to load logs"); setLogs([]); }
+    }
+    setLoading(false);
+  };
+
+  const createTemplate = async () => {
+    if (!form.name.trim() || !form.subject.trim() || !form.body.trim()) return alert("Name, subject, and body are required");
+    const res = await adminFetch(`/notifications/templates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    if (res.ok) { setShowForm(false); setForm({ name: "", subject: "", body: "", category: "marketing" }); load(); }
+    else { alert(res.error || "Failed to create template"); }
+  };
+
   return (
-    <Card>
-      <CardHeader><CardTitle>Notifications</CardTitle><CardDescription>Send email/push notifications to user segments</CardDescription></CardHeader>
-      <CardContent>
-        <div className="text-center py-12 text-slate-400">
-          <Bell className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-          <p className="text-sm">Notification composer, templates, and delivery logs will be available here.</p>
-          <p className="text-xs mt-2">Coming in Phase 3.</p>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Button size="sm" variant={tab === "templates" ? "default" : "outline"} onClick={() => setTab("templates")}>Templates</Button>
+        <Button size="sm" variant={tab === "logs" ? "default" : "outline"} onClick={() => setTab("logs")}>Delivery Logs</Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>{tab === "templates" ? "Notification Templates" : "Delivery Logs"}</CardTitle>
+              <CardDescription>{tab === "templates" ? "Create and manage email/push templates" : "Track notification delivery status"}</CardDescription>
+            </div>
+            {tab === "templates" && <Button size="sm" onClick={() => setShowForm(!showForm)}><Plus className="w-3 h-3 mr-1" /> Create Template</Button>}
+          </div>
+          <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+            <AlertCircle className="w-3 h-3 inline mr-1" />
+            Email/push delivery requires provider integration (SendGrid, Resend, etc.). Templates are stored and ready — delivery will activate when a provider is configured.
+          </div>
+        </CardHeader>
+        <CardContent>
+          {showForm && tab === "templates" && (
+            <div className="mb-4 p-4 border rounded-lg space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-xs">Name *</Label><Input placeholder="Welcome Email" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+                <div><Label className="text-xs">Category</Label>
+                  <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="marketing">Marketing</SelectItem><SelectItem value="transactional">Transactional</SelectItem><SelectItem value="system">System</SelectItem></SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div><Label className="text-xs">Subject *</Label><Input placeholder="Welcome to GapNight!" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} /></div>
+              <div><Label className="text-xs">Body *</Label><Textarea placeholder="Hi {{name}}, welcome to GapNight..." rows={4} value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} /></div>
+              <div className="flex gap-2"><Button size="sm" onClick={createTemplate}>Create</Button><Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button></div>
+            </div>
+          )}
+          {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+          error ? <ErrorState error={error} onRetry={load} /> :
+          tab === "templates" ? (
+            templates.length === 0 ? <p className="text-center py-8 text-slate-400">No templates yet. Create one to get started.</p> : (
+              <Table>
+                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Subject</TableHead><TableHead>Category</TableHead><TableHead>Created</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {templates.map(t => (
+                    <TableRow key={t.id}>
+                      <TableCell className="font-medium">{t.name}</TableCell>
+                      <TableCell className="max-w-[250px] truncate">{t.subject}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs">{t.category}</Badge></TableCell>
+                      <TableCell className="text-xs">{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )
+          ) : (
+            logs.length === 0 ? <p className="text-center py-8 text-slate-400">No delivery logs yet</p> : (
+              <Table>
+                <TableHeader><TableRow><TableHead>Recipient</TableHead><TableHead>Subject</TableHead><TableHead>Channel</TableHead><TableHead>Status</TableHead><TableHead>Sent</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {logs.map(l => (
+                    <TableRow key={l.id}>
+                      <TableCell className="text-xs">{l.recipientEmail}</TableCell>
+                      <TableCell className="max-w-[200px] truncate text-xs">{l.subject || "—"}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs">{l.channel}</Badge></TableCell>
+                      <TableCell><Badge variant={l.status === "sent" || l.status === "delivered" ? "default" : "destructive"} className="text-xs">{l.status}</Badge></TableCell>
+                      <TableCell className="text-xs">{l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
 // ========================================
-// K) SUPPORT TICKETS
+// K) SUPPORT TICKETS (with create form + detail)
 // ========================================
 function SupportTicketsPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ subject: "", category: "other", priority: "medium", initialMessage: "" });
 
   useEffect(() => { load(); }, [statusFilter]);
 
   const load = async () => {
-    try {
-      const params = new URLSearchParams({ limit: "50" });
-      if (statusFilter) params.set("status", statusFilter);
-      const res = await fetch(`${ADMIN_API}/support/tickets?${params}`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setItems(d.tickets || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const params = new URLSearchParams({ limit: "50" });
+    if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+    const res = await adminFetch(`/support/tickets?${params}`);
+    if (res.ok) { setItems(res.data.tickets || []); }
+    else { setError(res.error || "Failed to load tickets"); setItems([]); }
+    setLoading(false);
+  };
+
+  const create = async () => {
+    if (!form.subject.trim()) return alert("Subject is required");
+    const res = await adminFetch(`/support/tickets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    if (res.ok) { setShowForm(false); setForm({ subject: "", category: "other", priority: "medium", initialMessage: "" }); load(); }
+    else { alert(res.error || "Failed to create ticket"); }
   };
 
   return (
@@ -1130,10 +1404,11 @@ function SupportTicketsPage() {
         <div className="flex items-center justify-between">
           <div><CardTitle>Support Tickets</CardTitle><CardDescription>{items.length} tickets</CardDescription></div>
           <div className="flex gap-2">
+            <Button size="sm" onClick={() => setShowForm(!showForm)}><Plus className="w-3 h-3 mr-1" /> Create Ticket</Button>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[140px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 <SelectItem value="open">Open</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="resolved">Resolved</SelectItem>
@@ -1144,7 +1419,40 @@ function SupportTicketsPage() {
         </div>
       </CardHeader>
       <CardContent>
+        {showForm && (
+          <div className="mb-4 p-4 border rounded-lg space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Subject *</Label><Input placeholder="Booking issue..." value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} /></div>
+              <div><Label className="text-xs">Category</Label>
+                <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="booking_issue">Booking Issue</SelectItem>
+                    <SelectItem value="refund_request">Refund Request</SelectItem>
+                    <SelectItem value="account">Account</SelectItem>
+                    <SelectItem value="bug">Bug Report</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label className="text-xs">Priority</Label>
+                <Select value={form.priority} onValueChange={v => setForm({ ...form, priority: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div><Label className="text-xs">Initial Message</Label><Textarea placeholder="Describe the issue..." value={form.initialMessage} onChange={e => setForm({ ...form, initialMessage: e.target.value })} /></div>
+            <div className="flex gap-2"><Button size="sm" onClick={create}>Create</Button><Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button></div>
+          </div>
+        )}
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         items.length === 0 ? <p className="text-center py-8 text-slate-400">No support tickets yet</p> : (
           <Table>
             <TableHeader><TableRow><TableHead>Subject</TableHead><TableHead>Category</TableHead><TableHead>Priority</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead></TableRow></TableHeader>
@@ -1155,7 +1463,7 @@ function SupportTicketsPage() {
                   <TableCell><Badge variant="outline" className="text-xs">{t.category}</Badge></TableCell>
                   <TableCell><Badge variant={t.priority === "urgent" ? "destructive" : t.priority === "high" ? "default" : "secondary"} className="text-xs">{t.priority}</Badge></TableCell>
                   <TableCell><Badge variant={t.status === "open" ? "default" : t.status === "resolved" ? "secondary" : "outline"} className="text-xs">{t.status}</Badge></TableCell>
-                  <TableCell className="text-xs">{new Date(t.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-xs">{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -1172,22 +1480,24 @@ function SupportTicketsPage() {
 function FeatureFlagsPage() {
   const [flags, setFlags] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ key: "", label: "", description: "", enabled: false, category: "feature" });
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/feature-flags`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setFlags(d.flags || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const res = await adminFetch(`/feature-flags`);
+    if (res.ok) { setFlags(res.data.flags || []); }
+    else { setError(res.error || "Failed to load feature flags"); setFlags([]); }
+    setLoading(false);
   };
 
   const toggle = async (id: string, enabled: boolean) => {
-    await fetch(`${ADMIN_API}/feature-flags/${id}`, {
-      method: "PATCH", credentials: "include",
+    await adminFetch(`/feature-flags/${id}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled }),
     });
@@ -1195,8 +1505,9 @@ function FeatureFlagsPage() {
   };
 
   const create = async () => {
-    await fetch(`${ADMIN_API}/feature-flags`, {
-      method: "POST", credentials: "include",
+    if (!form.key.trim() || !form.label.trim()) return alert("Key and label are required");
+    await adminFetch(`/feature-flags`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
@@ -1217,14 +1528,15 @@ function FeatureFlagsPage() {
         {showForm && (
           <div className="mb-4 p-4 border rounded-lg space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Key</Label><Input placeholder="feature_name" value={form.key} onChange={e => setForm({ ...form, key: e.target.value })} /></div>
-              <div><Label className="text-xs">Label</Label><Input placeholder="Feature Name" value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
+              <div><Label className="text-xs">Key *</Label><Input placeholder="feature_name" value={form.key} onChange={e => setForm({ ...form, key: e.target.value })} /></div>
+              <div><Label className="text-xs">Label *</Label><Input placeholder="Feature Name" value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
             </div>
             <div><Label className="text-xs">Description</Label><Input placeholder="What this flag controls..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
             <div className="flex gap-2"><Button size="sm" onClick={create}>Create</Button><Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button></div>
           </div>
         )}
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         flags.length === 0 ? <p className="text-center py-8 text-slate-400">No feature flags yet. Create one to toggle features.</p> : (
           <div className="space-y-3">
             {flags.map(f => (
@@ -1247,27 +1559,31 @@ function FeatureFlagsPage() {
 }
 
 // ========================================
-// L) SITE CONFIG
+// L) SITE CONFIG (with create form)
 // ========================================
 function SiteConfigPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ key: "", value: "", valueType: "string", label: "", description: "", category: "general" });
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/site-config`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setItems(d.config || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const res = await adminFetch(`/site-config`);
+    if (res.ok) { setItems(res.data.config || []); }
+    else { setError(res.error || "Failed to load site config"); setItems([]); }
+    setLoading(false);
   };
 
   const save = async (id: string) => {
-    await fetch(`${ADMIN_API}/site-config/${id}`, {
-      method: "PATCH", credentials: "include",
+    await adminFetch(`/site-config/${id}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ value: editValue }),
     });
@@ -1275,16 +1591,40 @@ function SiteConfigPage() {
     load();
   };
 
+  const create = async () => {
+    if (!form.key.trim() || !form.label.trim()) return alert("Key and label are required");
+    const res = await adminFetch(`/site-config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    if (res.ok) { setShowForm(false); setForm({ key: "", value: "", valueType: "string", label: "", description: "", category: "general" }); load(); }
+    else { alert(res.error || "Failed to create config"); }
+  };
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div><CardTitle>Site Configuration</CardTitle><CardDescription>Platform settings (fees, limits, etc.)</CardDescription></div>
-          <Button size="sm"><Plus className="w-3 h-3 mr-1" /> Add Config</Button>
+          <Button size="sm" onClick={() => setShowForm(!showForm)}><Plus className="w-3 h-3 mr-1" /> Add Config</Button>
         </div>
       </CardHeader>
       <CardContent>
+        {showForm && (
+          <div className="mb-4 p-4 border rounded-lg space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Key *</Label><Input placeholder="platform_fee_percent" value={form.key} onChange={e => setForm({ ...form, key: e.target.value })} /></div>
+              <div><Label className="text-xs">Label *</Label><Input placeholder="Platform Fee %" value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></div>
+              <div><Label className="text-xs">Value</Label><Input placeholder="10" value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} /></div>
+              <div><Label className="text-xs">Category</Label><Input placeholder="pricing" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} /></div>
+            </div>
+            <div><Label className="text-xs">Description</Label><Input placeholder="Fee charged on each booking" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+            <div className="flex gap-2"><Button size="sm" onClick={create}>Create</Button><Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button></div>
+          </div>
+        )}
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         items.length === 0 ? <p className="text-center py-8 text-slate-400">No configuration entries yet. Add platform settings like fees, limits, etc.</p> : (
           <div className="space-y-2">
             {items.map(c => (
@@ -1323,20 +1663,22 @@ function SiteConfigPage() {
 function AdminUsersPage() {
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/admin-users`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setAdmins(d.admins || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const res = await adminFetch(`/admin-users`);
+    if (res.ok) { setAdmins(res.data.admins || []); }
+    else { setError(res.error || "Failed to load admin users"); setAdmins([]); }
+    setLoading(false);
   };
 
   const changeRole = async (id: string, role: string) => {
-    await fetch(`${ADMIN_API}/admin-users/${id}/role`, {
-      method: "PATCH", credentials: "include",
+    await adminFetch(`/admin-users/${id}/role`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role }),
     });
@@ -1348,6 +1690,7 @@ function AdminUsersPage() {
       <CardHeader><CardTitle>Admin Users & Roles</CardTitle><CardDescription>Manage admin team access</CardDescription></CardHeader>
       <CardContent>
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         admins.length === 0 ? <p className="text-center py-8 text-slate-400">No admin users found (owner access required)</p> : (
           <Table>
             <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead>Active</TableHead><TableHead>Last Login</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
@@ -1388,22 +1731,26 @@ function AdminUsersPage() {
 function SystemHealthPage() {
   const [health, setHealth] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    try {
-      const res = await fetch(`${ADMIN_API}/system/health`, { credentials: "include" });
-      if (res.ok) setHealth(await res.json());
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const res = await adminFetch(`/system/health`);
+    if (res.ok) { setHealth(res.data); }
+    else { setError(res.error || "Failed to load health"); }
+    setLoading(false);
   };
 
   return (
     <Card>
       <CardHeader><CardTitle>System Health</CardTitle><CardDescription>Monitor system status and performance</CardDescription></CardHeader>
       <CardContent>
-        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> : !health ? <p className="text-center py-8 text-slate-400">Failed to load</p> : (
+        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
+        !health ? <p className="text-center py-8 text-slate-400">Failed to load</p> : (
           <div className="space-y-3">
             <div className="flex items-center justify-between"><span className="text-sm">Status</span><Badge variant={health.status === "healthy" ? "default" : "destructive"}>{health.status}</Badge></div>
             <div className="flex items-center justify-between"><span className="text-sm">Database</span><Badge variant={health.database === "connected" ? "default" : "destructive"}>{health.database}</Badge></div>
@@ -1422,18 +1769,20 @@ function SystemHealthPage() {
 function AuditLogsPage() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [moduleFilter, setModuleFilter] = useState("");
+  const [error, setError] = useState("");
+  const [moduleFilter, setModuleFilter] = useState("all");
 
   useEffect(() => { load(); }, [moduleFilter]);
 
   const load = async () => {
-    try {
-      const params = new URLSearchParams({ limit: "100" });
-      if (moduleFilter) params.set("module", moduleFilter);
-      const res = await fetch(`${ADMIN_API}/audit-logs?${params}`, { credentials: "include" });
-      if (res.ok) { const d = await res.json(); setLogs(d.logs || []); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setError("");
+    const params = new URLSearchParams({ limit: "100" });
+    if (moduleFilter && moduleFilter !== "all") params.set("module", moduleFilter);
+    const res = await adminFetch(`/audit-logs?${params}`);
+    if (res.ok) { setLogs(res.data.logs || []); }
+    else { setError(res.error || "Failed to load audit logs"); setLogs([]); }
+    setLoading(false);
   };
 
   return (
@@ -1444,7 +1793,7 @@ function AuditLogsPage() {
           <Select value={moduleFilter} onValueChange={setModuleFilter}>
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="All modules" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="users">Users</SelectItem>
               <SelectItem value="bookings">Bookings</SelectItem>
               <SelectItem value="properties">Properties</SelectItem>
@@ -1458,6 +1807,7 @@ function AuditLogsPage() {
       </CardHeader>
       <CardContent>
         {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+        error ? <ErrorState error={error} onRetry={load} /> :
         logs.length === 0 ? <p className="text-center py-8 text-slate-400">No audit logs found</p> : (
           <Table>
             <TableHeader><TableRow>
@@ -1467,11 +1817,11 @@ function AuditLogsPage() {
             <TableBody>
               {logs.map(l => (
                 <TableRow key={l.id}>
-                  <TableCell className="text-xs">{new Date(l.createdAt).toLocaleString()}</TableCell>
+                  <TableCell className="text-xs">{l.createdAt ? new Date(l.createdAt).toLocaleString() : "—"}</TableCell>
                   <TableCell className="text-xs font-medium">{l.adminName || "—"}</TableCell>
                   <TableCell><Badge variant="outline" className="text-[10px]">{l.action}</Badge></TableCell>
                   <TableCell><Badge variant="secondary" className="text-[10px]">{l.module || "—"}</Badge></TableCell>
-                  <TableCell className="text-xs font-mono">{l.targetType && l.targetId ? `${l.targetType}: ${l.targetId.substring(0, 8)}...` : "—"}</TableCell>
+                  <TableCell className="text-xs font-mono">{l.targetType && l.targetId ? `${l.targetType}: ${l.targetId?.substring(0, 8)}...` : "—"}</TableCell>
                   <TableCell className="text-xs font-mono">{l.ipAddress || "—"}</TableCell>
                 </TableRow>
               ))}
@@ -1480,5 +1830,131 @@ function AuditLogsPage() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ========================================
+// C) ADMIN DIAGNOSTICS PAGE
+// ========================================
+function DiagnosticsPage() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    const [health, stats] = await Promise.all([
+      adminFetch(`/system/health`),
+      adminFetch(`/stats/enhanced?period=7`),
+    ]);
+    if (health.ok || stats.ok) {
+      setData({
+        health: health.ok ? health.data : null,
+        stats: stats.ok ? stats.data : null,
+        healthError: health.ok ? null : health.error,
+        statsError: stats.ok ? null : stats.error,
+      });
+    } else {
+      setError(health.error || stats.error || "Failed to load diagnostics");
+    }
+    setLoading(false);
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  if (error) return <ErrorState error={error} onRetry={load} />;
+
+  const h = data?.health;
+  const m = data?.stats?.metrics || {};
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div><CardTitle>Admin Diagnostics</CardTitle><CardDescription>Environment checks and table counts</CardDescription></div>
+            <Button size="sm" variant="outline" onClick={load}><RefreshCw className="w-3 h-3 mr-1" /> Refresh</Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Environment Checks */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Environment</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="p-3 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Database className="w-4 h-4 text-slate-400" />
+                    <span className="text-xs text-slate-500">Database</span>
+                  </div>
+                  <Badge variant={h?.database === "connected" ? "default" : "destructive"}>{h?.database || "unknown"}</Badge>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Activity className="w-4 h-4 text-slate-400" />
+                    <span className="text-xs text-slate-500">Status</span>
+                  </div>
+                  <Badge variant={h?.status === "healthy" ? "default" : "destructive"}>{h?.status || "unknown"}</Badge>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Stethoscope className="w-4 h-4 text-slate-400" />
+                    <span className="text-xs text-slate-500">Memory</span>
+                  </div>
+                  <span className="text-sm font-mono">{h?.memory?.heapUsed || 0} / {h?.memory?.heapTotal || 0} MB</span>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp className="w-4 h-4 text-slate-400" />
+                    <span className="text-xs text-slate-500">Uptime</span>
+                  </div>
+                  <span className="text-sm font-mono">{h?.uptime ? `${Math.floor(h.uptime / 3600)}h ${Math.floor((h.uptime % 3600) / 60)}m` : "—"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Table Counts */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Key Table Counts</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                {[
+                  { label: "Users", value: m.totalUsers },
+                  { label: "Properties", value: m.totalProperties },
+                  { label: "Bookings", value: m.totalBookings },
+                  { label: "Open Tickets", value: m.openTickets },
+                  { label: "Pending Props", value: m.pendingProperties },
+                ].map((item, i) => (
+                  <div key={i} className="p-3 border rounded-lg text-center">
+                    <p className="text-xs text-slate-500">{item.label}</p>
+                    <p className="text-xl font-bold">{item.value ?? "—"}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Errors */}
+            {(data?.healthError || data?.statsError) && (
+              <div>
+                <h3 className="text-sm font-semibold mb-2 text-red-600">Errors Detected</h3>
+                <div className="space-y-2">
+                  {data.healthError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                      <strong>Health endpoint:</strong> {data.healthError}
+                    </div>
+                  )}
+                  {data.statsError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                      <strong>Stats endpoint:</strong> {data.statsError}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

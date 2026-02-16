@@ -1,6 +1,40 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Admin Panel Bug Fixes — All Tabs Functional - Feb 18, 2026
+
+115. **Fix all admin panel crashes and non-functional pages (`AdminDashboard.tsx`)**
+    - **Root causes fixed:**
+      - Select components with `value=""` crashed Radix UI — changed all to `value="all"` default
+      - Raw `fetch()` calls didn't handle 403/401/500 responses — replaced with `adminFetch()` helper that returns structured `{ ok, data, status, error }` and handles RBAC permission denied gracefully
+      - No error states on any page — API failures showed empty lists instead of error messages
+      - CMS pages (City Pages, Banners, Static Pages) had "Add" buttons with no create forms wired
+      - Notifications page was a stub with no functionality
+      - Support Tickets page had no create form
+    - **Fixes applied to every page:**
+      - Properties: error handling + RBAC-aware empty state
+      - Bookings (Property + Legacy): fixed Select crash, added error state with retry
+      - Hosts: error handling + RBAC-aware empty state
+      - Users: error handling with retry
+      - Promo Codes: error handling
+      - CMS City Pages: added full create form (city, state, hero, SEO, publish toggle)
+      - CMS Banners: added full create form (title, message, type, placement, links)
+      - CMS Static Pages: added full create form (slug auto-sanitization, title, content, SEO)
+      - Notifications: replaced stub with functional template CRUD + delivery logs viewer + provider status notice
+      - Support Tickets: added create form (subject, category, priority, initial message) + error handling
+      - Feature Flags: error handling
+      - Site Config: added create form + error handling
+      - Admin Users: error handling
+      - System Health: error handling with retry
+      - Audit Logs: fixed Select crash, error handling
+    - **New: Admin Diagnostics page** — environment checks (DB status, memory, uptime), key table counts (users, properties, bookings, tickets), error detection for failing endpoints
+    - **Consistent error handling:** `adminFetch()` wrapper returns permission-denied messages for 403, session-expired for 401, and network errors — all pages show `ErrorState` component with retry button
+
+**Files Modified:**
+- `client/src/pages/admin/AdminDashboard.tsx` — Rewrote all page components with safe data fetching, error states, create forms, and DiagnosticsPage
+
+---
+
 ## Production Fix: Missing DB Columns + Tables for Admin Panel - Feb 18, 2026
 
 114. **Bootstrap migrations for admin panel schema (`server/bootstrap.ts`)**
