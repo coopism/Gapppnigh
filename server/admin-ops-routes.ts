@@ -4,7 +4,8 @@ import { v4 as uuidv4 } from "uuid";
 import {
   adminUsers, adminSessions, adminActivityLogs, users, bookings, deals, hotels, promoCodes,
   featureFlags, siteConfig, supportTickets, cmsCityPages, cmsBanners, cmsStaticPages,
-  notificationTemplates, notificationLogs, properties, propertyBookings, propertyAvailability, airbnbHosts
+  notificationTemplates, notificationLogs, properties, propertyBookings, propertyAvailability, airbnbHosts,
+  propertyReviews
 } from "@shared/schema";
 import { eq, desc, sql, and, gte, lte, count, ilike, or, asc, ne } from "drizzle-orm";
 
@@ -1198,6 +1199,156 @@ export function registerAdminOpsRoutes(app: Router) {
       permissions: ROLE_PERMISSIONS[admin.role] || [],
       allRoles: Object.keys(ROLE_PERMISSIONS),
     });
+  });
+
+  // ========================================
+  // N) REVIEWS MANAGEMENT
+  // ========================================
+
+  // List all property reviews with property title and user email
+  app.get(`${ADMIN_PREFIX}/reviews`, adminAuth, requirePermission("manage_content"), async (req, res) => {
+    try {
+      const { page = "1", limit = "50", propertyId = "", rating = "" } = req.query;
+      const validatedLimit = Math.min(Math.max(parseInt(limit as string), 1), 100);
+      const validatedPage = Math.max(parseInt(page as string), 1);
+      const offset = (validatedPage - 1) * validatedLimit;
+
+      const conditions: any[] = [];
+      if (propertyId) conditions.push(eq(propertyReviews.propertyId, propertyId as string));
+      if (rating) conditions.push(eq(propertyReviews.rating, parseInt(rating as string)));
+
+      const reviews = await db.select({
+        id: propertyReviews.id,
+        propertyId: propertyReviews.propertyId,
+        bookingId: propertyReviews.bookingId,
+        userId: propertyReviews.userId,
+        rating: propertyReviews.rating,
+        cleanlinessRating: propertyReviews.cleanlinessRating,
+        accuracyRating: propertyReviews.accuracyRating,
+        checkInRating: propertyReviews.checkInRating,
+        communicationRating: propertyReviews.communicationRating,
+        locationRating: propertyReviews.locationRating,
+        valueRating: propertyReviews.valueRating,
+        comment: propertyReviews.comment,
+        hostResponse: propertyReviews.hostResponse,
+        isVerified: propertyReviews.isVerified,
+        createdAt: propertyReviews.createdAt,
+        propertyTitle: properties.title,
+        userName: users.name,
+        userEmail: users.email,
+      }).from(propertyReviews)
+        .leftJoin(properties, eq(propertyReviews.propertyId, properties.id))
+        .leftJoin(users, eq(propertyReviews.userId, users.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(propertyReviews.createdAt))
+        .limit(validatedLimit).offset(offset);
+
+      const [totalCount] = await db.select({ count: count() }).from(propertyReviews)
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+      res.json({ reviews, total: totalCount.count, page: validatedPage, limit: validatedLimit });
+    } catch (error) {
+      console.error("Get reviews error:", error);
+      res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  });
+
+  // Update a review (edit comment, toggle verified)
+  app.patch(`${ADMIN_PREFIX}/reviews/:reviewId`, adminAuth, requirePermission("manage_content"), async (req, res) => {
+    try {
+      const admin = (req as any).admin;
+      const reviewId = req.params.reviewId as string;
+      const { comment, isVerified, hostResponse } = req.body;
+
+      const [before] = await db.select().from(propertyReviews).where(eq(propertyReviews.id, reviewId)).limit(1);
+      if (!before) return res.status(404).json({ message: "Review not found" });
+
+      const updateData: any = {};
+      if (comment !== undefined) updateData.comment = comment;
+      if (isVerified !== undefined) updateData.isVerified = isVerified;
+      if (hostResponse !== undefined) updateData.hostResponse = hostResponse;
+
+      await db.update(propertyReviews).set(updateData).where(eq(propertyReviews.id, reviewId));
+
+      await auditLog(admin.id, "review_updated", "reviews", "review", reviewId,
+        { changes: Object.keys(updateData) }, getIP(req), { comment: before.comment, isVerified: before.isVerified }, updateData);
+
+      res.json({ success: true, message: "Review updated" });
+    } catch (error) {
+      console.error("Update review error:", error);
+      res.status(500).json({ message: "Failed to update review" });
+    }
+  });
+
+  // Delete a review
+  app.delete(`${ADMIN_PREFIX}/reviews/:reviewId`, adminAuth, requirePermission("manage_content"), async (req, res) => {
+    try {
+      const admin = (req as any).admin;
+      const reviewId = req.params.reviewId as string;
+
+      const [before] = await db.select().from(propertyReviews).where(eq(propertyReviews.id, reviewId)).limit(1);
+      if (!before) return res.status(404).json({ message: "Review not found" });
+
+      await db.delete(propertyReviews).where(eq(propertyReviews.id, reviewId));
+
+      await auditLog(admin.id, "review_deleted", "reviews", "review", reviewId,
+        { propertyId: before.propertyId, rating: before.rating }, getIP(req), before, null);
+
+      res.json({ success: true, message: "Review deleted" });
+    } catch (error) {
+      console.error("Delete review error:", error);
+      res.status(500).json({ message: "Failed to delete review" });
+    }
+  });
+
+  // ========================================
+  // O) EDIT PROPERTY LISTING
+  // ========================================
+
+  app.patch(`${ADMIN_PREFIX}/properties/:propertyId`, adminAuth, requirePermission("manage_properties"), async (req, res) => {
+    try {
+      const admin = (req as any).admin;
+      const propertyId = req.params.propertyId as string;
+      const data = req.body;
+
+      const [before] = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
+      if (!before) return res.status(404).json({ message: "Property not found" });
+
+      // Only allow updating specific fields
+      const allowedFields = [
+        "title", "description", "propertyType", "category", "address", "city", "state",
+        "country", "postcode", "maxGuests", "bedrooms", "beds", "bathrooms",
+        "amenities", "houseRules", "checkInInstructions", "checkInTime", "checkOutTime",
+        "cancellationPolicy", "baseNightlyRate", "cleaningFee", "serviceFee",
+        "minNights", "maxNights", "instantBook", "selfCheckIn", "petFriendly",
+        "smokingAllowed", "nearbyHighlight", "coverImage", "images",
+      ];
+
+      const updateData: any = { updatedAt: new Date() };
+      const changes: string[] = [];
+      for (const field of allowedFields) {
+        if (data[field] !== undefined) {
+          updateData[field] = data[field];
+          changes.push(field);
+        }
+      }
+
+      if (changes.length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      await db.update(properties).set(updateData).where(eq(properties.id, propertyId));
+
+      await auditLog(admin.id, "property_edited", "properties", "property", propertyId,
+        { changedFields: changes }, getIP(req),
+        Object.fromEntries(changes.map(f => [f, (before as any)[f]])),
+        Object.fromEntries(changes.map(f => [f, updateData[f]])));
+
+      res.json({ success: true, message: "Property updated", changedFields: changes });
+    } catch (error) {
+      console.error("Edit property error:", error);
+      res.status(500).json({ message: "Failed to update property" });
+    }
   });
 
   console.log(`[ADMIN-OPS] Extended admin routes registered at ${ADMIN_PREFIX}`);

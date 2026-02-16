@@ -1,6 +1,29 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Admin Reviews Management + Property Editing - Feb 18, 2026
+
+119. **Admin: Reviews management page**
+    - New "Reviews" tab in admin sidebar
+    - Lists all property reviews with property title, user name/email, star rating, comment, host response, sub-ratings (cleanliness, accuracy, check-in, communication, location, value)
+    - Filter by star rating (1-5)
+    - Edit review: modify comment text, host response, toggle verified status
+    - Delete review with confirmation
+    - Backend: GET `/reviews` (list with joins to properties + users), PATCH `/reviews/:reviewId` (edit), DELETE `/reviews/:reviewId` (delete) — all with audit logging
+
+120. **Admin: Edit property listings**
+    - "Edit" button in property detail modal switches to edit mode
+    - Editable fields: title, description, address, city, state, postcode, property type, category, cancellation policy, max guests, bedrooms, beds, bathrooms, nightly rate, cleaning fee, min/max nights, check-in/out times, amenities (comma-separated), house rules, nearby highlight, instant book, self check-in, pet friendly, smoking allowed
+    - Dollar amounts converted to/from cents automatically
+    - Amenities string converted to/from array automatically
+    - Backend: PATCH `/properties/:propertyId` with whitelist of allowed fields, audit logging with before/after snapshots
+
+**Files Modified:**
+- `server/admin-ops-routes.ts` — Added propertyReviews import, reviews CRUD endpoints, property edit endpoint
+- `client/src/pages/admin/AdminDashboard.tsx` — Added ReviewsPage, edit mode to property detail modal, Reviews nav item
+
+---
+
 ## Admin Property Detail View + Public Contact Us Page - Feb 18, 2026
 
 117. **Admin: Property detail modal with full info + approve/decline workflow**

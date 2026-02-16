@@ -108,6 +108,7 @@ const NAV_ITEMS: NavItem[] = [
   ]},
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "promos", label: "Promotions", icon: Gift },
+  { id: "reviews", label: "Reviews", icon: Star },
   { id: "content", label: "Content (CMS)", icon: FileText, children: [
     { id: "content-cities", label: "City Pages" },
     { id: "content-banners", label: "Banners" },
@@ -304,6 +305,7 @@ export default function AdminDashboard() {
           {activePage === "users-hosts" && <HostsPage />}
           {activePage === "payments" && <PaymentsStubPage />}
           {activePage === "promos" && <PromoCodesPage />}
+          {activePage === "reviews" && <ReviewsPage />}
           {(activePage === "content-cities" || activePage === "content") && <CityPagesPage />}
           {activePage === "content-banners" && <BannersPage />}
           {activePage === "content-pages" && <StaticPagesPage />}
@@ -480,6 +482,8 @@ function PropertiesPage({ filterStatus }: { filterStatus?: string }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
 
   useEffect(() => { load(); }, [filterStatus, search]);
 
@@ -499,6 +503,7 @@ function PropertiesPage({ filterStatus }: { filterStatus?: string }) {
     setDetailLoading(true);
     setDetailOpen(true);
     setRejectReason("");
+    setEditMode(false);
     const res = await adminFetch(`/properties/${id}`);
     if (res.ok) {
       setSelectedProperty(res.data.property);
@@ -508,6 +513,57 @@ function PropertiesPage({ filterStatus }: { filterStatus?: string }) {
       setSelectedHost(null);
     }
     setDetailLoading(false);
+  };
+
+  const startEdit = () => {
+    if (!selectedProperty) return;
+    const sp = selectedProperty;
+    setEditForm({
+      title: sp.title || "", description: sp.description || "",
+      propertyType: sp.propertyType || "entire_place", category: sp.category || "apartment",
+      address: sp.address || "", city: sp.city || "", state: sp.state || "",
+      country: sp.country || "Australia", postcode: sp.postcode || "",
+      maxGuests: sp.maxGuests || 2, bedrooms: sp.bedrooms || 1, beds: sp.beds || 1, bathrooms: sp.bathrooms || "1",
+      baseNightlyRate: ((sp.baseNightlyRate || 0) / 100).toFixed(2),
+      cleaningFee: ((sp.cleaningFee || 0) / 100).toFixed(2),
+      minNights: sp.minNights || 1, maxNights: sp.maxNights || 30,
+      checkInTime: sp.checkInTime || "15:00", checkOutTime: sp.checkOutTime || "10:00",
+      cancellationPolicy: sp.cancellationPolicy || "moderate",
+      instantBook: sp.instantBook || false, selfCheckIn: sp.selfCheckIn || false,
+      petFriendly: sp.petFriendly || false, smokingAllowed: sp.smokingAllowed || false,
+      houseRules: sp.houseRules || "", nearbyHighlight: sp.nearbyHighlight || "",
+      amenities: (sp.amenities || []).join(", "),
+    });
+    setEditMode(true);
+  };
+
+  const saveEdit = async () => {
+    if (!selectedProperty) return;
+    setActionLoading(true);
+    const payload: any = { ...editForm };
+    // Convert dollar amounts back to cents
+    payload.baseNightlyRate = Math.round(parseFloat(payload.baseNightlyRate || "0") * 100);
+    payload.cleaningFee = Math.round(parseFloat(payload.cleaningFee || "0") * 100);
+    payload.maxGuests = parseInt(payload.maxGuests) || 2;
+    payload.bedrooms = parseInt(payload.bedrooms) || 1;
+    payload.beds = parseInt(payload.beds) || 1;
+    payload.minNights = parseInt(payload.minNights) || 1;
+    payload.maxNights = parseInt(payload.maxNights) || 30;
+    // Convert amenities string back to array
+    payload.amenities = payload.amenities ? payload.amenities.split(",").map((a: string) => a.trim()).filter(Boolean) : [];
+
+    const res = await adminFetch(`/properties/${selectedProperty.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    setActionLoading(false);
+    if (res.ok) {
+      setEditMode(false);
+      // Refresh the detail
+      openDetail(selectedProperty.id);
+      load();
+    }
   };
 
   const updateStatus = async (id: string, status: string, reason?: string) => {
@@ -590,175 +646,332 @@ function PropertiesPage({ filterStatus }: { filterStatus?: string }) {
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle className="text-xl">{p.title}</DialogTitle>
-                <DialogDescription>
-                  <Badge variant={p.status === "approved" ? "default" : p.status === "rejected" ? "destructive" : "secondary"} className="mr-2">
-                    {p.status}
-                  </Badge>
-                  Submitted {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "N/A"}
-                </DialogDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <DialogTitle className="text-xl">{p.title}</DialogTitle>
+                    <DialogDescription>
+                      <Badge variant={p.status === "approved" ? "default" : p.status === "rejected" ? "destructive" : "secondary"} className="mr-2">
+                        {p.status}
+                      </Badge>
+                      Submitted {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "N/A"}
+                    </DialogDescription>
+                  </div>
+                  {!editMode && (
+                    <Button size="sm" variant="outline" onClick={startEdit}>
+                      <Settings className="w-3.5 h-3.5 mr-1" /> Edit
+                    </Button>
+                  )}
+                </div>
               </DialogHeader>
 
-              {/* Cover Image */}
-              {p.coverImage && (
-                <div className="rounded-lg overflow-hidden border mb-2">
-                  <img src={p.coverImage} alt={p.title} className="w-full h-48 object-cover" />
-                </div>
-              )}
-
-              {/* Property Images */}
-              {p.images && p.images.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {p.images.slice(0, 6).map((img: string, i: number) => (
-                    <img key={i} src={img} alt={`Photo ${i + 1}`} className="w-24 h-24 rounded-md object-cover border flex-shrink-0" />
-                  ))}
-                  {p.images.length > 6 && <div className="w-24 h-24 rounded-md border flex items-center justify-center text-sm text-slate-400 flex-shrink-0">+{p.images.length - 6} more</div>}
-                </div>
-              )}
-
-              {/* Location & Basics */}
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Location</h4>
-                  <div className="text-sm space-y-1">
-                    <p><span className="font-medium">Address:</span> {p.address}</p>
-                    <p><span className="font-medium">City:</span> {p.city}, {p.state}</p>
-                    <p><span className="font-medium">Country:</span> {p.country}</p>
-                    {p.postcode && <p><span className="font-medium">Postcode:</span> {p.postcode}</p>}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Details</h4>
-                  <div className="text-sm space-y-1">
-                    <p><span className="font-medium">Type:</span> {p.propertyType} / {p.category}</p>
-                    <p><span className="font-medium">Bedrooms:</span> {p.bedrooms} · <span className="font-medium">Beds:</span> {p.beds} · <span className="font-medium">Baths:</span> {p.bathrooms}</p>
-                    <p><span className="font-medium">Max Guests:</span> {p.maxGuests}</p>
-                    <p><span className="font-medium">Instant Book:</span> {p.instantBook ? "Yes" : "No"} · <span className="font-medium">Self Check-in:</span> {p.selfCheckIn ? "Yes" : "No"}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Pricing */}
-              <div className="space-y-2 mt-3">
-                <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Pricing</h4>
-                <div className="flex gap-4 text-sm">
-                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-2">
-                    <div className="text-xs text-slate-400">Nightly Rate</div>
-                    <div className="font-bold text-lg">${((p.baseNightlyRate || 0) / 100).toFixed(2)}</div>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-2">
-                    <div className="text-xs text-slate-400">Cleaning Fee</div>
-                    <div className="font-bold text-lg">${((p.cleaningFee || 0) / 100).toFixed(2)}</div>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-2">
-                    <div className="text-xs text-slate-400">Min / Max Nights</div>
-                    <div className="font-bold text-lg">{p.minNights} – {p.maxNights || "∞"}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="space-y-2 mt-3">
-                <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Description</h4>
-                <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{p.description}</p>
-              </div>
-
-              {/* Amenities */}
-              {p.amenities && p.amenities.length > 0 && (
-                <div className="space-y-2 mt-3">
-                  <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Amenities</h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {p.amenities.map((a: string) => <Badge key={a} variant="outline" className="text-xs">{a}</Badge>)}
-                  </div>
-                </div>
-              )}
-
-              {/* House Rules & Policies */}
-              <div className="grid grid-cols-2 gap-4 mt-3">
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Policies</h4>
-                  <div className="text-sm space-y-1">
-                    <p><span className="font-medium">Check-in:</span> {p.checkInTime} · <span className="font-medium">Check-out:</span> {p.checkOutTime}</p>
-                    <p><span className="font-medium">Cancellation:</span> {p.cancellationPolicy}</p>
-                    <p><span className="font-medium">Pets:</span> {p.petFriendly ? "Allowed" : "No"} · <span className="font-medium">Smoking:</span> {p.smokingAllowed ? "Allowed" : "No"}</p>
-                  </div>
-                </div>
-                {p.houseRules && (
+              {editMode ? (
+                /* ===== EDIT MODE ===== */
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">House Rules</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-300">{p.houseRules}</p>
+                    <Label>Title</Label>
+                    <Input value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} />
                   </div>
-                )}
-              </div>
-
-              {/* Host Info */}
-              {selectedHost && (
-                <div className="space-y-2 mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 uppercase tracking-wide">Host Information</h4>
-                  <div className="text-sm space-y-1">
-                    <p><span className="font-medium">Name:</span> {selectedHost.name}</p>
-                    <p><span className="font-medium">Email:</span> {selectedHost.email}</p>
-                    {selectedHost.phone && <p><span className="font-medium">Phone:</span> {selectedHost.phone}</p>}
-                    <p><span className="font-medium">Superhost:</span> {selectedHost.isSuperhost ? "Yes" : "No"} · <span className="font-medium">Active:</span> {selectedHost.isActive ? "Yes" : "No"}</p>
-                    <p><span className="font-medium">Joined:</span> {selectedHost.createdAt ? new Date(selectedHost.createdAt).toLocaleDateString() : "N/A"}</p>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="min-h-[100px]" />
                   </div>
-                </div>
-              )}
-
-              {/* Rejection reason (if already rejected) */}
-              {p.status === "rejected" && p.rejectionReason && (
-                <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                  <h4 className="font-semibold text-sm text-red-600 dark:text-red-400 uppercase tracking-wide">Rejection Reason</h4>
-                  <p className="text-sm mt-1">{p.rejectionReason}</p>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="mt-4 pt-4 border-t space-y-3">
-                {p.status === "pending_approval" && (
-                  <>
-                    <div className="flex gap-2">
-                      <Button className="flex-1" onClick={() => updateStatus(p.id, "approved")} disabled={actionLoading}>
-                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-                        Approve Property
-                      </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Address</Label>
+                      <Input value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-red-600">Decline with reason (email will be sent to host)</Label>
-                      <Textarea
-                        placeholder="Enter the reason for declining this property..."
-                        value={rejectReason}
-                        onChange={e => setRejectReason(e.target.value)}
-                        className="min-h-[80px]"
-                      />
-                      <Button
-                        variant="destructive"
-                        className="w-full"
-                        disabled={!rejectReason.trim() || actionLoading}
-                        onClick={() => updateStatus(p.id, "rejected", rejectReason.trim())}
-                      >
-                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
-                        Decline Property
-                      </Button>
+                      <Label>City</Label>
+                      <Input value={editForm.city} onChange={e => setEditForm({...editForm, city: e.target.value})} />
                     </div>
-                  </>
-                )}
-                {p.status === "approved" && (
-                  <Button variant="outline" className="w-full" onClick={() => updateStatus(p.id, "suspended")} disabled={actionLoading}>
-                    Suspend Property
-                  </Button>
-                )}
-                {p.status === "suspended" && (
-                  <Button variant="default" className="w-full" onClick={() => updateStatus(p.id, "approved")} disabled={actionLoading}>
-                    Reactivate Property
-                  </Button>
-                )}
-                {p.status === "rejected" && (
-                  <Button variant="default" className="w-full" onClick={() => updateStatus(p.id, "pending_approval")} disabled={actionLoading}>
-                    Move Back to Pending
-                  </Button>
-                )}
-              </div>
+                    <div className="space-y-2">
+                      <Label>State</Label>
+                      <Input value={editForm.state} onChange={e => setEditForm({...editForm, state: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Postcode</Label>
+                      <Input value={editForm.postcode} onChange={e => setEditForm({...editForm, postcode: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label>Property Type</Label>
+                      <Select value={editForm.propertyType} onValueChange={v => setEditForm({...editForm, propertyType: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="entire_place">Entire Place</SelectItem>
+                          <SelectItem value="private_room">Private Room</SelectItem>
+                          <SelectItem value="shared_room">Shared Room</SelectItem>
+                          <SelectItem value="unique_stay">Unique Stay</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Select value={editForm.category} onValueChange={v => setEditForm({...editForm, category: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="apartment">Apartment</SelectItem>
+                          <SelectItem value="house">House</SelectItem>
+                          <SelectItem value="cabin">Cabin</SelectItem>
+                          <SelectItem value="villa">Villa</SelectItem>
+                          <SelectItem value="cottage">Cottage</SelectItem>
+                          <SelectItem value="loft">Loft</SelectItem>
+                          <SelectItem value="studio">Studio</SelectItem>
+                          <SelectItem value="townhouse">Townhouse</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cancellation</Label>
+                      <Select value={editForm.cancellationPolicy} onValueChange={v => setEditForm({...editForm, cancellationPolicy: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="flexible">Flexible</SelectItem>
+                          <SelectItem value="moderate">Moderate</SelectItem>
+                          <SelectItem value="strict">Strict</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="space-y-2">
+                      <Label>Max Guests</Label>
+                      <Input type="number" value={editForm.maxGuests} onChange={e => setEditForm({...editForm, maxGuests: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bedrooms</Label>
+                      <Input type="number" value={editForm.bedrooms} onChange={e => setEditForm({...editForm, bedrooms: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Beds</Label>
+                      <Input type="number" value={editForm.beds} onChange={e => setEditForm({...editForm, beds: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bathrooms</Label>
+                      <Input value={editForm.bathrooms} onChange={e => setEditForm({...editForm, bathrooms: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="space-y-2">
+                      <Label>Nightly Rate ($)</Label>
+                      <Input type="number" step="0.01" value={editForm.baseNightlyRate} onChange={e => setEditForm({...editForm, baseNightlyRate: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cleaning Fee ($)</Label>
+                      <Input type="number" step="0.01" value={editForm.cleaningFee} onChange={e => setEditForm({...editForm, cleaningFee: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Min Nights</Label>
+                      <Input type="number" value={editForm.minNights} onChange={e => setEditForm({...editForm, minNights: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Max Nights</Label>
+                      <Input type="number" value={editForm.maxNights} onChange={e => setEditForm({...editForm, maxNights: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Check-in Time</Label>
+                      <Input value={editForm.checkInTime} onChange={e => setEditForm({...editForm, checkInTime: e.target.value})} placeholder="15:00" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Check-out Time</Label>
+                      <Input value={editForm.checkOutTime} onChange={e => setEditForm({...editForm, checkOutTime: e.target.value})} placeholder="10:00" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Amenities (comma-separated)</Label>
+                    <Input value={editForm.amenities} onChange={e => setEditForm({...editForm, amenities: e.target.value})} placeholder="WiFi, Kitchen, Pool, Parking, AC" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>House Rules</Label>
+                    <Textarea value={editForm.houseRules} onChange={e => setEditForm({...editForm, houseRules: e.target.value})} className="min-h-[60px]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nearby Highlight</Label>
+                    <Input value={editForm.nearbyHighlight} onChange={e => setEditForm({...editForm, nearbyHighlight: e.target.value})} placeholder="5 min walk to beach" />
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex items-center gap-2"><Switch checked={editForm.instantBook} onCheckedChange={v => setEditForm({...editForm, instantBook: v})} /><Label>Instant Book</Label></div>
+                    <div className="flex items-center gap-2"><Switch checked={editForm.selfCheckIn} onCheckedChange={v => setEditForm({...editForm, selfCheckIn: v})} /><Label>Self Check-in</Label></div>
+                    <div className="flex items-center gap-2"><Switch checked={editForm.petFriendly} onCheckedChange={v => setEditForm({...editForm, petFriendly: v})} /><Label>Pet Friendly</Label></div>
+                    <div className="flex items-center gap-2"><Switch checked={editForm.smokingAllowed} onCheckedChange={v => setEditForm({...editForm, smokingAllowed: v})} /><Label>Smoking</Label></div>
+                  </div>
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Button className="flex-1" onClick={saveEdit} disabled={actionLoading}>
+                      {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                      Save Changes
+                    </Button>
+                    <Button variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                /* ===== VIEW MODE ===== */
+                <>
+                  {/* Cover Image */}
+                  {p.coverImage && (
+                    <div className="rounded-lg overflow-hidden border mb-2">
+                      <img src={p.coverImage} alt={p.title} className="w-full h-48 object-cover" />
+                    </div>
+                  )}
+
+                  {/* Property Images */}
+                  {p.images && p.images.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {p.images.slice(0, 6).map((img: string, i: number) => (
+                        <img key={i} src={img} alt={`Photo ${i + 1}`} className="w-24 h-24 rounded-md object-cover border flex-shrink-0" />
+                      ))}
+                      {p.images.length > 6 && <div className="w-24 h-24 rounded-md border flex items-center justify-center text-sm text-slate-400 flex-shrink-0">+{p.images.length - 6} more</div>}
+                    </div>
+                  )}
+
+                  {/* Location & Basics */}
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Location</h4>
+                      <div className="text-sm space-y-1">
+                        <p><span className="font-medium">Address:</span> {p.address}</p>
+                        <p><span className="font-medium">City:</span> {p.city}, {p.state}</p>
+                        <p><span className="font-medium">Country:</span> {p.country}</p>
+                        {p.postcode && <p><span className="font-medium">Postcode:</span> {p.postcode}</p>}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Details</h4>
+                      <div className="text-sm space-y-1">
+                        <p><span className="font-medium">Type:</span> {p.propertyType} / {p.category}</p>
+                        <p><span className="font-medium">Bedrooms:</span> {p.bedrooms} · <span className="font-medium">Beds:</span> {p.beds} · <span className="font-medium">Baths:</span> {p.bathrooms}</p>
+                        <p><span className="font-medium">Max Guests:</span> {p.maxGuests}</p>
+                        <p><span className="font-medium">Instant Book:</span> {p.instantBook ? "Yes" : "No"} · <span className="font-medium">Self Check-in:</span> {p.selfCheckIn ? "Yes" : "No"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing */}
+                  <div className="space-y-2 mt-3">
+                    <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Pricing</h4>
+                    <div className="flex gap-4 text-sm">
+                      <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-2">
+                        <div className="text-xs text-slate-400">Nightly Rate</div>
+                        <div className="font-bold text-lg">${((p.baseNightlyRate || 0) / 100).toFixed(2)}</div>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-2">
+                        <div className="text-xs text-slate-400">Cleaning Fee</div>
+                        <div className="font-bold text-lg">${((p.cleaningFee || 0) / 100).toFixed(2)}</div>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-2">
+                        <div className="text-xs text-slate-400">Min / Max Nights</div>
+                        <div className="font-bold text-lg">{p.minNights} – {p.maxNights || "∞"}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2 mt-3">
+                    <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Description</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{p.description}</p>
+                  </div>
+
+                  {/* Amenities */}
+                  {p.amenities && p.amenities.length > 0 && (
+                    <div className="space-y-2 mt-3">
+                      <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Amenities</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {p.amenities.map((a: string) => <Badge key={a} variant="outline" className="text-xs">{a}</Badge>)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* House Rules & Policies */}
+                  <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Policies</h4>
+                      <div className="text-sm space-y-1">
+                        <p><span className="font-medium">Check-in:</span> {p.checkInTime} · <span className="font-medium">Check-out:</span> {p.checkOutTime}</p>
+                        <p><span className="font-medium">Cancellation:</span> {p.cancellationPolicy}</p>
+                        <p><span className="font-medium">Pets:</span> {p.petFriendly ? "Allowed" : "No"} · <span className="font-medium">Smoking:</span> {p.smokingAllowed ? "Allowed" : "No"}</p>
+                      </div>
+                    </div>
+                    {p.houseRules && (
+                      <div className="space-y-2">
+                        <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">House Rules</h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">{p.houseRules}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Host Info */}
+                  {selectedHost && (
+                    <div className="space-y-2 mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 uppercase tracking-wide">Host Information</h4>
+                      <div className="text-sm space-y-1">
+                        <p><span className="font-medium">Name:</span> {selectedHost.name}</p>
+                        <p><span className="font-medium">Email:</span> {selectedHost.email}</p>
+                        {selectedHost.phone && <p><span className="font-medium">Phone:</span> {selectedHost.phone}</p>}
+                        <p><span className="font-medium">Superhost:</span> {selectedHost.isSuperhost ? "Yes" : "No"} · <span className="font-medium">Active:</span> {selectedHost.isActive ? "Yes" : "No"}</p>
+                        <p><span className="font-medium">Joined:</span> {selectedHost.createdAt ? new Date(selectedHost.createdAt).toLocaleDateString() : "N/A"}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Rejection reason (if already rejected) */}
+                  {p.status === "rejected" && p.rejectionReason && (
+                    <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                      <h4 className="font-semibold text-sm text-red-600 dark:text-red-400 uppercase tracking-wide">Rejection Reason</h4>
+                      <p className="text-sm mt-1">{p.rejectionReason}</p>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="mt-4 pt-4 border-t space-y-3">
+                    {p.status === "pending_approval" && (
+                      <>
+                        <div className="flex gap-2">
+                          <Button className="flex-1" onClick={() => updateStatus(p.id, "approved")} disabled={actionLoading}>
+                            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                            Approve Property
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-red-600">Decline with reason (email will be sent to host)</Label>
+                          <Textarea
+                            placeholder="Enter the reason for declining this property..."
+                            value={rejectReason}
+                            onChange={e => setRejectReason(e.target.value)}
+                            className="min-h-[80px]"
+                          />
+                          <Button
+                            variant="destructive"
+                            className="w-full"
+                            disabled={!rejectReason.trim() || actionLoading}
+                            onClick={() => updateStatus(p.id, "rejected", rejectReason.trim())}
+                          >
+                            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
+                            Decline Property
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                    {p.status === "approved" && (
+                      <Button variant="outline" className="w-full" onClick={() => updateStatus(p.id, "suspended")} disabled={actionLoading}>
+                        Suspend Property
+                      </Button>
+                    )}
+                    {p.status === "suspended" && (
+                      <Button variant="default" className="w-full" onClick={() => updateStatus(p.id, "approved")} disabled={actionLoading}>
+                        Reactivate Property
+                      </Button>
+                    )}
+                    {p.status === "rejected" && (
+                      <Button variant="default" className="w-full" onClick={() => updateStatus(p.id, "pending_approval")} disabled={actionLoading}>
+                        Move Back to Pending
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
         </DialogContent>
@@ -1204,6 +1417,163 @@ function PromoCodesPage() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ========================================
+// H2) REVIEWS MANAGEMENT
+// ========================================
+function ReviewsPage() {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [editingReview, setEditingReview] = useState<any>(null);
+  const [editComment, setEditComment] = useState("");
+  const [editVerified, setEditVerified] = useState(true);
+  const [editHostResponse, setEditHostResponse] = useState("");
+  const [filterRating, setFilterRating] = useState("all");
+
+  useEffect(() => { load(); }, [filterRating]);
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    const params = new URLSearchParams({ limit: "100" });
+    if (filterRating !== "all") params.set("rating", filterRating);
+    const res = await adminFetch(`/reviews?${params}`);
+    if (res.ok) { setReviews(res.data.reviews || []); }
+    else { setError(res.error || "Failed to load reviews"); setReviews([]); }
+    setLoading(false);
+  };
+
+  const openEdit = (r: any) => {
+    setEditingReview(r);
+    setEditComment(r.comment || "");
+    setEditVerified(r.isVerified ?? true);
+    setEditHostResponse(r.hostResponse || "");
+  };
+
+  const saveEdit = async () => {
+    if (!editingReview) return;
+    const res = await adminFetch(`/reviews/${editingReview.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comment: editComment, isVerified: editVerified, hostResponse: editHostResponse || null }),
+    });
+    if (res.ok) { setEditingReview(null); load(); }
+  };
+
+  const deleteReview = async (id: string) => {
+    if (!confirm("Are you sure you want to permanently delete this review?")) return;
+    const res = await adminFetch(`/reviews/${id}`, { method: "DELETE" });
+    if (res.ok) load();
+  };
+
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star key={i} className={`w-3.5 h-3.5 inline ${i < rating ? "text-yellow-500 fill-yellow-500" : "text-slate-300"}`} />
+    ));
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Reviews</CardTitle>
+              <CardDescription>{reviews.length} reviews</CardDescription>
+            </div>
+            <Select value={filterRating} onValueChange={setFilterRating}>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Ratings</SelectItem>
+                <SelectItem value="5">5 Stars</SelectItem>
+                <SelectItem value="4">4 Stars</SelectItem>
+                <SelectItem value="3">3 Stars</SelectItem>
+                <SelectItem value="2">2 Stars</SelectItem>
+                <SelectItem value="1">1 Star</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+          error ? <ErrorState error={error} onRetry={load} /> :
+          reviews.length === 0 ? <p className="text-center py-8 text-slate-400">No reviews found</p> : (
+            <div className="space-y-3">
+              {reviews.map(r => (
+                <div key={r.id} className="border rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm truncate">{r.propertyTitle || "Unknown Property"}</span>
+                        <Badge variant={r.isVerified ? "default" : "secondary"} className="text-xs shrink-0">{r.isVerified ? "Verified" : "Unverified"}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+                        <span>{renderStars(r.rating)}</span>
+                        <span>by {r.userName || r.userEmail || "Anonymous"}</span>
+                        <span>· {new Date(r.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">{r.comment}</p>
+                      {r.hostResponse && (
+                        <div className="mt-2 pl-3 border-l-2 border-blue-300 text-xs text-slate-500">
+                          <span className="font-medium">Host response:</span> {r.hostResponse}
+                        </div>
+                      )}
+                      {(r.cleanlinessRating || r.locationRating || r.valueRating) && (
+                        <div className="flex gap-3 mt-2 text-xs text-slate-400">
+                          {r.cleanlinessRating && <span>Clean: {r.cleanlinessRating}/5</span>}
+                          {r.accuracyRating && <span>Accuracy: {r.accuracyRating}/5</span>}
+                          {r.checkInRating && <span>Check-in: {r.checkInRating}/5</span>}
+                          {r.communicationRating && <span>Comms: {r.communicationRating}/5</span>}
+                          {r.locationRating && <span>Location: {r.locationRating}/5</span>}
+                          {r.valueRating && <span>Value: {r.valueRating}/5</span>}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="sm" variant="ghost" className="h-7" onClick={() => openEdit(r)}><Eye className="w-3 h-3" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-red-600" onClick={() => deleteReview(r.id)}><Trash2 className="w-3 h-3" /></Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Review Dialog */}
+      <Dialog open={!!editingReview} onOpenChange={(open) => { if (!open) setEditingReview(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Review</DialogTitle>
+            <DialogDescription>
+              {editingReview?.propertyTitle} — {editingReview?.rating}/5 stars by {editingReview?.userName || editingReview?.userEmail}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Comment</Label>
+              <Textarea value={editComment} onChange={e => setEditComment(e.target.value)} className="min-h-[100px]" />
+            </div>
+            <div className="space-y-2">
+              <Label>Host Response</Label>
+              <Textarea value={editHostResponse} onChange={e => setEditHostResponse(e.target.value)} placeholder="Optional host response..." className="min-h-[60px]" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={editVerified} onCheckedChange={setEditVerified} />
+              <Label>Verified Review</Label>
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={saveEdit}>Save Changes</Button>
+              <Button variant="outline" onClick={() => setEditingReview(null)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
