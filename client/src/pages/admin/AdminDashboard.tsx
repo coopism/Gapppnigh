@@ -47,13 +47,16 @@ async function adminFetch(path: string, options?: RequestInit): Promise<{ ok: bo
       return { ok: true, data, status: res.status };
     }
     // Handle specific error codes
-    let errorMsg = `Request failed (${res.status})`;
+    let errorMsg = "";
     try {
       const errBody = await res.json();
-      errorMsg = errBody.message || errorMsg;
+      errorMsg = errBody.message || "";
     } catch {}
-    if (res.status === 403) errorMsg = "You don't have permission to access this resource";
-    if (res.status === 401) errorMsg = "Session expired — please log in again";
+    if (!errorMsg) {
+      if (res.status === 403) errorMsg = "You don't have permission to access this resource";
+      else if (res.status === 401) errorMsg = "Session expired — please log in again";
+      else errorMsg = `Request failed (${res.status})`;
+    }
     return { ok: false, data: null, status: res.status, error: errorMsg };
   } catch (e: any) {
     return { ok: false, data: null, status: 0, error: e.message || "Network error" };

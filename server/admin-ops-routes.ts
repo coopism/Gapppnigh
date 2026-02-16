@@ -37,7 +37,9 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
 };
 
 export function hasPermission(admin: any, permission: string): boolean {
-  const rolePerms = ROLE_PERMISSIONS[admin.role] || [];
+  // Default to "admin" role if role is null/undefined/empty (legacy users created before role column)
+  const effectiveRole = admin.role && ROLE_PERMISSIONS[admin.role] ? admin.role : "admin";
+  const rolePerms = ROLE_PERMISSIONS[effectiveRole] || [];
   if (rolePerms.includes("*")) return true;
   if (rolePerms.includes(permission)) return true;
   // Check granular permission overrides
@@ -50,6 +52,7 @@ function requirePermission(permission: string) {
     const admin = (req as any).admin;
     if (!admin) return res.status(401).json({ message: "Unauthorized" });
     if (!hasPermission(admin, permission)) {
+      console.warn(`[RBAC] Permission denied: admin=${admin.email}, role=${admin.role}, needed=${permission}`);
       return res.status(403).json({ message: `Permission denied: ${permission}` });
     }
     next();

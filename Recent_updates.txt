@@ -1,6 +1,20 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Fix RBAC 403 Blocking All Admin Pages - Feb 18, 2026
+
+116. **Fix RBAC permission check blocking all admin ops endpoints (`admin-ops-routes.ts`, `AdminDashboard.tsx`)**
+    - **Root cause:** `hasPermission()` checked `admin.role` against `ROLE_PERMISSIONS` map, but admin users created before the `role` column migration had `null` role — `ROLE_PERMISSIONS[null]` returns `undefined`, so every permission check failed with 403
+    - **Backend fix:** `hasPermission()` now defaults null/unknown roles to `"admin"` role, which has all standard permissions
+    - **Backend fix:** Added `console.warn` logging on permission denials for debugging
+    - **Frontend fix:** `adminFetch()` now preserves the actual backend error message instead of overwriting it with a generic 403 string
+
+**Files Modified:**
+- `server/admin-ops-routes.ts` — Fixed `hasPermission()` to handle null/missing role
+- `client/src/pages/admin/AdminDashboard.tsx` — Fixed `adminFetch()` error message handling
+
+---
+
 ## Admin Panel Bug Fixes — All Tabs Functional - Feb 18, 2026
 
 115. **Fix all admin panel crashes and non-functional pages (`AdminDashboard.tsx`)**
