@@ -1,6 +1,20 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Fix Stays Not Showing After Hotel Deals Removal - Feb 18, 2026
+
+125. **Home page showed empty state because it checked `deals.length` instead of `combinedItems.length`**
+    - Empty state condition changed from `deals?.length === 0` to `combinedItems.length === 0`
+    - Count display now uses `combinedItems.length` (includes both deals + properties)
+    - Screen reader status uses `combinedItems.length`
+    - Map view filters `combinedItems` for deal-type items only
+    - Properties (host-listed stays) now show correctly even when legacy hotel deals are disabled
+
+**Files Modified:**
+- `client/src/pages/Home.tsx` — Fixed empty state, count, and map to use `combinedItems` instead of `deals`
+
+---
+
 ## Redesign Rewards Progress Bar + Phone Number on Profile - Feb 18, 2026
 
 123. **Redesigned rewards tier progress bar**

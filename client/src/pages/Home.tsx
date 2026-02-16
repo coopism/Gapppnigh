@@ -721,9 +721,9 @@ export default function Home() {
           {/* Left: Title + Results count */}
           <div className="flex items-center gap-3">
             <h2 className="text-lg md:text-xl font-bold text-foreground">Explore today's deals</h2>
-            {!isLoading && deals && (
+            {!isLoading && (
               <span className="text-sm text-muted-foreground">
-                {deals.length} {deals.length === 1 ? 'deal' : 'deals'} found
+                {combinedItems.length} {combinedItems.length === 1 ? 'deal' : 'deals'} found
               </span>
             )}
           </div>
@@ -780,7 +780,7 @@ export default function Home() {
 
         {/* Deals Grid */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {isLoading ? "Loading deals..." : deals ? `${deals.length} deals found` : "No deals found"}
+          {isLoading ? "Loading deals..." : `${combinedItems.length} deals found`}
         </div>
         
         {isLoading ? (
@@ -799,7 +799,7 @@ export default function Home() {
             </p>
             <Button onClick={() => window.location.reload()} data-testid="button-retry">Retry</Button>
           </div>
-        ) : deals?.length === 0 ? (
+        ) : combinedItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Search className="w-12 h-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No deals found</h3>
@@ -821,7 +821,7 @@ export default function Home() {
           </div>
         ) : viewMode === "map" ? (
           <div className="h-[500px] md:h-[600px] rounded-xl overflow-hidden border border-border/50">
-            <DealsMap deals={deals || []} />
+            <DealsMap deals={combinedItems.filter((i: any) => i._type === "deal") || []} />
           </div>
         ) : (
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" staggerDelay={0.06}>
