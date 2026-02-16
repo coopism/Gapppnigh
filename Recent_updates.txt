@@ -1,6 +1,20 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Production Fix: Missing DB Columns + Tables for Admin Panel - Feb 18, 2026
+
+114. **Bootstrap migrations for admin panel schema (`server/bootstrap.ts`)**
+    - Root cause: schema.ts defined new columns on `users` table (status, fraud_risk, admin_notes, suspended_at, suspended_by, suspension_reason) but production DB didn't have them — Drizzle ORM auto-selects all schema columns, causing `column "status" does not exist` on every users query
+    - Added ALTER TABLE migrations for `users` trust/safety columns
+    - Added ALTER TABLE migrations for `admin_users` (role, permissions) and `admin_activity_logs` (module, before_snapshot, after_snapshot)
+    - Added CREATE TABLE IF NOT EXISTS for all new admin panel tables: admin_users, admin_sessions, admin_activity_logs, promo_codes, feature_flags, site_config, support_tickets, cms_city_pages, cms_banners, cms_static_pages, notification_templates, notification_logs
+    - All migrations are idempotent (IF NOT EXISTS / DO $$ checks)
+
+**Files Modified:**
+- `server/bootstrap.ts` — Added ~270 lines of migrations for admin panel tables + user columns
+
+---
+
 ## Pronunciation Text Update - Feb 18, 2026
 
 113. **Updated pronunciation on Landing and Coming Soon pages**

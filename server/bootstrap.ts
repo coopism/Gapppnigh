@@ -586,6 +586,269 @@ async function createTables() {
     END $$;
   `);
 
+  // ========================================
+  // ADMIN PANEL REVAMP — TABLES + MIGRATIONS
+  // ========================================
+
+  // Migration: add trust/safety columns to users table
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='status') THEN
+        ALTER TABLE "users" ADD COLUMN "status" text DEFAULT 'active';
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='fraud_risk') THEN
+        ALTER TABLE "users" ADD COLUMN "fraud_risk" text DEFAULT 'none';
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='admin_notes') THEN
+        ALTER TABLE "users" ADD COLUMN "admin_notes" text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='suspended_at') THEN
+        ALTER TABLE "users" ADD COLUMN "suspended_at" timestamp;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='suspended_by') THEN
+        ALTER TABLE "users" ADD COLUMN "suspended_by" text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='suspension_reason') THEN
+        ALTER TABLE "users" ADD COLUMN "suspension_reason" text;
+      END IF;
+    END $$;
+  `);
+
+  // Migration: add role + permissions columns to admin_users if they exist but lack new columns
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='admin_users') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='admin_users' AND column_name='role') THEN
+          ALTER TABLE "admin_users" ADD COLUMN "role" text NOT NULL DEFAULT 'admin';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='admin_users' AND column_name='permissions') THEN
+          ALTER TABLE "admin_users" ADD COLUMN "permissions" text[] DEFAULT '{}';
+        END IF;
+      END IF;
+    END $$;
+  `);
+
+  // Migration: add module + snapshot columns to admin_activity_logs if they exist but lack new columns
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='admin_activity_logs') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='admin_activity_logs' AND column_name='module') THEN
+          ALTER TABLE "admin_activity_logs" ADD COLUMN "module" text;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='admin_activity_logs' AND column_name='before_snapshot') THEN
+          ALTER TABLE "admin_activity_logs" ADD COLUMN "before_snapshot" jsonb;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='admin_activity_logs' AND column_name='after_snapshot') THEN
+          ALTER TABLE "admin_activity_logs" ADD COLUMN "after_snapshot" jsonb;
+        END IF;
+      END IF;
+    END $$;
+  `);
+
+  // Admin users table (if not created by drizzle-kit push)
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "admin_users" (
+      "id" text PRIMARY KEY NOT NULL,
+      "email" text NOT NULL UNIQUE,
+      "password_hash" text NOT NULL,
+      "name" text NOT NULL,
+      "role" text NOT NULL DEFAULT 'admin',
+      "permissions" text[] DEFAULT '{}',
+      "is_active" boolean NOT NULL DEFAULT true,
+      "last_login_at" timestamp,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  // Admin sessions table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "admin_sessions" (
+      "id" text PRIMARY KEY NOT NULL,
+      "admin_id" text NOT NULL REFERENCES "admin_users"("id"),
+      "expires_at" timestamp NOT NULL,
+      "ip_address" text,
+      "user_agent" text,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  // Admin activity logs table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "admin_activity_logs" (
+      "id" text PRIMARY KEY NOT NULL,
+      "admin_id" text NOT NULL REFERENCES "admin_users"("id"),
+      "action" text NOT NULL,
+      "module" text,
+      "target_type" text,
+      "target_id" text,
+      "details" jsonb,
+      "before_snapshot" jsonb,
+      "after_snapshot" jsonb,
+      "ip_address" text,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  // Promo codes table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "promo_codes" (
+      "id" text PRIMARY KEY NOT NULL,
+      "code" text NOT NULL UNIQUE,
+      "discount_type" text NOT NULL DEFAULT 'percentage',
+      "discount_value" integer NOT NULL,
+      "max_uses" integer,
+      "current_uses" integer DEFAULT 0 NOT NULL,
+      "min_booking_amount" integer,
+      "valid_from" timestamp,
+      "valid_until" timestamp,
+      "is_active" boolean NOT NULL DEFAULT true,
+      "created_by" text REFERENCES "admin_users"("id"),
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  // Feature flags table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "feature_flags" (
+      "id" text PRIMARY KEY NOT NULL,
+      "key" text NOT NULL UNIQUE,
+      "label" text NOT NULL,
+      "description" text,
+      "enabled" boolean NOT NULL DEFAULT false,
+      "category" text DEFAULT 'feature',
+      "updated_by" text REFERENCES "admin_users"("id"),
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  // Site config table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "site_config" (
+      "id" text PRIMARY KEY NOT NULL,
+      "key" text NOT NULL UNIQUE,
+      "value" text NOT NULL,
+      "value_type" text NOT NULL DEFAULT 'string',
+      "label" text NOT NULL,
+      "description" text,
+      "category" text DEFAULT 'general',
+      "updated_by" text REFERENCES "admin_users"("id"),
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  // Support tickets table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "support_tickets" (
+      "id" text PRIMARY KEY NOT NULL,
+      "user_id" text REFERENCES "users"("id"),
+      "booking_id" text,
+      "subject" text NOT NULL,
+      "category" text NOT NULL DEFAULT 'other',
+      "priority" text NOT NULL DEFAULT 'medium',
+      "status" text NOT NULL DEFAULT 'open',
+      "assigned_to" text REFERENCES "admin_users"("id"),
+      "messages" jsonb DEFAULT '[]',
+      "sla_deadline" timestamp,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL,
+      "resolved_at" timestamp
+    )
+  `);
+
+  // CMS city pages table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "cms_city_pages" (
+      "id" text PRIMARY KEY NOT NULL,
+      "city" text NOT NULL UNIQUE,
+      "state" text,
+      "hero_title" text,
+      "hero_subtitle" text,
+      "seo_title" text,
+      "seo_description" text,
+      "featured_property_ids" text[] DEFAULT '{}',
+      "faqs" jsonb DEFAULT '[]',
+      "is_published" boolean DEFAULT false,
+      "updated_by" text REFERENCES "admin_users"("id"),
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  // CMS banners table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "cms_banners" (
+      "id" text PRIMARY KEY NOT NULL,
+      "title" text NOT NULL,
+      "message" text NOT NULL,
+      "type" text NOT NULL DEFAULT 'info',
+      "placement" text NOT NULL DEFAULT 'global',
+      "city_filter" text[] DEFAULT '{}',
+      "bg_color" text,
+      "text_color" text,
+      "link_url" text,
+      "link_text" text,
+      "starts_at" timestamp,
+      "expires_at" timestamp,
+      "is_active" boolean DEFAULT true,
+      "priority" integer DEFAULT 0,
+      "created_by" text REFERENCES "admin_users"("id"),
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  // CMS static pages table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "cms_static_pages" (
+      "id" text PRIMARY KEY NOT NULL,
+      "slug" text NOT NULL UNIQUE,
+      "title" text NOT NULL,
+      "content" text NOT NULL DEFAULT '',
+      "seo_title" text,
+      "seo_description" text,
+      "last_edited_by" text REFERENCES "admin_users"("id"),
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  // Notification templates table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "notification_templates" (
+      "id" text PRIMARY KEY NOT NULL,
+      "name" text NOT NULL,
+      "subject" text NOT NULL,
+      "body" text NOT NULL,
+      "variables" text[] DEFAULT '{}',
+      "category" text DEFAULT 'marketing',
+      "created_by" text REFERENCES "admin_users"("id"),
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  // Notification logs table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "notification_logs" (
+      "id" text PRIMARY KEY NOT NULL,
+      "template_id" text REFERENCES "notification_templates"("id"),
+      "recipient_email" text NOT NULL,
+      "channel" text NOT NULL DEFAULT 'email',
+      "subject" text,
+      "status" text NOT NULL DEFAULT 'sent',
+      "error_message" text,
+      "sent_by" text REFERENCES "admin_users"("id"),
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
   console.log("Tables created!");
 
   // ========================================
