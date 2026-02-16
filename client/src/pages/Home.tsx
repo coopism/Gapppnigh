@@ -723,7 +723,7 @@ export default function Home() {
             <h2 className="text-lg md:text-xl font-bold text-foreground">Explore today's deals</h2>
             {!isLoading && (
               <span className="text-sm text-muted-foreground">
-                {combinedItems.length} {combinedItems.length === 1 ? 'deal' : 'deals'} found
+                {combinedItems.length} {combinedItems.length === 1 ? 'stay' : 'stays'} found
               </span>
             )}
           </div>
@@ -780,7 +780,7 @@ export default function Home() {
 
         {/* Deals Grid */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {isLoading ? "Loading deals..." : `${combinedItems.length} deals found`}
+          {isLoading ? "Loading stays..." : `${combinedItems.length} stays found`}
         </div>
         
         {isLoading ? (
@@ -802,9 +802,9 @@ export default function Home() {
         ) : combinedItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Search className="w-12 h-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No deals found</h3>
+            <h3 className="text-lg font-semibold mb-2">No stays found</h3>
             <p className="text-muted-foreground max-w-md">
-              Try adjusting your search or filters to find more gap night deals.
+              No gap night stays available right now. Check back soon or try searching for a different location.
             </p>
             <Button 
               variant="outline" 

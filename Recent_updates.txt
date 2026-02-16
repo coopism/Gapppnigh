@@ -1,6 +1,20 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Fix Stays Not Showing - Properties Endpoint Filter Too Strict - Feb 18, 2026
+
+128. **Root cause: `/api/properties` only returned `status: "approved"` properties, but host-listed properties start as `pending_approval`**
+    - Updated `/api/properties` to include both `approved` AND `pending_approval` properties with `isActive: true`
+    - Updated total count query to match the same filter
+    - Updated Home.tsx empty state text from "No deals found" to "No stays found"
+    - Updated results count and screen reader text to say "stays" instead of "deals"
+
+**Files Modified:**
+- `server/property-routes.ts` — Relaxed status filter to include `pending_approval` properties
+- `client/src/pages/Home.tsx` — Updated copy to reference "stays" instead of "deals"
+
+---
+
 ## Admin Reviews + Payments Pages Made Functional - Feb 18, 2026
 
 126. **Admin Reviews tab verified functional**

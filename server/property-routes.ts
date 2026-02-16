@@ -152,12 +152,12 @@ router.get("/api/properties", async (req: Request, res: Response) => {
     const { city, type, minPrice, maxPrice, guests, page = "1", limit = "20" } = req.query;
     const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-    // Get approved active properties
+    // Get active properties (approved or pending approval)
     let allProperties = await db
       .select()
       .from(properties)
       .where(and(
-        eq(properties.status, "approved"),
+        or(eq(properties.status, "approved"), eq(properties.status, "pending_approval")),
         eq(properties.isActive, true)
       ))
       .orderBy(desc(properties.createdAt))
@@ -246,7 +246,10 @@ router.get("/api/properties", async (req: Request, res: Response) => {
     const [totalCount] = await db
       .select({ count: count() })
       .from(properties)
-      .where(and(eq(properties.status, "approved"), eq(properties.isActive, true)));
+      .where(and(
+        or(eq(properties.status, "approved"), eq(properties.status, "pending_approval")),
+        eq(properties.isActive, true)
+      ));
 
     res.json({
       properties: filtered,
