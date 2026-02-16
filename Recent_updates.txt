@@ -1,6 +1,56 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## UI Animations - Framer Motion Integration - Feb 18, 2026
+
+98. **Reusable animation components (`client/src/components/ui/motion.tsx`)**
+    - FadeIn — scroll-reveal with configurable direction (up/down/left/right/none), delay, duration
+    - BlurFade — premium blur-to-clear entrance animation
+    - StaggerContainer + StaggerItem — staggered children entrance for grids/lists
+    - SlideIn — horizontal slide-in from left or right
+    - AnimatedCounter — spring-physics number counter that animates on scroll into view
+    - HeartPulse — scale pulse animation on save/unsave toggle
+    - ScaleOnHover — spring-based hover scale effect for cards
+    - All powered by framer-motion (already installed)
+
+99. **Landing page animations (`Landing.tsx`)**
+    - Hero dictionary card: BlurFade entrance + staggered FadeIn for title, definition, description
+    - Deals preview: FadeIn heading + StaggerContainer for deal cards
+    - How It Works: FadeIn heading + staggered step cards
+    - For Hotels: SlideIn left (text) + SlideIn right (stats card)
+    - CTA section: FadeIn heading + button
+
+100. **Deals/Home page animations (`Home.tsx`)**
+    - Property/deal card grid uses StaggerContainer with 60ms stagger delay
+    - Cards fade-in and slide-up as they enter the viewport
+
+101. **Stays page animations (`Stays.tsx`)**
+    - Page title FadeIn
+    - Property card grid uses StaggerContainer with 70ms stagger delay
+
+102. **Heart save pulse animation (`DealCard.tsx`, `PropertyDealCard.tsx`)**
+    - HeartPulse wrapper on heart icon — scales 1→1.3→1 on save toggle
+    - Smooth 350ms ease-in-out animation
+
+103. **Account page animated counters (`Account.tsx`)**
+    - Bookings, Total Saved ($), Lifetime Points use AnimatedCounter
+    - Spring-physics counting animation triggers on scroll into view
+    - Stats row has staggered FadeIn (100ms, 200ms, 300ms delays)
+
+**Files Created:**
+- `client/src/components/ui/motion.tsx` — Reusable animation primitives
+
+**Files Modified:**
+- `client/src/pages/Landing.tsx` — Hero, deals, how-it-works, hotels, CTA animations
+- `client/src/pages/Home.tsx` — Staggered card grid
+- `client/src/pages/Stays.tsx` — Staggered property grid
+- `client/src/pages/Account.tsx` — Animated counters + staggered stats
+- `client/src/components/DealCard.tsx` — HeartPulse on save
+- `client/src/components/PropertyDealCard.tsx` — HeartPulse on save
+- `Recent_updates.txt` — This log
+
+---
+
 ## Stays-Only Pivot - Drop Seeded Hotels, Hide Hotel Dashboard - Feb 18, 2026
 
 94. **Removed all seeded hotel data (`bootstrap.ts`)**

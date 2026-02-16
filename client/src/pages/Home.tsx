@@ -10,6 +10,7 @@ import { Footer } from "@/components/Footer";
 import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map, X, Loader2 } from "lucide-react";
 import { debounce } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
+import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -823,17 +824,17 @@ export default function Home() {
             <DealsMap deals={deals || []} />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" staggerDelay={0.06}>
             {combinedItems.map((item, idx) => (
-              <div key={item._key} className="animate-fade-in">
+              <StaggerItem key={item._key}>
                 {item._type === "deal" ? (
                   <DealCard deal={item} />
                 ) : (
                   <PropertyDealCard property={item} />
                 )}
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         )}
       </main>
 

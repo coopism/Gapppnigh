@@ -14,6 +14,7 @@ import {
   Star, Gift, TrendingUp, Award, MapPin, Clock, DollarSign, Tag, MessageSquare,
   ChevronDown, ChevronUp, Info, Zap, Crown, Gem, Medal
 } from "lucide-react";
+import { AnimatedCounter, FadeIn, BlurFade } from "@/components/ui/motion";
 import { 
   useAuthStore, logout, resendVerification, fetchCurrentUser,
   validatePassword, getPasswordStrength 
@@ -155,18 +156,24 @@ function RewardsTierHero({ rewardsData, totalBookings, totalSaved }: {
 
       {/* Quick stats row */}
       <div className="grid grid-cols-3 gap-3">
+        <FadeIn delay={0.1} direction="up">
         <div className="bg-card border border-border rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold">{totalBookings}</p>
+          <p className="text-2xl font-bold"><AnimatedCounter value={totalBookings} /></p>
           <p className="text-xs text-muted-foreground mt-0.5">Bookings</p>
         </div>
+        </FadeIn>
+        <FadeIn delay={0.2} direction="up">
         <div className="bg-card border border-border rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-emerald-600">${totalSaved.toFixed(0)}</p>
+          <p className="text-2xl font-bold text-emerald-600"><AnimatedCounter value={totalSaved} prefix="$" /></p>
           <p className="text-xs text-muted-foreground mt-0.5">Total saved</p>
         </div>
+        </FadeIn>
+        <FadeIn delay={0.3} direction="up">
         <div className="bg-card border border-border rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold">{totalPoints.toLocaleString()}</p>
+          <p className="text-2xl font-bold"><AnimatedCounter value={totalPoints} /></p>
           <p className="text-xs text-muted-foreground mt-0.5">Lifetime pts</p>
         </div>
+        </FadeIn>
       </div>
 
       {/* Tier benefits expandable */}

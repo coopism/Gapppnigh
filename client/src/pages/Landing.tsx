@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import { formatPrice } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
+import { FadeIn, BlurFade, StaggerContainer, StaggerItem, SlideIn } from "@/components/ui/motion";
 
 const LOCATION_SUGGESTIONS = [
   { city: "Melbourne", state: "VIC" },
@@ -105,8 +106,10 @@ export default function Landing() {
         <div className="container mx-auto px-4 relative">
           <div className="max-w-3xl mx-auto">
             {/* Dictionary Card */}
+            <BlurFade duration={0.7}>
             <div className="bg-card/90 backdrop-blur-md rounded-3xl p-8 md:p-12 border border-border/50 shadow-2xl">
               {/* Header with title and pronunciation */}
+              <FadeIn direction="none" duration={0.6} delay={0.2}>
               <div className="mb-6 md:mb-8">
                 <h1 className="text-4xl md:text-6xl font-display font-bold text-foreground mb-2 md:mb-3">
                   Gap Night
@@ -116,15 +119,20 @@ export default function Landing() {
                   <span className="text-xs md:text-sm bg-muted px-2 md:px-3 py-0.5 md:py-1 rounded-full font-medium">noun</span>
                 </div>
               </div>
+              </FadeIn>
               
               {/* Definition */}
               <div className="space-y-4 md:space-y-6">
+                <FadeIn delay={0.4} duration={0.6}>
                 <p className="text-lg md:text-2xl text-foreground leading-relaxed">
                   An unsold night between hotel bookings — discounted so it doesn't go unused.
                 </p>
+                </FadeIn>
+                <FadeIn delay={0.55} duration={0.6}>
                 <p className="hidden md:block text-lg text-muted-foreground">
                   Hotels list these nights directly on GapNight, so you get real discounts on real rooms.
                 </p>
+                </FadeIn>
                 
                 {/* Search Bar - Mobile optimized */}
                 <div 
@@ -201,6 +209,7 @@ export default function Landing() {
                 
               </div>
             </div>
+            </BlurFade>
           </div>
         </div>
       </section>
@@ -208,6 +217,7 @@ export default function Landing() {
       {/* Deals Preview Section */}
       <section ref={dealsRef} className="py-12 md:py-16 bg-muted/30">
         <div className="container mx-auto px-4">
+          <FadeIn direction="up" duration={0.5}>
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
             <div>
               <h2 className="text-2xl md:text-3xl font-bold text-foreground">
@@ -225,8 +235,9 @@ export default function Landing() {
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
+          </FadeIn>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {dealsLoading && (
               <div className="col-span-full flex flex-col items-center justify-center py-16">
                 <GapNightLogoLoader size={64} className="mb-4" />
@@ -262,8 +273,8 @@ export default function Landing() {
               const checkOut = format(parseISO(deal.checkOutDate), "EEE d MMM");
 
               return (
+                <StaggerItem key={deal.id}>
                 <div 
-                  key={deal.id}
                   onClick={() => setLocation(`/deal/${deal.id}`)}
                   className="bg-card rounded-2xl border border-border/50 overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group hover-elevate"
                   data-testid={`preview-deal-${deal.id}`}
@@ -305,25 +316,29 @@ export default function Landing() {
                     </div>
                   </div>
                 </div>
+                </StaggerItem>
               );
             })}
-          </div>
+          </StaggerContainer>
         </div>
       </section>
 
       {/* How It Works Section */}
       <section className="py-12 md:py-16 bg-background">
         <div className="container mx-auto px-4">
+          <FadeIn direction="up" duration={0.5}>
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold text-foreground">
               How it works
             </h2>
             <p className="text-muted-foreground mt-2">Three simple steps to your next great stay</p>
           </div>
+          </FadeIn>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <StaggerContainer className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto" staggerDelay={0.15}>
             {HOW_IT_WORKS.map((item) => (
-              <div key={item.step} className="text-center">
+              <StaggerItem key={item.step}>
+              <div className="text-center">
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                   <item.icon className="w-8 h-8 text-primary" />
                 </div>
@@ -331,8 +346,9 @@ export default function Landing() {
                 <h3 className="text-xl font-bold text-foreground mb-2">{item.title}</h3>
                 <p className="text-muted-foreground text-sm">{item.description}</p>
               </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         </div>
       </section>
 
@@ -340,6 +356,7 @@ export default function Landing() {
       <section className="py-12 md:py-16 bg-neutral-900 dark:bg-neutral-950 text-white">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+            <SlideIn from="left">
             <div>
               <Badge variant="secondary" className="mb-4">For Hotels</Badge>
               <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
@@ -369,6 +386,8 @@ export default function Landing() {
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </div>
+            </SlideIn>
+            <SlideIn from="right" delay={0.2}>
             <div className="hidden md:block">
               <div className="bg-white/10 rounded-2xl p-8 border border-white/20">
                 <div className="flex items-center gap-3 mb-6">
@@ -392,6 +411,7 @@ export default function Landing() {
                 </div>
               </div>
             </div>
+            </SlideIn>
           </div>
         </div>
       </section>
@@ -399,12 +419,15 @@ export default function Landing() {
       {/* CTA Section */}
       <section className="py-16 md:py-20 bg-primary">
         <div className="container mx-auto px-4 text-center">
+          <FadeIn direction="up" duration={0.5}>
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Ready to find your gap night?
           </h2>
           <p className="text-lg text-white/80 mb-8 max-w-2xl mx-auto">
             New deals are added daily. Start browsing to find your next great stay.
           </p>
+          </FadeIn>
+          <FadeIn direction="up" delay={0.2}>
           <Button 
             size="lg" 
             variant="secondary"
@@ -415,6 +438,7 @@ export default function Landing() {
             Browse All Deals
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
+          </FadeIn>
         </div>
       </section>
 

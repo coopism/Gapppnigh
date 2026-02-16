@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuthStore } from "@/hooks/useAuth";
 import { useSavedListings } from "@/hooks/useSavedListings";
+import { HeartPulse } from "@/components/ui/motion";
 
 const AMENITY_ICONS: Record<string, typeof Wifi> = {
   "WiFi": Wifi,
@@ -83,13 +84,15 @@ export function DealCard({ deal }: DealCardProps) {
               aria-label={isSaved ? "Remove from saved" : "Save this deal"}
               aria-pressed={isSaved}
             >
-              <Heart 
-                className={`w-4 h-4 md:w-5 md:h-5 transition-all duration-200 ${
-                  isSaved 
-                    ? "fill-rose-500 text-rose-500" 
-                    : "fill-transparent text-white hover:fill-white/30"
-                }`} 
-              />
+              <HeartPulse isSaved={isSaved}>
+                <Heart 
+                  className={`w-4 h-4 md:w-5 md:h-5 transition-all duration-200 ${
+                    isSaved 
+                      ? "fill-rose-500 text-rose-500" 
+                      : "fill-transparent text-white hover:fill-white/30"
+                  }`} 
+                />
+              </HeartPulse>
             </button>
           </div>
 

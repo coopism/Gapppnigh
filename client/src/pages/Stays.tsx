@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Search, Users, MapPin, Star } from "lucide-react";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 
 export default function Stays() {
   const [, setLocation] = useLocation();
@@ -48,8 +49,10 @@ export default function Stays() {
         {/* Hero / Search Section */}
         <div className="bg-gradient-to-b from-primary/5 to-background border-b border-border/30 py-8 sm:py-12">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <FadeIn direction="none" duration={0.4}>
             <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight mb-1">Gap Night Stays</h1>
             <p className="text-sm sm:text-base text-muted-foreground mb-6">Discounted short-term rentals on gap nights between existing bookings</p>
+            </FadeIn>
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <div className="relative flex-1">
@@ -115,11 +118,13 @@ export default function Stays() {
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-muted-foreground">{properties.length} {properties.length === 1 ? "property" : "properties"} found</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" staggerDelay={0.07}>
                 {properties.map((prop: any) => (
-                  <PropertyCard key={prop.id} property={prop} onClick={() => setLocation(`/stays/${prop.id}`)} />
+                  <StaggerItem key={prop.id}>
+                    <PropertyCard property={prop} onClick={() => setLocation(`/stays/${prop.id}`)} />
+                  </StaggerItem>
                 ))}
-              </div>
+              </StaggerContainer>
             </>
           )}
         </div>
