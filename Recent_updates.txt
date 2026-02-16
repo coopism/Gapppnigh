@@ -1,6 +1,33 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Admin Property Detail View + Public Contact Us Page - Feb 18, 2026
+
+117. **Admin: Property detail modal with full info + approve/decline workflow**
+    - Added "View" button on each property row that opens a full-detail modal
+    - Modal shows: cover image, photo gallery, location, property type/category, bedrooms/beds/baths, max guests, pricing (nightly rate, cleaning fee, min/max nights), description, amenities, policies (check-in/out, cancellation, pets, smoking), house rules, and host info (name, email, phone, superhost status)
+    - Approve button directly approves the property
+    - Decline requires a reason (textarea) — reason is stored in `rejectionReason` column and will be used for host notification email
+    - Suspended properties can be reactivated; rejected properties can be moved back to pending
+    - Backend: Added `GET /properties/:propertyId` endpoint returning full property + host info
+
+118. **Public Contact Us page + support request endpoint**
+    - New `/contact` page with form: name, email, category (Booking Issue, Account Help, Bug Report, General Inquiry), subject, message
+    - Submits to `POST /api/contact` which creates a support ticket in the `support_tickets` table with `[Contact]` prefix
+    - Success state shows confirmation message
+    - Added "Contact Us" link to Landing page footer, Footer component, and both routers in App.tsx
+
+**Files Modified:**
+- `server/admin-ops-routes.ts` — Added GET `/properties/:propertyId` detail endpoint
+- `server/routes.ts` — Added POST `/api/contact` public endpoint
+- `client/src/pages/admin/AdminDashboard.tsx` — Replaced PropertiesPage with detail modal + View button
+- `client/src/pages/ContactUs.tsx` — New Contact Us page
+- `client/src/App.tsx` — Added `/contact` route to both routers
+- `client/src/pages/Landing.tsx` — Added Contact Us footer link
+- `client/src/components/Footer.tsx` — Added Contact Us footer link
+
+---
+
 ## Fix RBAC 403 Blocking All Admin Pages - Feb 18, 2026
 
 116. **Fix RBAC permission check blocking all admin ops endpoints (`admin-ops-routes.ts`, `AdminDashboard.tsx`)**

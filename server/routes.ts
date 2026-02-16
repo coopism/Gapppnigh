@@ -15,6 +15,8 @@ import { optionalUserAuthMiddleware } from "./user-auth";
 import ownerRoutes from "./owner-routes";
 import { registerAdminRoutes } from "./admin-routes";
 import { registerAdminOpsRoutes } from "./admin-ops-routes";
+import { db } from "./db";
+import { supportTickets } from "@shared/schema";
 import hostRoutes from "./host-routes";
 import listingRoutes from "./listing-routes";
 import propertyRoutes from "./property-routes";
@@ -139,6 +141,42 @@ export async function registerRoutes(
   registerAdminRoutes(app);
   registerAdminOpsRoutes(app);
   
+  // ========================================
+  // PUBLIC CONTACT / SUPPORT REQUEST
+  // ========================================
+
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const { name, email, subject, message, category } = req.body;
+      if (!name || !email || !subject || !message) {
+        return res.status(400).json({ message: "Name, email, subject, and message are required" });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ message: "Invalid email address" });
+      }
+
+      await db.insert(supportTickets).values({
+        id: uuidv4(),
+        userId: null,
+        subject: `[Contact] ${subject}`,
+        category: category || "other",
+        priority: "medium",
+        status: "open",
+        messages: [{
+          sender: `${name} (${email})`,
+          message,
+          timestamp: new Date().toISOString(),
+          isInternal: false,
+        }],
+      });
+
+      res.json({ success: true, message: "Your message has been sent. We'll get back to you soon!" });
+    } catch (error) {
+      console.error("Contact form error:", error);
+      res.status(500).json({ message: "Failed to submit your request. Please try again." });
+    }
+  });
+
   // ========================================
   // EXISTING PUBLIC ROUTES
   // ========================================

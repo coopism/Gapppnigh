@@ -258,6 +258,35 @@ export function registerAdminOpsRoutes(app: Router) {
     }
   });
 
+  // Get single property with full details + host info
+  app.get(`${ADMIN_PREFIX}/properties/:propertyId`, adminAuth, requirePermission("manage_properties"), async (req, res) => {
+    try {
+      const propertyId = req.params.propertyId as string;
+      const [property] = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
+      if (!property) return res.status(404).json({ message: "Property not found" });
+
+      // Get host info
+      let host = null;
+      try {
+        const [h] = await db.select({
+          id: airbnbHosts.id,
+          name: airbnbHosts.name,
+          email: airbnbHosts.email,
+          phone: airbnbHosts.phone,
+          isSuperhost: airbnbHosts.isSuperhost,
+          isActive: airbnbHosts.isActive,
+          createdAt: airbnbHosts.createdAt,
+        }).from(airbnbHosts).where(eq(airbnbHosts.id, property.hostId)).limit(1);
+        host = h || null;
+      } catch {}
+
+      res.json({ property, host });
+    } catch (error) {
+      console.error("Get property detail error:", error);
+      res.status(500).json({ message: "Failed to fetch property details" });
+    }
+  });
+
   // Approve/Reject/Suspend property
   app.patch(`${ADMIN_PREFIX}/properties/:propertyId/status`, adminAuth, requirePermission("manage_properties"), async (req, res) => {
     try {

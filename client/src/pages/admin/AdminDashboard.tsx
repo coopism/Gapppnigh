@@ -32,6 +32,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Obfuscated admin API prefix
 const ADMIN_API = "/api/x9k2p7m4";
@@ -467,6 +474,12 @@ function PropertiesPage({ filterStatus }: { filterStatus?: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [selectedProperty, setSelectedProperty] = useState<any>(null);
+  const [selectedHost, setSelectedHost] = useState<any>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => { load(); }, [filterStatus, search]);
 
@@ -482,84 +495,275 @@ function PropertiesPage({ filterStatus }: { filterStatus?: string }) {
     setLoading(false);
   };
 
+  const openDetail = async (id: string) => {
+    setDetailLoading(true);
+    setDetailOpen(true);
+    setRejectReason("");
+    const res = await adminFetch(`/properties/${id}`);
+    if (res.ok) {
+      setSelectedProperty(res.data.property);
+      setSelectedHost(res.data.host);
+    } else {
+      setSelectedProperty(null);
+      setSelectedHost(null);
+    }
+    setDetailLoading(false);
+  };
+
   const updateStatus = async (id: string, status: string, reason?: string) => {
+    setActionLoading(true);
     await adminFetch(`/properties/${id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, reason }),
     });
+    setActionLoading(false);
+    setDetailOpen(false);
+    setSelectedProperty(null);
     load();
   };
 
+  const p = selectedProperty;
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>{filterStatus === "pending_approval" ? "Pending Approval" : "All Properties"}</CardTitle>
-            <CardDescription>{items.length} properties</CardDescription>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>{filterStatus === "pending_approval" ? "Pending Approval" : "All Properties"}</CardTitle>
+              <CardDescription>{items.length} properties</CardDescription>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 w-56" />
+            </div>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 w-56" />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
-        error ? <ErrorState error={error} onRetry={load} /> :
-        items.length === 0 ? <p className="text-center py-8 text-slate-400">No properties found</p> : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Rate</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map(p => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium max-w-[200px] truncate">{p.title}</TableCell>
-                  <TableCell>{p.city}, {p.state}</TableCell>
-                  <TableCell><Badge variant="outline" className="text-xs">{p.propertyType}</Badge></TableCell>
-                  <TableCell>${((p.baseNightlyRate || 0) / 100).toFixed(0)}/night</TableCell>
-                  <TableCell>
-                    <Badge variant={p.status === "approved" ? "default" : p.status === "rejected" ? "destructive" : "secondary"} className="text-xs">
-                      {p.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {p.status === "pending_approval" && (
-                        <>
-                          <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => updateStatus(p.id, "approved")}>
-                            <CheckCircle className="w-3 h-3 mr-1" /> Approve
-                          </Button>
-                          <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => {
-                            const reason = prompt("Rejection reason:");
-                            if (reason) updateStatus(p.id, "rejected", reason);
-                          }}>Reject</Button>
-                        </>
-                      )}
-                      {p.status === "approved" && (
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatus(p.id, "suspended")}>Suspend</Button>
-                      )}
-                      {p.status === "suspended" && (
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatus(p.id, "approved")}>Reactivate</Button>
-                      )}
-                    </div>
-                  </TableCell>
+        </CardHeader>
+        <CardContent>
+          {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+          error ? <ErrorState error={error} onRetry={load} /> :
+          items.length === 0 ? <p className="text-center py-8 text-slate-400">No properties found</p> : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>City</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Rate</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+              </TableHeader>
+              <TableBody>
+                {items.map(item => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium max-w-[200px] truncate">{item.title}</TableCell>
+                    <TableCell>{item.city}, {item.state}</TableCell>
+                    <TableCell><Badge variant="outline" className="text-xs">{item.propertyType}</Badge></TableCell>
+                    <TableCell>${((item.baseNightlyRate || 0) / 100).toFixed(0)}/night</TableCell>
+                    <TableCell>
+                      <Badge variant={item.status === "approved" ? "default" : item.status === "rejected" ? "destructive" : "secondary"} className="text-xs">
+                        {item.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openDetail(item.id)}>
+                        <Eye className="w-3 h-3 mr-1" /> View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Property Detail Modal */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          {detailLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin" /></div>
+          ) : !p ? (
+            <div className="text-center py-8 text-slate-400">Failed to load property details</div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl">{p.title}</DialogTitle>
+                <DialogDescription>
+                  <Badge variant={p.status === "approved" ? "default" : p.status === "rejected" ? "destructive" : "secondary"} className="mr-2">
+                    {p.status}
+                  </Badge>
+                  Submitted {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "N/A"}
+                </DialogDescription>
+              </DialogHeader>
+
+              {/* Cover Image */}
+              {p.coverImage && (
+                <div className="rounded-lg overflow-hidden border mb-2">
+                  <img src={p.coverImage} alt={p.title} className="w-full h-48 object-cover" />
+                </div>
+              )}
+
+              {/* Property Images */}
+              {p.images && p.images.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {p.images.slice(0, 6).map((img: string, i: number) => (
+                    <img key={i} src={img} alt={`Photo ${i + 1}`} className="w-24 h-24 rounded-md object-cover border flex-shrink-0" />
+                  ))}
+                  {p.images.length > 6 && <div className="w-24 h-24 rounded-md border flex items-center justify-center text-sm text-slate-400 flex-shrink-0">+{p.images.length - 6} more</div>}
+                </div>
+              )}
+
+              {/* Location & Basics */}
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Location</h4>
+                  <div className="text-sm space-y-1">
+                    <p><span className="font-medium">Address:</span> {p.address}</p>
+                    <p><span className="font-medium">City:</span> {p.city}, {p.state}</p>
+                    <p><span className="font-medium">Country:</span> {p.country}</p>
+                    {p.postcode && <p><span className="font-medium">Postcode:</span> {p.postcode}</p>}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Details</h4>
+                  <div className="text-sm space-y-1">
+                    <p><span className="font-medium">Type:</span> {p.propertyType} / {p.category}</p>
+                    <p><span className="font-medium">Bedrooms:</span> {p.bedrooms} · <span className="font-medium">Beds:</span> {p.beds} · <span className="font-medium">Baths:</span> {p.bathrooms}</p>
+                    <p><span className="font-medium">Max Guests:</span> {p.maxGuests}</p>
+                    <p><span className="font-medium">Instant Book:</span> {p.instantBook ? "Yes" : "No"} · <span className="font-medium">Self Check-in:</span> {p.selfCheckIn ? "Yes" : "No"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pricing */}
+              <div className="space-y-2 mt-3">
+                <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Pricing</h4>
+                <div className="flex gap-4 text-sm">
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-2">
+                    <div className="text-xs text-slate-400">Nightly Rate</div>
+                    <div className="font-bold text-lg">${((p.baseNightlyRate || 0) / 100).toFixed(2)}</div>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-2">
+                    <div className="text-xs text-slate-400">Cleaning Fee</div>
+                    <div className="font-bold text-lg">${((p.cleaningFee || 0) / 100).toFixed(2)}</div>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-2">
+                    <div className="text-xs text-slate-400">Min / Max Nights</div>
+                    <div className="font-bold text-lg">{p.minNights} – {p.maxNights || "∞"}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2 mt-3">
+                <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Description</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{p.description}</p>
+              </div>
+
+              {/* Amenities */}
+              {p.amenities && p.amenities.length > 0 && (
+                <div className="space-y-2 mt-3">
+                  <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Amenities</h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {p.amenities.map((a: string) => <Badge key={a} variant="outline" className="text-xs">{a}</Badge>)}
+                  </div>
+                </div>
+              )}
+
+              {/* House Rules & Policies */}
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">Policies</h4>
+                  <div className="text-sm space-y-1">
+                    <p><span className="font-medium">Check-in:</span> {p.checkInTime} · <span className="font-medium">Check-out:</span> {p.checkOutTime}</p>
+                    <p><span className="font-medium">Cancellation:</span> {p.cancellationPolicy}</p>
+                    <p><span className="font-medium">Pets:</span> {p.petFriendly ? "Allowed" : "No"} · <span className="font-medium">Smoking:</span> {p.smokingAllowed ? "Allowed" : "No"}</p>
+                  </div>
+                </div>
+                {p.houseRules && (
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm text-slate-500 uppercase tracking-wide">House Rules</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">{p.houseRules}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Host Info */}
+              {selectedHost && (
+                <div className="space-y-2 mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 uppercase tracking-wide">Host Information</h4>
+                  <div className="text-sm space-y-1">
+                    <p><span className="font-medium">Name:</span> {selectedHost.name}</p>
+                    <p><span className="font-medium">Email:</span> {selectedHost.email}</p>
+                    {selectedHost.phone && <p><span className="font-medium">Phone:</span> {selectedHost.phone}</p>}
+                    <p><span className="font-medium">Superhost:</span> {selectedHost.isSuperhost ? "Yes" : "No"} · <span className="font-medium">Active:</span> {selectedHost.isActive ? "Yes" : "No"}</p>
+                    <p><span className="font-medium">Joined:</span> {selectedHost.createdAt ? new Date(selectedHost.createdAt).toLocaleDateString() : "N/A"}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Rejection reason (if already rejected) */}
+              {p.status === "rejected" && p.rejectionReason && (
+                <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                  <h4 className="font-semibold text-sm text-red-600 dark:text-red-400 uppercase tracking-wide">Rejection Reason</h4>
+                  <p className="text-sm mt-1">{p.rejectionReason}</p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="mt-4 pt-4 border-t space-y-3">
+                {p.status === "pending_approval" && (
+                  <>
+                    <div className="flex gap-2">
+                      <Button className="flex-1" onClick={() => updateStatus(p.id, "approved")} disabled={actionLoading}>
+                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                        Approve Property
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-red-600">Decline with reason (email will be sent to host)</Label>
+                      <Textarea
+                        placeholder="Enter the reason for declining this property..."
+                        value={rejectReason}
+                        onChange={e => setRejectReason(e.target.value)}
+                        className="min-h-[80px]"
+                      />
+                      <Button
+                        variant="destructive"
+                        className="w-full"
+                        disabled={!rejectReason.trim() || actionLoading}
+                        onClick={() => updateStatus(p.id, "rejected", rejectReason.trim())}
+                      >
+                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
+                        Decline Property
+                      </Button>
+                    </div>
+                  </>
+                )}
+                {p.status === "approved" && (
+                  <Button variant="outline" className="w-full" onClick={() => updateStatus(p.id, "suspended")} disabled={actionLoading}>
+                    Suspend Property
+                  </Button>
+                )}
+                {p.status === "suspended" && (
+                  <Button variant="default" className="w-full" onClick={() => updateStatus(p.id, "approved")} disabled={actionLoading}>
+                    Reactivate Property
+                  </Button>
+                )}
+                {p.status === "rejected" && (
+                  <Button variant="default" className="w-full" onClick={() => updateStatus(p.id, "pending_approval")} disabled={actionLoading}>
+                    Move Back to Pending
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

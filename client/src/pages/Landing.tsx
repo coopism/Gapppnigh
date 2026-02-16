@@ -460,6 +460,7 @@ export default function Landing() {
                 <li><a href="/deals" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-deals">Browse Deals</a></li>
                 <li><a href="/list-your-hotel" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-hotels">For Hotels</a></li>
                 <li><a href="/waitlist" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-waitlist">Join Waitlist</a></li>
+                <li><a href="/contact" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-contact">Contact Us</a></li>
               </ul>
             </div>
             <div>

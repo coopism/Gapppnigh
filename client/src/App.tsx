@@ -45,6 +45,7 @@ import PropertyDetail from "@/pages/PropertyDetail";
 import HostProfile from "@/pages/HostProfile";
 import PropertyBooking from "@/pages/PropertyBooking";
 import SavedListings from "@/pages/SavedListings";
+import ContactUs from "@/pages/ContactUs";
 import { initAuth } from "@/hooks/useAuth";
 
 function MainRouter() {
@@ -66,6 +67,7 @@ function MainRouter() {
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/account" component={Account} />
       <Route path="/saved" component={SavedListings} />
+      <Route path="/contact" component={ContactUs} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/host/login" component={HostLogin} />
@@ -93,6 +95,7 @@ function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/account" component={Account} />
       <Route path="/saved" component={SavedListings} />
+      <Route path="/contact" component={ContactUs} />
       <Route path="/booking/property/:propertyId" component={PropertyBooking} />
       <Route path="/booking/:dealId" component={Booking} />
       <Route path="/host/login" component={HostLogin} />

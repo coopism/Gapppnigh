@@ -44,6 +44,11 @@ export function Footer() {
                   Join Waitlist
                 </Link>
               </li>
+              <li>
+                <Link href="/contact" className="text-white/60 hover:text-white text-xs sm:text-sm transition-colors">
+                  Contact Us
+                </Link>
+              </li>
             </ul>
           </div>
 
