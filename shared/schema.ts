@@ -566,6 +566,7 @@ export const draftListings = pgTable("draft_listings", {
   checkInInstructions: text("check_in_instructions"),
   coverImage: text("cover_image"),
   images: text("images").array(),
+  manualBlockedDates: jsonb("manual_blocked_dates").default([]), // [{start, end}]
   // Status
   status: text("status").notNull().default("draft"), // draft | published
   publishedPropertyId: text("published_property_id"), // links to properties.id after publish

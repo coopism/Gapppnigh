@@ -303,7 +303,12 @@ export default function CreateListing() {
     checkInInstructions: "",
     coverImage: "",
     images: [] as string[],
+    manualBlockedDates: [] as { start: string; end: string }[],
   });
+
+  // Manual blocked date entry
+  const [manualDateStart, setManualDateStart] = useState("");
+  const [manualDateEnd, setManualDateEnd] = useState("");
 
   // iCal state
   const [icalConnections, setIcalConnections] = useState<ICalConnection[]>([]);
@@ -564,11 +569,26 @@ export default function CreateListing() {
 
   const canProceed = () => {
     if (step === 0) return true;
-    if (step === 1) return true; // Optional step
-    if (step === 2) return !!(form.title && form.city);
-    if (step === 3) return true; // Optional step
+    if (step === 1) return true; // Optional step — skip allowed
+    if (step === 2) return !!(form.title && form.description && form.address && form.city);
+    if (step === 3) return true; // Calendar is optional but manual dates or iCal encouraged
     if (step === 4) return form.baseNightlyRate > 0;
     return true;
+  };
+
+  const getStepErrors = () => {
+    if (step === 2) {
+      const missing: string[] = [];
+      if (!form.title) missing.push("title");
+      if (!form.description) missing.push("description");
+      if (!form.address) missing.push("address");
+      if (!form.city) missing.push("city");
+      return missing;
+    }
+    if (step === 4) {
+      if (form.baseNightlyRate <= 0) return ["base nightly price"];
+    }
+    return [];
   };
 
   // ========================================
@@ -683,18 +703,18 @@ export default function CreateListing() {
         {step === 1 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-display font-bold mb-1">Bring details from your existing listing</h2>
-              <p className="text-sm text-muted-foreground">Speed up setup by referencing your Airbnb listing, or skip to enter manually.</p>
+              <h2 className="text-xl font-display font-bold mb-1">Import from an existing listing</h2>
+              <p className="text-sm text-muted-foreground">Already listed on Airbnb? Paste your URL and content to speed things up. Otherwise, skip this step.</p>
             </div>
 
             {/* Option A: Airbnb link */}
             <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <Link2 className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold">Paste your Airbnb listing URL</h3>
+                <h3 className="text-sm font-semibold">Paste your Airbnb listing URL (optional)</h3>
               </div>
               <p className="text-xs text-muted-foreground">
-                We don't import automatically from Airbnb. Use this as a reference while you paste your content.
+                We don't import automatically from Airbnb. Use this as a reference while you paste your content. Don't have an Airbnb listing? No problem — skip this step.
               </p>
               <Input
                 placeholder="https://airbnb.com/rooms/..."
@@ -804,30 +824,31 @@ export default function CreateListing() {
               </div>
             </div>
 
-            {/* Title + Description (if not already filled in step 1) */}
-            {!form.title && (
-              <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                <h3 className="text-sm font-semibold">Listing details</h3>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Title *</label>
-                  <Input
-                    placeholder="e.g. Stunning Bondi Beach Apartment"
-                    value={form.title}
-                    onChange={e => updateForm({ title: e.target.value })}
-                    className="h-11"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
-                  <Textarea
-                    placeholder="What makes your property special?"
-                    value={form.description}
-                    onChange={e => updateForm({ description: e.target.value })}
-                    rows={3}
-                  />
-                </div>
+            {/* Title + Description — always shown, required */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+              <h3 className="text-sm font-semibold">Listing details</h3>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Title *</label>
+                <Input
+                  placeholder="e.g. Stunning Bondi Beach Apartment"
+                  value={form.title}
+                  onChange={e => updateForm({ title: e.target.value })}
+                  className={`h-11 ${!form.title && step === 2 ? "border-destructive/50" : ""}`}
+                />
+                {!form.title && <p className="text-[11px] text-destructive mt-1">Title is required</p>}
               </div>
-            )}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Description *</label>
+                <Textarea
+                  placeholder="What makes your property special? Describe the space, neighbourhood, and what guests will love."
+                  value={form.description}
+                  onChange={e => updateForm({ description: e.target.value })}
+                  rows={3}
+                  className={!form.description && step === 2 ? "border-destructive/50" : ""}
+                />
+                {!form.description && <p className="text-[11px] text-destructive mt-1">Description is required</p>}
+              </div>
+            </div>
 
             {/* Address */}
             <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
@@ -1136,14 +1157,82 @@ export default function CreateListing() {
               </div>
             )}
 
+            {/* OR: Manual blocked dates */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold">Add blocked dates manually</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Don't have an iCal link? No problem. Add your upcoming booking dates manually so we can find gap nights between them.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Check-in date</label>
+                  <Input
+                    type="date"
+                    value={manualDateStart}
+                    onChange={e => setManualDateStart(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="h-11"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Check-out date</label>
+                  <Input
+                    type="date"
+                    value={manualDateEnd}
+                    onChange={e => setManualDateEnd(e.target.value)}
+                    min={manualDateStart || new Date().toISOString().split("T")[0]}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 min-h-[44px]"
+                disabled={!manualDateStart || !manualDateEnd || manualDateStart >= manualDateEnd}
+                onClick={() => {
+                  updateForm({ manualBlockedDates: [...form.manualBlockedDates, { start: manualDateStart, end: manualDateEnd }] });
+                  setManualDateStart("");
+                  setManualDateEnd("");
+                  toast({ title: "Blocked dates added", description: `${manualDateStart} to ${manualDateEnd}` });
+                }}
+              >
+                <Plus className="w-3 h-3" /> Add blocked dates
+              </Button>
+
+              {form.manualBlockedDates.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">Your blocked dates:</p>
+                  {form.manualBlockedDates.map((d, i) => (
+                    <div key={i} className="flex items-center justify-between p-2.5 bg-muted/30 rounded-xl">
+                      <span className="text-sm">{d.start} → {d.end}</span>
+                      <button
+                        type="button"
+                        className="p-1 rounded hover:bg-muted transition-colors"
+                        onClick={() => {
+                          const updated = form.manualBlockedDates.filter((_, idx) => idx !== i);
+                          updateForm({ manualBlockedDates: updated });
+                        }}
+                      >
+                        <X className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Calendar preview */}
-            {(allBlockedDates.length > 0 || allGapNights.length > 0) && (
+            {(allBlockedDates.length > 0 || allGapNights.length > 0 || form.manualBlockedDates.length > 0) && (
               <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
                 <h3 className="text-sm font-semibold">Calendar preview</h3>
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded bg-red-400/60" />
-                    <span className="text-muted-foreground">Blocked ({allBlockedDates.length})</span>
+                    <span className="text-muted-foreground">Blocked ({allBlockedDates.length + form.manualBlockedDates.length})</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded bg-emerald-400/60" />
@@ -1404,7 +1493,7 @@ export default function CreateListing() {
               size="lg"
               className="w-full h-14 text-base font-bold rounded-xl gap-2"
               onClick={handlePublish}
-              disabled={isPublishing || !form.title || !form.city || !form.baseNightlyRate}
+              disabled={isPublishing || !form.title || !form.description || !form.address || !form.city || !form.baseNightlyRate}
             >
               {isPublishing ? (
                 <><Loader2 className="h-5 w-5 animate-spin" /> Publishing…</>
@@ -1413,9 +1502,9 @@ export default function CreateListing() {
               )}
             </Button>
 
-            {(!form.title || !form.city || !form.baseNightlyRate) && (
+            {(!form.title || !form.description || !form.address || !form.city || !form.baseNightlyRate) && (
               <p className="text-xs text-destructive text-center">
-                Missing required fields: {[!form.title && "title", !form.city && "city", !form.baseNightlyRate && "price"].filter(Boolean).join(", ")}
+                Missing required fields: {[!form.title && "title", !form.description && "description", !form.address && "address", !form.city && "city", !form.baseNightlyRate && "price"].filter(Boolean).join(", ")}
               </p>
             )}
 
@@ -1452,7 +1541,7 @@ export default function CreateListing() {
             </Button>
 
             <div className="flex items-center gap-2">
-              {step < 5 && step !== 3 && (
+              {step < 5 && (step === 1 || step === 3) && (
                 <Button
                   variant="ghost"
                   size="sm"

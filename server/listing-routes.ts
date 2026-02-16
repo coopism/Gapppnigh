@@ -178,7 +178,7 @@ router.patch("/api/host/drafts/:draftId", requireHostAuth, async (req: HostReque
       "checkInTime", "checkOutTime", "minNotice", "prepBuffer", "baseNightlyRate",
       "cleaningFee", "gapNightDiscount", "weekdayMultiplier", "weekendMultiplier",
       "manualApproval", "autoPublish", "selfCheckIn", "petFriendly", "smokingAllowed",
-      "nearbyHighlight", "checkInInstructions", "coverImage", "images",
+      "nearbyHighlight", "checkInInstructions", "coverImage", "images", "manualBlockedDates",
     ];
 
     const updates: Record<string, any> = {};

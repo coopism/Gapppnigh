@@ -1,6 +1,45 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Required Fields, Manual Dates & Skip Logic - Feb 18, 2026
+
+79. **Required fields enforcement (`CreateListing.tsx`)**
+    - Title, description, address, and city are now REQUIRED — cannot proceed past Step 2 without them
+    - Red validation hints shown inline when fields are empty
+    - Publish button disabled with missing field list if any required field is blank
+    - "Skip for now" button only appears on Steps 1 (Airbnb import) and 3 (Calendar) — NOT on Steps 2 (Basics) or 4 (Pricing)
+
+80. **Manual blocked date entry (`CreateListing.tsx`)**
+    - New "Add blocked dates manually" section in Step 3 for hosts without iCal
+    - Date picker for check-in and check-out with validation (end must be after start)
+    - Added dates shown in a list with remove (X) button
+    - Calendar preview count includes manual blocked dates
+    - Data persisted via autosave to `manualBlockedDates` JSONB column
+
+81. **Step 1 skip-friendly for non-Airbnb hosts (`CreateListing.tsx`)**
+    - Heading changed to "Import from an existing listing"
+    - Subtext: "Already listed on Airbnb? ... Otherwise, skip this step."
+    - Airbnb URL field labeled "(optional)"
+    - Clear "Don't have an Airbnb listing? No problem" messaging
+
+82. **Title/description always visible in Step 2 (`CreateListing.tsx`)**
+    - Previously hidden if already filled in Step 1 — now always shown
+    - Ensures hosts who skip Step 1 can still enter required details
+
+83. **Database: manualBlockedDates column (`schema.ts`, `bootstrap.ts`, `listing-routes.ts`)**
+    - Added `manual_blocked_dates` JSONB column to `draft_listings` table
+    - Added to autosave whitelist in backend
+    - ALTER TABLE migration for existing databases
+
+**Files Modified:**
+- `client/src/pages/host/CreateListing.tsx` — All UI changes
+- `shared/schema.ts` — New column
+- `server/bootstrap.ts` — Migration
+- `server/listing-routes.ts` — Autosave whitelist
+- `Recent_updates.txt` — This log
+
+---
+
 ## Create Listing Wizard UX Improvements - Feb 18, 2026
 
 76. **Auto-approve default flipped (`CreateListing.tsx`)**

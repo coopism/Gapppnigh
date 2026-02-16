@@ -520,6 +520,7 @@ async function createTables() {
       "check_in_instructions" text,
       "cover_image" text,
       "images" text[],
+      "manual_blocked_dates" jsonb DEFAULT '[]',
       "status" text DEFAULT 'draft' NOT NULL,
       "published_property_id" text,
       "last_saved_at" timestamp DEFAULT now() NOT NULL,
@@ -566,6 +567,16 @@ async function createTables() {
       "created_at" timestamp DEFAULT now() NOT NULL,
       "updated_at" timestamp DEFAULT now() NOT NULL
     )
+  `);
+
+  // Add manual_blocked_dates column if missing (for existing databases)
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='draft_listings' AND column_name='manual_blocked_dates') THEN
+        ALTER TABLE "draft_listings" ADD COLUMN "manual_blocked_dates" jsonb DEFAULT '[]';
+      END IF;
+    END $$;
   `);
 
   console.log("Tables created!");
