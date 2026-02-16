@@ -303,7 +303,7 @@ export default function AdminDashboard() {
           {activePage === "bookings-legacy" && <LegacyBookingsPage />}
           {(activePage === "users-all" || activePage === "users") && <UsersPage />}
           {activePage === "users-hosts" && <HostsPage />}
-          {activePage === "payments" && <PaymentsStubPage />}
+          {activePage === "payments" && <PaymentsPage />}
           {activePage === "promos" && <PromoCodesPage />}
           {activePage === "reviews" && <ReviewsPage />}
           {(activePage === "content-cities" || activePage === "content") && <CityPagesPage />}
@@ -1317,20 +1317,249 @@ function HostsPage() {
 }
 
 // ========================================
-// F) PAYMENTS STUB
+// F) PAYMENTS PAGE
 // ========================================
-function PaymentsStubPage() {
+function PaymentsPage() {
+  const [payments, setPayments] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+
+  useEffect(() => { load(); }, [statusFilter]);
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    const params = new URLSearchParams({ limit: "100" });
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (search) params.set("search", search);
+    const res = await adminFetch(`/payments?${params}`);
+    if (res.ok) {
+      setPayments(res.data.payments || []);
+      setSummary(res.data.summary || null);
+    } else {
+      setError(res.error || "Failed to load payments");
+      setPayments([]);
+    }
+    setLoading(false);
+  };
+
+  const handleSearch = () => load();
+
+  const refundBooking = async (id: string) => {
+    const reason = prompt("Refund reason:");
+    if (!reason) return;
+    const res = await adminFetch(`/payments/${id}/refund`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    if (res.ok) { load(); setSelectedPayment(null); }
+    else { alert(res.error || "Failed to process refund"); }
+  };
+
+  const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+  const statusBadge = (status: string) => {
+    const map: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+      PENDING_APPROVAL: { variant: "outline", label: "Pending" },
+      APPROVED: { variant: "secondary", label: "Approved" },
+      CONFIRMED: { variant: "default", label: "Confirmed" },
+      COMPLETED: { variant: "default", label: "Completed" },
+      DECLINED: { variant: "destructive", label: "Declined" },
+      CANCELLED_BY_GUEST: { variant: "destructive", label: "Cancelled (Guest)" },
+      CANCELLED_BY_HOST: { variant: "destructive", label: "Cancelled (Host)" },
+      PAYMENT_FAILED: { variant: "destructive", label: "Payment Failed" },
+      REFUNDED: { variant: "secondary", label: "Refunded" },
+    };
+    const cfg = map[status] || { variant: "outline" as const, label: status };
+    return <Badge variant={cfg.variant} className="text-xs">{cfg.label}</Badge>;
+  };
+
   return (
-    <Card>
-      <CardHeader><CardTitle>Payments & Payouts</CardTitle><CardDescription>Stripe integration — coming in Phase 2</CardDescription></CardHeader>
-      <CardContent>
-        <div className="text-center py-12 text-slate-400">
-          <CreditCard className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-          <p className="text-sm">Payment tracking, failed payment triage, payout management, and reconciliation will be available here.</p>
-          <p className="text-xs mt-2">Requires Stripe webhook integration.</p>
+    <>
+      {/* Financial Summary Cards */}
+      {summary && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Total Revenue</p>
+              <p className="text-xl font-bold text-green-600">{formatCents(summary.totalRevenue)}</p>
+              <p className="text-xs text-muted-foreground">{summary.confirmedBookings} confirmed</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Service Fees Earned</p>
+              <p className="text-xl font-bold">{formatCents(summary.totalServiceFees)}</p>
+              <p className="text-xs text-muted-foreground">Platform revenue</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Pending Payments</p>
+              <p className="text-xl font-bold text-amber-600">{formatCents(summary.pendingPayments)}</p>
+              <p className="text-xs text-muted-foreground">{summary.pendingBookings} pending</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Total Bookings</p>
+              <p className="text-xl font-bold">{summary.totalBookings}</p>
+              <p className="text-xs text-muted-foreground">{summary.cancelledBookings} cancelled</p>
+            </CardContent>
+          </Card>
         </div>
-      </CardContent>
-    </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <CardTitle>Payments & Bookings</CardTitle>
+              <CardDescription>{payments.length} payment records</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <Input
+                  placeholder="Search guest email, name, booking ID..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleSearch()}
+                  className="w-64 h-8 text-sm"
+                />
+                <Button size="sm" variant="outline" className="h-8" onClick={handleSearch}>
+                  <Search className="w-3 h-3" />
+                </Button>
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-44 h-8 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="PENDING_APPROVAL">Pending</SelectItem>
+                  <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED_BY_GUEST">Cancelled (Guest)</SelectItem>
+                  <SelectItem value="CANCELLED_BY_HOST">Cancelled (Host)</SelectItem>
+                  <SelectItem value="PAYMENT_FAILED">Payment Failed</SelectItem>
+                  <SelectItem value="REFUNDED">Refunded</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+          error ? <ErrorState error={error} onRetry={load} /> :
+          payments.length === 0 ? <p className="text-center py-8 text-slate-400">No payments found</p> : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Booking ID</TableHead>
+                    <TableHead className="text-xs">Guest</TableHead>
+                    <TableHead className="text-xs">Property</TableHead>
+                    <TableHead className="text-xs">Dates</TableHead>
+                    <TableHead className="text-xs">Total</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments.map(p => (
+                    <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedPayment(p)}>
+                      <TableCell className="text-xs font-mono">{p.id}</TableCell>
+                      <TableCell className="text-xs">
+                        <div>{p.guestFirstName} {p.guestLastName}</div>
+                        <div className="text-muted-foreground">{p.guestEmail}</div>
+                      </TableCell>
+                      <TableCell className="text-xs max-w-[200px] truncate">{p.propertyTitle || "—"}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{p.checkInDate} → {p.checkOutDate}<br/><span className="text-muted-foreground">{p.nights} night{p.nights !== 1 ? "s" : ""}</span></TableCell>
+                      <TableCell className="text-xs font-semibold">{formatCents(p.totalPrice)}</TableCell>
+                      <TableCell>{statusBadge(p.status)}</TableCell>
+                      <TableCell>
+                        <Button size="sm" variant="ghost" className="h-7" onClick={(e) => { e.stopPropagation(); setSelectedPayment(p); }}>
+                          <Eye className="w-3 h-3" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Payment Detail Dialog */}
+      <Dialog open={!!selectedPayment} onOpenChange={(open) => { if (!open) setSelectedPayment(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Payment Details</DialogTitle>
+            <DialogDescription>Booking {selectedPayment?.id}</DialogDescription>
+          </DialogHeader>
+          {selectedPayment && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Guest</p>
+                  <p className="font-medium">{selectedPayment.guestFirstName} {selectedPayment.guestLastName}</p>
+                  <p className="text-xs text-muted-foreground">{selectedPayment.guestEmail}</p>
+                  {selectedPayment.guestPhone && <p className="text-xs text-muted-foreground">{selectedPayment.guestPhone}</p>}
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Property</p>
+                  <p className="font-medium">{selectedPayment.propertyTitle || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Check-in / Check-out</p>
+                  <p className="font-medium">{selectedPayment.checkInDate} → {selectedPayment.checkOutDate}</p>
+                  <p className="text-xs text-muted-foreground">{selectedPayment.nights} night{selectedPayment.nights !== 1 ? "s" : ""}, {selectedPayment.guests} guest{selectedPayment.guests !== 1 ? "s" : ""}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <div className="mt-1">{statusBadge(selectedPayment.status)}</div>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-3 space-y-1.5 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Nightly rate × {selectedPayment.nights}</span><span>{formatCents(selectedPayment.nightlyRate * selectedPayment.nights)}</span></div>
+                {selectedPayment.cleaningFee > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Cleaning fee</span><span>{formatCents(selectedPayment.cleaningFee)}</span></div>}
+                {selectedPayment.serviceFee > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Service fee</span><span>{formatCents(selectedPayment.serviceFee)}</span></div>}
+                <div className="flex justify-between font-bold border-t pt-1.5"><span>Total</span><span>{formatCents(selectedPayment.totalPrice)}</span></div>
+              </div>
+
+              {selectedPayment.stripePaymentIntentId && (
+                <div className="text-xs">
+                  <span className="text-muted-foreground">Stripe PI: </span>
+                  <span className="font-mono">{selectedPayment.stripePaymentIntentId}</span>
+                </div>
+              )}
+              {selectedPayment.paymentCapturedAt && (
+                <div className="text-xs">
+                  <span className="text-muted-foreground">Payment captured: </span>
+                  <span>{new Date(selectedPayment.paymentCapturedAt).toLocaleString()}</span>
+                </div>
+              )}
+
+              <div className="text-xs text-muted-foreground">
+                Created: {new Date(selectedPayment.createdAt).toLocaleString()}
+              </div>
+
+              {["CONFIRMED", "COMPLETED"].includes(selectedPayment.status) && (
+                <Button variant="destructive" size="sm" className="w-full" onClick={() => refundBooking(selectedPayment.id)}>
+                  Process Refund
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

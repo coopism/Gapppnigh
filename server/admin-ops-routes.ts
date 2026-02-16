@@ -1351,5 +1351,111 @@ export function registerAdminOpsRoutes(app: Router) {
     }
   });
 
+  // ========================================
+  // P) PAYMENTS & FINANCIAL DATA
+  // ========================================
+
+  // Get all property bookings with payment info, property title, guest info
+  app.get(`${ADMIN_PREFIX}/payments`, adminAuth, requirePermission("view_payments"), async (req, res) => {
+    try {
+      const { page = "1", limit = "50", status = "", search = "" } = req.query;
+      const validatedLimit = Math.min(Math.max(parseInt(limit as string), 1), 100);
+      const validatedPage = Math.max(parseInt(page as string), 1);
+      const offset = (validatedPage - 1) * validatedLimit;
+
+      const conditions: any[] = [];
+      if (status) conditions.push(eq(propertyBookings.status, status as string));
+      if (search) {
+        conditions.push(or(
+          ilike(propertyBookings.guestEmail, `%${search}%`),
+          ilike(propertyBookings.guestFirstName, `%${search}%`),
+          ilike(propertyBookings.guestLastName, `%${search}%`),
+          ilike(propertyBookings.id, `%${search}%`),
+        ));
+      }
+
+      const payments = await db.select({
+        id: propertyBookings.id,
+        propertyId: propertyBookings.propertyId,
+        hostId: propertyBookings.hostId,
+        userId: propertyBookings.userId,
+        checkInDate: propertyBookings.checkInDate,
+        checkOutDate: propertyBookings.checkOutDate,
+        nights: propertyBookings.nights,
+        guests: propertyBookings.guests,
+        nightlyRate: propertyBookings.nightlyRate,
+        cleaningFee: propertyBookings.cleaningFee,
+        serviceFee: propertyBookings.serviceFee,
+        totalPrice: propertyBookings.totalPrice,
+        currency: propertyBookings.currency,
+        status: propertyBookings.status,
+        stripePaymentIntentId: propertyBookings.stripePaymentIntentId,
+        paymentCapturedAt: propertyBookings.paymentCapturedAt,
+        guestFirstName: propertyBookings.guestFirstName,
+        guestLastName: propertyBookings.guestLastName,
+        guestEmail: propertyBookings.guestEmail,
+        guestPhone: propertyBookings.guestPhone,
+        createdAt: propertyBookings.createdAt,
+        propertyTitle: properties.title,
+      }).from(propertyBookings)
+        .leftJoin(properties, eq(propertyBookings.propertyId, properties.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(propertyBookings.createdAt))
+        .limit(validatedLimit).offset(offset);
+
+      const [totalCount] = await db.select({ count: count() }).from(propertyBookings)
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+      // Financial summary
+      const allBookings = await db.select({
+        totalPrice: propertyBookings.totalPrice,
+        serviceFee: propertyBookings.serviceFee,
+        status: propertyBookings.status,
+        paymentCapturedAt: propertyBookings.paymentCapturedAt,
+      }).from(propertyBookings);
+
+      const summary = {
+        totalRevenue: allBookings.filter(b => ["CONFIRMED", "COMPLETED"].includes(b.status)).reduce((sum, b) => sum + (b.totalPrice || 0), 0),
+        totalServiceFees: allBookings.filter(b => ["CONFIRMED", "COMPLETED"].includes(b.status)).reduce((sum, b) => sum + (b.serviceFee || 0), 0),
+        pendingPayments: allBookings.filter(b => b.status === "APPROVED").reduce((sum, b) => sum + (b.totalPrice || 0), 0),
+        totalBookings: allBookings.length,
+        confirmedBookings: allBookings.filter(b => ["CONFIRMED", "COMPLETED"].includes(b.status)).length,
+        pendingBookings: allBookings.filter(b => ["PENDING_APPROVAL", "APPROVED"].includes(b.status)).length,
+        cancelledBookings: allBookings.filter(b => b.status.startsWith("CANCELLED")).length,
+      };
+
+      res.json({ payments, total: totalCount.count, page: validatedPage, limit: validatedLimit, summary });
+    } catch (error) {
+      console.error("Get payments error:", error);
+      res.status(500).json({ message: "Failed to fetch payments" });
+    }
+  });
+
+  // Mark a booking as refunded (admin action)
+  app.patch(`${ADMIN_PREFIX}/payments/:bookingId/refund`, adminAuth, requirePermission("cancel_refund"), async (req, res) => {
+    try {
+      const admin = (req as any).admin;
+      const bookingId = req.params.bookingId as string;
+      const { reason } = req.body;
+
+      const [before] = await db.select().from(propertyBookings).where(eq(propertyBookings.id, bookingId)).limit(1);
+      if (!before) return res.status(404).json({ message: "Booking not found" });
+
+      await db.update(propertyBookings).set({
+        status: "REFUNDED",
+        specialRequests: before.specialRequests ? `${before.specialRequests}\n[Refund] ${reason || ''}` : `[Refund] ${reason || ''}`,
+        updatedAt: new Date(),
+      }).where(eq(propertyBookings.id, bookingId));
+
+      await auditLog(admin.id, "payment_refunded", "payments", "property_booking", bookingId,
+        { reason, amount: before.totalPrice }, getIP(req), { status: before.status }, { status: "REFUNDED" });
+
+      res.json({ success: true, message: "Booking marked as refunded" });
+    } catch (error) {
+      console.error("Refund error:", error);
+      res.status(500).json({ message: "Failed to process refund" });
+    }
+  });
+
   console.log(`[ADMIN-OPS] Extended admin routes registered at ${ADMIN_PREFIX}`);
 }

@@ -1,6 +1,29 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Admin Reviews + Payments Pages Made Functional - Feb 18, 2026
+
+126. **Admin Reviews tab verified functional**
+    - Backend: GET `/reviews` (list with joins), PATCH `/reviews/:id` (edit), DELETE `/reviews/:id` — all with audit logging
+    - Frontend: ReviewsPage with list, star filter, edit dialog (comment, host response, verified toggle), delete with confirmation
+    - Shows property title, user name/email, star ratings, sub-ratings, host responses
+
+127. **Admin Payments tab — fully functional (replaced stub)**
+    - Backend: GET `/payments` with financial summary, search by guest email/name/booking ID, filter by status
+    - Backend: PATCH `/payments/:id/refund` to mark bookings as refunded with audit logging
+    - Frontend: PaymentsPage with 4 summary cards (Total Revenue, Service Fees, Pending Payments, Total Bookings)
+    - Payments table with booking ID, guest info, property, dates, total, status badge
+    - Payment detail dialog with full breakdown (nightly rate × nights, cleaning fee, service fee, total)
+    - Shows Stripe payment intent ID and capture timestamp when available
+    - "Process Refund" button on confirmed/completed bookings
+    - Search and status filter (Pending, Approved, Confirmed, Completed, Cancelled, Payment Failed, Refunded)
+
+**Files Modified:**
+- `server/admin-ops-routes.ts` — Added GET `/payments` and PATCH `/payments/:id/refund` endpoints
+- `client/src/pages/admin/AdminDashboard.tsx` — Replaced PaymentsStubPage with full PaymentsPage, updated route reference
+
+---
+
 ## Fix Stays Not Showing After Hotel Deals Removal - Feb 18, 2026
 
 125. **Home page showed empty state because it checked `deals.length` instead of `combinedItems.length`**
