@@ -1,6 +1,34 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## ID Verification: Name Matching, Storage & Booking Enforcement - Feb 18, 2026
+
+132. **Store verified identity from Stripe after ID verification**
+    - Added `verified_first_name`, `verified_last_name`, `verified_dob` columns to `user_id_verifications`
+    - After Stripe Identity session completes, pulls `verified_outputs` (name + DOB) and stores in DB
+    - Bootstrap migration adds columns to existing tables
+
+133. **Block bookings if guest name doesn't match verified ID name**
+    - At booking time, compares booking `guestFirstName`/`guestLastName` to `verifiedFirstName`/`verifiedLastName`
+    - Normalization: case-insensitive, strips non-alpha characters
+    - Returns 403 with clear error message showing both names if mismatch
+
+134. **Admin dashboard: verified identity details in payments**
+    - Payments endpoint enriches each booking with `verifiedIdentity` (name, DOB, match status)
+    - Payment detail dialog shows green "Name Match" or red "Name Mismatch" badge
+    - Shows verified name, DOB, verification date
+    - Amber warning if no ID verification on file
+    - New admin endpoint: `GET /users/:userId/verification` for detailed verification lookup
+
+**Files Modified:**
+- `shared/schema.ts` — Added 3 columns to `userIdVerifications`
+- `server/bootstrap.ts` — Table definition + ALTER TABLE migration
+- `server/property-routes.ts` — Stripe verified_outputs pull + name-match booking check
+- `server/admin-ops-routes.ts` — Verification endpoint + enriched payments data
+- `client/src/pages/admin/AdminDashboard.tsx` — Verified identity section in payment detail dialog
+
+---
+
 ## Grey Out Properties With No Gap Night Availability - Feb 18, 2026
 
 131. **Properties with no gap night dates now appear greyed out with "No availability"**

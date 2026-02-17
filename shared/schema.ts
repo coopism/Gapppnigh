@@ -528,6 +528,9 @@ export const userIdVerifications = pgTable("user_id_verifications", {
   status: text("status").notNull().default("unverified"), // unverified | pending | verified | failed
   verifiedAt: timestamp("verified_at"),
   failureReason: text("failure_reason"),
+  verifiedFirstName: text("verified_first_name"),
+  verifiedLastName: text("verified_last_name"),
+  verifiedDob: text("verified_dob"), // YYYY-MM-DD from ID document
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

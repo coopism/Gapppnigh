@@ -1533,6 +1533,45 @@ function PaymentsPage() {
                 <div className="flex justify-between font-bold border-t pt-1.5"><span>Total</span><span>{formatCents(selectedPayment.totalPrice)}</span></div>
               </div>
 
+              {/* Verified Identity Section */}
+              {selectedPayment.verifiedIdentity && (
+                <div className={`border rounded-lg p-3 text-sm space-y-1 ${
+                  selectedPayment.verifiedIdentity.nameMatch === false ? "border-red-300 bg-red-50 dark:bg-red-950/20" : "border-green-300 bg-green-50 dark:bg-green-950/20"
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verified ID</p>
+                    {selectedPayment.verifiedIdentity.nameMatch === true && (
+                      <Badge variant="default" className="text-[10px] bg-green-600">Name Match</Badge>
+                    )}
+                    {selectedPayment.verifiedIdentity.nameMatch === false && (
+                      <Badge variant="destructive" className="text-[10px]">Name Mismatch</Badge>
+                    )}
+                    {selectedPayment.verifiedIdentity.nameMatch === null && (
+                      <Badge variant="outline" className="text-[10px]">No ID Data</Badge>
+                    )}
+                  </div>
+                  <p className="font-medium">
+                    {selectedPayment.verifiedIdentity.verifiedFirstName || "—"} {selectedPayment.verifiedIdentity.verifiedLastName || "—"}
+                  </p>
+                  {selectedPayment.verifiedIdentity.verifiedDob && (
+                    <p className="text-xs text-muted-foreground">DOB: {selectedPayment.verifiedIdentity.verifiedDob}</p>
+                  )}
+                  {selectedPayment.verifiedIdentity.verifiedAt && (
+                    <p className="text-xs text-muted-foreground">Verified: {new Date(selectedPayment.verifiedIdentity.verifiedAt).toLocaleDateString()}</p>
+                  )}
+                  {selectedPayment.verifiedIdentity.nameMatch === false && (
+                    <p className="text-xs text-red-600 font-medium mt-1">
+                      Booking name: {selectedPayment.guestFirstName} {selectedPayment.guestLastName} — does NOT match verified ID
+                    </p>
+                  )}
+                </div>
+              )}
+              {!selectedPayment.verifiedIdentity && (
+                <div className="border rounded-lg p-3 text-sm border-amber-300 bg-amber-50 dark:bg-amber-950/20">
+                  <p className="text-xs font-semibold text-amber-700">No ID verification on file for this guest</p>
+                </div>
+              )}
+
               {selectedPayment.stripePaymentIntentId && (
                 <div className="text-xs">
                   <span className="text-muted-foreground">Stripe PI: </span>

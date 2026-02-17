@@ -444,6 +444,9 @@ async function createTables() {
       "status" text DEFAULT 'unverified' NOT NULL,
       "verified_at" timestamp,
       "failure_reason" text,
+      "verified_first_name" text,
+      "verified_last_name" text,
+      "verified_dob" text,
       "created_at" timestamp DEFAULT now() NOT NULL,
       "updated_at" timestamp DEFAULT now() NOT NULL
     )
@@ -611,6 +614,22 @@ async function createTables() {
       END IF;
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='suspension_reason') THEN
         ALTER TABLE "users" ADD COLUMN "suspension_reason" text;
+      END IF;
+    END $$;
+  `);
+
+  // Migration: add verified identity columns to user_id_verifications
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_id_verifications' AND column_name='verified_first_name') THEN
+        ALTER TABLE "user_id_verifications" ADD COLUMN "verified_first_name" text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_id_verifications' AND column_name='verified_last_name') THEN
+        ALTER TABLE "user_id_verifications" ADD COLUMN "verified_last_name" text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_id_verifications' AND column_name='verified_dob') THEN
+        ALTER TABLE "user_id_verifications" ADD COLUMN "verified_dob" text;
       END IF;
     END $$;
   `);

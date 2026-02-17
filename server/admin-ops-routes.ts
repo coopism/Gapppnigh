@@ -5,7 +5,7 @@ import {
   adminUsers, adminSessions, adminActivityLogs, users, bookings, deals, hotels, promoCodes,
   featureFlags, siteConfig, supportTickets, cmsCityPages, cmsBanners, cmsStaticPages,
   notificationTemplates, notificationLogs, properties, propertyBookings, propertyAvailability, airbnbHosts,
-  propertyReviews
+  propertyReviews, userIdVerifications
 } from "@shared/schema";
 import { eq, desc, sql, and, gte, lte, count, ilike, or, asc, ne } from "drizzle-orm";
 
@@ -585,6 +585,42 @@ export function registerAdminOpsRoutes(app: Router) {
     } catch (error) {
       console.error("Add user note error:", error);
       res.status(500).json({ message: "Failed to add note" });
+    }
+  });
+
+  // Get user's ID verification details (for admin review)
+  app.get(`${ADMIN_PREFIX}/users/:userId/verification`, adminAuth, requirePermission("manage_users"), async (req, res) => {
+    try {
+      const userId = req.params.userId as string;
+
+      const [user] = await db.select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      }).from(users).where(eq(users.id, userId)).limit(1);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const [verification] = await db
+        .select()
+        .from(userIdVerifications)
+        .where(eq(userIdVerifications.userId, userId))
+        .limit(1);
+
+      res.json({
+        user,
+        verification: verification ? {
+          status: verification.status,
+          verifiedAt: verification.verifiedAt,
+          verifiedFirstName: verification.verifiedFirstName,
+          verifiedLastName: verification.verifiedLastName,
+          verifiedDob: verification.verifiedDob,
+          failureReason: verification.failureReason,
+          createdAt: verification.createdAt,
+        } : null,
+      });
+    } catch (error) {
+      console.error("Get user verification error:", error);
+      res.status(500).json({ message: "Failed to fetch verification details" });
     }
   });
 
@@ -1406,6 +1442,39 @@ export function registerAdminOpsRoutes(app: Router) {
       const [totalCount] = await db.select({ count: count() }).from(propertyBookings)
         .where(conditions.length > 0 ? and(...conditions) : undefined);
 
+      // Enrich payments with verified identity info
+      const userIds = Array.from(new Set(payments.map(p => p.userId).filter(Boolean)));
+      const verifications = userIds.length > 0
+        ? await db.select({
+            userId: userIdVerifications.userId,
+            status: userIdVerifications.status,
+            verifiedFirstName: userIdVerifications.verifiedFirstName,
+            verifiedLastName: userIdVerifications.verifiedLastName,
+            verifiedDob: userIdVerifications.verifiedDob,
+            verifiedAt: userIdVerifications.verifiedAt,
+          }).from(userIdVerifications)
+            .where(sql`${userIdVerifications.userId} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`)
+        : [];
+      const verifMap = new Map(verifications.map(v => [v.userId, v]));
+
+      const enrichedPayments = payments.map(p => {
+        const v = p.userId ? verifMap.get(p.userId) : null;
+        return {
+          ...p,
+          verifiedIdentity: v ? {
+            status: v.status,
+            verifiedFirstName: v.verifiedFirstName,
+            verifiedLastName: v.verifiedLastName,
+            verifiedDob: v.verifiedDob,
+            verifiedAt: v.verifiedAt,
+            nameMatch: v.verifiedFirstName && v.verifiedLastName
+              ? (v.verifiedFirstName.toLowerCase().trim() === (p.guestFirstName || "").toLowerCase().trim()
+                && v.verifiedLastName.toLowerCase().trim() === (p.guestLastName || "").toLowerCase().trim())
+              : null,
+          } : null,
+        };
+      });
+
       // Financial summary
       const allBookings = await db.select({
         totalPrice: propertyBookings.totalPrice,
@@ -1424,7 +1493,7 @@ export function registerAdminOpsRoutes(app: Router) {
         cancelledBookings: allBookings.filter(b => b.status.startsWith("CANCELLED")).length,
       };
 
-      res.json({ payments, total: totalCount.count, page: validatedPage, limit: validatedLimit, summary });
+      res.json({ payments: enrichedPayments, total: totalCount.count, page: validatedPage, limit: validatedLimit, summary });
     } catch (error) {
       console.error("Get payments error:", error);
       res.status(500).json({ message: "Failed to fetch payments" });

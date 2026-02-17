@@ -668,11 +668,38 @@ router.get("/api/auth/verify-identity/status", async (req: any, res: Response) =
         );
 
         let newStatus = verification.status;
+        let verifiedFirstName: string | null = null;
+        let verifiedLastName: string | null = null;
+        let verifiedDob: string | null = null;
         if (session.status === "verified") {
           newStatus = "verified";
+          // Pull verified identity details from Stripe
+          try {
+            const expandedSession = await stripe!.identity.verificationSessions.retrieve(
+              verification.stripeVerificationSessionId!,
+              { expand: ["verified_outputs"] }
+            );
+            const outputs = (expandedSession as any).verified_outputs;
+            if (outputs) {
+              verifiedFirstName = outputs.first_name || null;
+              verifiedLastName = outputs.last_name || null;
+              if (outputs.dob) {
+                verifiedDob = `${outputs.dob.year}-${String(outputs.dob.month).padStart(2, "0")}-${String(outputs.dob.day).padStart(2, "0")}`;
+              }
+            }
+          } catch (expandErr) {
+            console.error("Failed to retrieve verified_outputs from Stripe:", expandErr);
+          }
           await db
             .update(userIdVerifications)
-            .set({ status: "verified", verifiedAt: new Date(), updatedAt: new Date() })
+            .set({
+              status: "verified",
+              verifiedAt: new Date(),
+              verifiedFirstName,
+              verifiedLastName,
+              verifiedDob,
+              updatedAt: new Date(),
+            })
             .where(eq(userIdVerifications.userId, req.user?.id));
         } else if (session.status === "requires_input" || session.last_error) {
           newStatus = "failed";
@@ -686,13 +713,23 @@ router.get("/api/auth/verify-identity/status", async (req: any, res: Response) =
             .where(eq(userIdVerifications.userId, req.user?.id));
         }
 
-        return res.json({ status: newStatus, verifiedAt: verification.verifiedAt });
+        return res.json({
+          status: newStatus,
+          verifiedAt: verification.verifiedAt,
+          verifiedFirstName: newStatus === "verified" ? (verification.verifiedFirstName || verifiedFirstName) : undefined,
+          verifiedLastName: newStatus === "verified" ? (verification.verifiedLastName || verifiedLastName) : undefined,
+        });
       } catch (stripeError) {
         console.error("Stripe verification check error:", stripeError);
       }
     }
 
-    res.json({ status: verification.status, verifiedAt: verification.verifiedAt });
+    res.json({
+      status: verification.status,
+      verifiedAt: verification.verifiedAt,
+      verifiedFirstName: verification.status === "verified" ? verification.verifiedFirstName : undefined,
+      verifiedLastName: verification.status === "verified" ? verification.verifiedLastName : undefined,
+    });
   } catch (error) {
     console.error("Check verification status error:", error);
     res.status(500).json({ error: "Failed to check verification status" });
@@ -734,6 +771,32 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
 
     if (!checkInDate || !checkOutDate || !guestFirstName || !guestLastName || !guestEmail) {
       return res.status(400).json({ error: "Missing required booking fields" });
+    }
+
+    // Name-match check: verified ID name must match booking guest name
+    if (isAuthenticated) {
+      const [verif] = await db
+        .select()
+        .from(userIdVerifications)
+        .where(eq(userIdVerifications.userId, req.user?.id))
+        .limit(1);
+
+      if (verif?.verifiedFirstName && verif?.verifiedLastName) {
+        const normalize = (s: string) => s.trim().toLowerCase().replace(/[^a-z]/g, "");
+        const idFirst = normalize(verif.verifiedFirstName);
+        const idLast = normalize(verif.verifiedLastName);
+        const bookFirst = normalize(guestFirstName);
+        const bookLast = normalize(guestLastName);
+
+        if (idFirst !== bookFirst || idLast !== bookLast) {
+          return res.status(403).json({
+            error: "Name mismatch",
+            message: `The booking name "${guestFirstName} ${guestLastName}" does not match your verified ID name "${verif.verifiedFirstName} ${verif.verifiedLastName}". Please use the name on your ID.`,
+            verifiedFirstName: verif.verifiedFirstName,
+            verifiedLastName: verif.verifiedLastName,
+          });
+        }
+      }
     }
 
     // Get property
