@@ -1,6 +1,24 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Remove Guest Fees + Credit Display on Booking - Feb 18, 2026
+
+171. **Removed cleaning fee and GapNight service fee from guest-facing pricing**
+    - Guests now see only: nightly rate × nights = total
+    - No more cleaning fee or 8% service fee shown
+    - GapNight takes its cut from the host payout after receiving funds (no double-dipping)
+    - Added "No hidden fees — the price you see is the price you pay" message
+
+172. **Credit balance now displayed on booking page**
+    - Fetches user's credit balance from /api/auth/rewards on page load
+    - If user has credit, shows green "Credit applied" line with deduction
+    - Credit is capped at the booking total (can't go negative)
+
+**Files Modified:**
+- `client/src/pages/PropertyBooking.tsx` — Removed cleaningFee/serviceFee from pricing, added credit fetch + display
+
+---
+
 ## Map Popup Fix + Expanded Filters + Toast Styling + Message Auth - Feb 18, 2026
 
 167. **Fixed map listing popup styling**

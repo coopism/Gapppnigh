@@ -68,6 +68,7 @@ export default function PropertyBooking() {
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [guestDetailsValid, setGuestDetailsValid] = useState(false);
   const [policyAgreed, setPolicyAgreed] = useState(false);
+  const [creditBalance, setCreditBalance] = useState(0); // in cents
 
   // ID Verification state
   const [idStatus, setIdStatus] = useState<"loading" | "unverified" | "pending" | "verified" | "failed">("loading");
@@ -95,6 +96,19 @@ export default function PropertyBooking() {
         .finally(() => setIsLoading(false));
     }
   }, [propertyId]);
+
+  // Fetch user credit balance
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/auth/rewards", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.rewards?.creditBalance) {
+          setCreditBalance(data.rewards.creditBalance);
+        }
+      })
+      .catch(() => {});
+  }, [user]);
 
   // Check ID verification status on load
   useEffect(() => {
@@ -196,12 +210,11 @@ export default function PropertyBooking() {
     setGuestDetailsValid(isValid);
   }, [watchedFields]);
 
-  // Calculate pricing
+  // Calculate pricing — no fees shown to guest, we take our cut from the host payout
   const nightlyRate = property?.baseNightlyRate || 0;
   const totalNightly = nightlyRate * nightsParam;
-  const cleaningFee = property?.cleaningFee || 0;
-  const serviceFee = Math.round(totalNightly * 0.08);
-  const grandTotal = totalNightly + cleaningFee + serviceFee;
+  const creditApplied = Math.min(creditBalance, totalNightly); // can't exceed total
+  const grandTotal = totalNightly - creditApplied;
 
   const handlePaymentSuccess = async (intentId: string) => {
     setPaymentIntentId(intentId);
@@ -875,23 +888,19 @@ export default function PropertyBooking() {
                   <span className="font-bold text-lg text-foreground">Total</span>
                   <span className="font-bold text-2xl text-foreground">{formatPrice(grandTotal / 100, "AUD")}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">Includes:</p>
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{nightsParam} night{nightsParam > 1 ? "s" : ""} × {formatPrice(nightlyRate / 100, "AUD")}</span>
                     <span className="text-foreground">{formatPrice(totalNightly / 100, "AUD")}</span>
                   </div>
-                  {cleaningFee > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cleaning fee</span>
-                      <span className="text-foreground">{formatPrice(cleaningFee / 100, "AUD")}</span>
+                  {creditApplied > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Credit applied</span>
+                      <span>−{formatPrice(creditApplied / 100, "AUD")}</span>
                     </div>
                   )}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">GapNight service fee (8%)</span>
-                    <span className="text-foreground">{formatPrice(serviceFee / 100, "AUD")}</span>
-                  </div>
                 </div>
+                <p className="text-xs text-muted-foreground mt-3">No hidden fees — the price you see is the price you pay.</p>
               </div>
 
               <div className="p-4">
