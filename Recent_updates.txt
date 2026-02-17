@@ -1,31 +1,27 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
-## Fix Landing Page Not Showing Stays - Feb 18, 2026
+## Revert: Properties Must Be Approved Before Showing - Feb 18, 2026
 
-129. **Root cause: Landing.tsx (route `/`) only fetched `deals` via `useDeals()`, never fetched properties**
-    - The actual home page is `Landing.tsx` at route `/`, NOT `Home.tsx` (which is at `/deals`)
-    - Added `useQuery` to fetch properties from `/api/properties?limit=6`
-    - Properties now render via `PropertyDealCard` in the "Explore today's gap night stays" section
-    - Empty state only shows when BOTH deals and properties are empty
-    - Updated section heading from "deals" to "stays"
+130. **Reverted pending_approval inclusion — only `status: "approved"` properties appear publicly**
+    - `/api/properties` endpoint restored to only return `approved` + `isActive: true` properties
+    - Unapproved properties must be approved via admin dashboard before they appear on the home/deals page
+    - Landing.tsx still fetches properties (added in #129) but only approved ones will be returned
 
 **Files Modified:**
-- `client/src/pages/Landing.tsx` — Added property fetching + PropertyDealCard rendering
+- `server/property-routes.ts` — Restored strict `approved`-only filter
 
 ---
 
-## Fix Stays Not Showing - Properties Endpoint Filter Too Strict - Feb 18, 2026
+## Fix Landing Page Not Showing Stays - Feb 18, 2026
 
-128. **Root cause: `/api/properties` only returned `status: "approved"` properties, but host-listed properties start as `pending_approval`**
-    - Updated `/api/properties` to include both `approved` AND `pending_approval` properties with `isActive: true`
-    - Updated total count query to match the same filter
-    - Updated Home.tsx empty state text from "No deals found" to "No stays found"
-    - Updated results count and screen reader text to say "stays" instead of "deals"
+129. **Landing.tsx (route `/`) now fetches properties alongside deals**
+    - Added `useQuery` to fetch properties from `/api/properties?limit=6`
+    - Properties render via `PropertyDealCard` in the "Explore today's gap night stays" section
+    - Empty state only shows when BOTH deals and properties are empty
 
 **Files Modified:**
-- `server/property-routes.ts` — Relaxed status filter to include `pending_approval` properties
-- `client/src/pages/Home.tsx` — Updated copy to reference "stays" instead of "deals"
+- `client/src/pages/Landing.tsx` — Added property fetching + PropertyDealCard rendering
 
 ---
 
