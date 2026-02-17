@@ -6,7 +6,8 @@ import { v4 as uuidv4 } from "uuid";
 import { 
   adminUsers, adminSessions, adminActivityLogs, users, bookings, deals, hotels, hotelReviews, promoCodes,
   featureFlags, siteConfig, supportTickets, cmsCityPages, cmsBanners, cmsStaticPages,
-  notificationTemplates, notificationLogs, properties, propertyBookings, propertyAvailability, airbnbHosts
+  notificationTemplates, notificationLogs, properties, propertyBookings, propertyAvailability, airbnbHosts,
+  userIdVerifications
 } from "@shared/schema";
 import { eq, desc, sql, and, gte, lte, count, ilike, or, asc, inArray, ne } from "drizzle-orm";
 import { LOG_RETENTION_DAYS } from "./config";
@@ -382,11 +383,19 @@ export function registerAdminRoutes(app: Router) {
       // Get user's rewards
       const userRewards = await storage.getUserRewards(userId as string);
 
+      // Get ID verification details
+      const [verification] = await db
+        .select()
+        .from(userIdVerifications)
+        .where(eq(userIdVerifications.userId, userId))
+        .limit(1);
+
       res.json({
         user: {
           id: user.id,
           email: user.email,
           name: user.name,
+          phone: user.phone,
           emailVerified: !!user.emailVerifiedAt,
           status: user.status,
           fraudRisk: user.fraudRisk,
@@ -395,6 +404,13 @@ export function registerAdminRoutes(app: Router) {
           appleId: user.appleId,
           createdAt: user.createdAt,
         },
+        verification: verification ? {
+          status: verification.status,
+          verifiedFirstName: verification.verifiedFirstName,
+          verifiedLastName: verification.verifiedLastName,
+          verifiedDob: verification.verifiedDob,
+          verifiedAt: verification.verifiedAt,
+        } : null,
         bookings: userBookings,
         reviews: userReviews,
         rewards: userRewards,
@@ -402,6 +418,32 @@ export function registerAdminRoutes(app: Router) {
     } catch (error) {
       console.error("Get user details error:", error);
       res.status(500).json({ message: "Failed to fetch user details" });
+    }
+  });
+
+  // Edit user details (name, email, phone)
+  app.patch(`${ADMIN_PREFIX}/users/:userId`, adminAuthMiddleware, async (req, res) => {
+    try {
+      const userId = req.params.userId as string;
+      const { name, email, phone } = req.body;
+
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (email !== undefined) updateData.email = email;
+      if (phone !== undefined) updateData.phone = phone;
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No fields to update" });
+      }
+
+      await db.update(users).set(updateData).where(eq(users.id, userId));
+      res.json({ success: true, message: "User updated" });
+    } catch (error) {
+      console.error("Update user error:", error);
+      res.status(500).json({ message: "Failed to update user" });
     }
   });
 

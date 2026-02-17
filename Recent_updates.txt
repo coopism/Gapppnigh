@@ -1,6 +1,27 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Admin User Management: Eye Button Fix, Edit Users, Phone Number - Feb 18, 2026
+
+137. **Fixed eye button (view user details) in admin dashboard**
+    - `GET /users/:userId` now returns phone, ID verification details (name, DOB, status)
+    - User detail now opens in a proper Dialog instead of inline card
+    - Shows stats (bookings, reviews, points, tier), user info, ID verification section, admin notes, actions
+
+138. **Admin can now edit user details (name, email, phone)**
+    - New `PATCH /users/:userId` endpoint accepts name, email, phone updates
+    - Edit mode toggle in user detail dialog with Save/Cancel buttons
+    - Phone field with placeholder format
+
+139. **Phone number visible in admin user detail view**
+    - Phone displayed in user info grid alongside name, email, joined date, status, fraud risk
+
+**Files Modified:**
+- `server/admin-routes.ts` — Added phone + verification to GET response, added PATCH endpoint
+- `client/src/pages/admin/AdminDashboard.tsx` — Rebuilt UsersPage with Dialog, edit form, verification section
+
+---
+
 ## Nearby Highlight Now Required When Creating a Listing - Feb 18, 2026
 
 136. **Hosts must add a short location description (nearby highlight) when creating a listing**

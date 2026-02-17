@@ -1150,6 +1150,9 @@ function UsersPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<any>(null);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "" });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { load(); }, [search]);
 
@@ -1164,7 +1167,31 @@ function UsersPage() {
 
   const viewDetails = async (userId: string) => {
     const res = await adminFetch(`/users/${userId}`);
-    if (res.ok) setSelected(res.data);
+    if (res.ok) {
+      setSelected(res.data);
+      setEditForm({
+        name: res.data.user.name || "",
+        email: res.data.user.email || "",
+        phone: res.data.user.phone || "",
+      });
+      setEditing(false);
+    }
+  };
+
+  const saveUser = async () => {
+    if (!selected) return;
+    setSaving(true);
+    const res = await adminFetch(`/users/${selected.user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editForm),
+    });
+    setSaving(false);
+    if (res.ok) {
+      setEditing(false);
+      viewDetails(selected.user.id);
+      load();
+    }
   };
 
   const updateUserStatus = async (userId: string, status: string) => {
@@ -1226,31 +1253,125 @@ function UsersPage() {
         </CardContent>
       </Card>
 
-      {selected && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div><CardTitle>User Details</CardTitle><CardDescription>{selected.user.email}</CardDescription></div>
-              <Button variant="outline" size="sm" onClick={() => setSelected(null)}>Close</Button>
+      {/* User Detail Dialog */}
+      <Dialog open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>User Details</DialogTitle>
+            <DialogDescription>{selected?.user?.email}</DialogDescription>
+          </DialogHeader>
+          {selected && (
+            <div className="space-y-4">
+              {/* Stats row */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="text-center p-2 bg-muted/50 rounded-lg">
+                  <p className="text-lg font-bold">{selected.bookings?.length || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">Bookings</p>
+                </div>
+                <div className="text-center p-2 bg-muted/50 rounded-lg">
+                  <p className="text-lg font-bold">{selected.reviews?.length || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">Reviews</p>
+                </div>
+                <div className="text-center p-2 bg-muted/50 rounded-lg">
+                  <p className="text-lg font-bold">{selected.rewards?.currentPoints || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">Points</p>
+                </div>
+                <div className="text-center p-2 bg-muted/50 rounded-lg">
+                  <p className="text-lg font-bold">{selected.rewards?.tier || "Bronze"}</p>
+                  <p className="text-[10px] text-muted-foreground">Tier</p>
+                </div>
+              </div>
+
+              {/* Editable user fields */}
+              <div className="border rounded-lg p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">User Info</p>
+                  {!editing ? (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditing(true)}>Edit</Button>
+                  ) : (
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditing(false)}>Cancel</Button>
+                      <Button size="sm" className="h-7 text-xs" onClick={saveUser} disabled={saving}>
+                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {editing ? (
+                  <div className="space-y-2">
+                    <div>
+                      <Label className="text-xs">Name</Label>
+                      <Input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Email</Label>
+                      <Input value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Phone</Label>
+                      <Input value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} className="h-8 text-sm" placeholder="e.g. +61 400 000 000" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><p className="text-xs text-muted-foreground">Name</p><p className="font-medium">{selected.user.name || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Email</p><p className="font-medium">{selected.user.email}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Phone</p><p className="font-medium">{selected.user.phone || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Joined</p><p className="font-medium">{new Date(selected.user.createdAt).toLocaleDateString()}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Status</p><Badge variant={selected.user.status === "active" ? "default" : "destructive"} className="text-xs">{selected.user.status || "active"}</Badge></div>
+                    <div><p className="text-xs text-muted-foreground">Fraud Risk</p><Badge variant={selected.user.fraudRisk === "none" || !selected.user.fraudRisk ? "secondary" : "destructive"} className="text-xs">{selected.user.fraudRisk || "none"}</Badge></div>
+                  </div>
+                )}
+              </div>
+
+              {/* ID Verification */}
+              <div className={`border rounded-lg p-3 text-sm space-y-1 ${
+                selected.verification?.status === "verified"
+                  ? "border-green-300 bg-green-50 dark:bg-green-950/20"
+                  : "border-amber-300 bg-amber-50 dark:bg-amber-950/20"
+              }`}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">ID Verification</p>
+                {selected.verification ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={selected.verification.status === "verified" ? "default" : "secondary"} className="text-xs">
+                        {selected.verification.status}
+                      </Badge>
+                      {selected.verification.verifiedAt && (
+                        <span className="text-xs text-muted-foreground">on {new Date(selected.verification.verifiedAt).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                    {selected.verification.verifiedFirstName && (
+                      <p className="font-medium">{selected.verification.verifiedFirstName} {selected.verification.verifiedLastName}</p>
+                    )}
+                    {selected.verification.verifiedDob && (
+                      <p className="text-xs text-muted-foreground">DOB: {selected.verification.verifiedDob}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-amber-700">No ID verification on file</p>
+                )}
+              </div>
+
+              {/* Admin notes */}
+              {selected.user.adminNotes && (
+                <div className="p-3 bg-muted/50 rounded-lg text-xs whitespace-pre-wrap">{selected.user.adminNotes}</div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2 border-t">
+                <Button size="sm" variant="destructive" onClick={() => updateUserStatus(selected.user.id, "banned")}>Ban User</Button>
+                {selected.user.status === "suspended" && (
+                  <Button size="sm" variant="outline" onClick={() => updateUserStatus(selected.user.id, "active")}>Activate</Button>
+                )}
+                {selected.user.status === "active" && (
+                  <Button size="sm" variant="outline" className="text-amber-600" onClick={() => updateUserStatus(selected.user.id, "suspended")}>Suspend</Button>
+                )}
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-4 gap-4 mb-4">
-              <div><Label className="text-xs">Bookings</Label><p className="text-xl font-bold">{selected.bookings?.length || 0}</p></div>
-              <div><Label className="text-xs">Reviews</Label><p className="text-xl font-bold">{selected.reviews?.length || 0}</p></div>
-              <div><Label className="text-xs">Points</Label><p className="text-xl font-bold">{selected.rewards?.currentPoints || 0}</p></div>
-              <div><Label className="text-xs">Tier</Label><p className="text-xl font-bold">{selected.rewards?.tier || "Bronze"}</p></div>
-            </div>
-            {selected.user.adminNotes && (
-              <div className="p-3 bg-slate-50 rounded text-xs whitespace-pre-wrap mb-3">{selected.user.adminNotes}</div>
-            )}
-            <div className="flex gap-2">
-              <Button size="sm" variant="destructive" onClick={() => updateUserStatus(selected.user.id, "banned")}>Ban User</Button>
-              <Button size="sm" variant="outline" onClick={() => updateUserStatus(selected.user.id, "active")}>Activate</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
