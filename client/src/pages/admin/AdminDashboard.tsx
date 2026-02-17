@@ -3099,7 +3099,7 @@ function HostRevenuePage() {
                   <TableRow>
                     <TableHead className="text-xs">Host</TableHead>
                     <TableHead className="text-xs">Properties</TableHead>
-                    <TableHead className="text-xs">Bookings</TableHead>
+                    <TableHead className="text-xs">Completed</TableHead>
                     <TableHead className="text-xs">Gross Revenue</TableHead>
                     <TableHead className="text-xs">Platform Fee</TableHead>
                     <TableHead className="text-xs">Host Earnings</TableHead>
@@ -3109,7 +3109,7 @@ function HostRevenuePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.hosts.filter((h: any) => h.confirmedBookings > 0 || h.grossRevenue > 0).map((host: any) => (
+                  {data.hosts.filter((h: any) => h.completedBookings > 0 || h.grossRevenue > 0).map((host: any) => (
                     <TableRow key={host.hostId}>
                       <TableCell>
                         <div>
@@ -3118,7 +3118,7 @@ function HostRevenuePage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">{host.propertyCount}</TableCell>
-                      <TableCell className="text-sm">{host.confirmedBookings}</TableCell>
+                      <TableCell className="text-sm">{host.completedBookings}</TableCell>
                       <TableCell className="text-sm font-mono">{formatCents(host.grossRevenue)}</TableCell>
                       <TableCell className="text-sm font-mono text-indigo-600">{formatCents(host.platformFees)}</TableCell>
                       <TableCell className="text-sm font-mono font-semibold">{formatCents(host.hostEarnings)}</TableCell>

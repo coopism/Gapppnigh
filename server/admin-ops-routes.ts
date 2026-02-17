@@ -1542,10 +1542,10 @@ export function registerAdminOpsRoutes(app: Router) {
           h.stripe_account_id,
           COUNT(DISTINCT p.id) as property_count,
           COUNT(b.id) as total_bookings,
-          COUNT(CASE WHEN b.status IN ('CONFIRMED', 'COMPLETED', 'APPROVED') THEN 1 END) as confirmed_bookings,
-          COALESCE(SUM(CASE WHEN b.status IN ('CONFIRMED', 'COMPLETED', 'APPROVED') THEN b.total_price ELSE 0 END), 0) as gross_revenue,
-          COALESCE(SUM(CASE WHEN b.status IN ('CONFIRMED', 'COMPLETED', 'APPROVED') THEN ROUND(b.total_price * 0.07) ELSE 0 END), 0) as platform_fees,
-          COALESCE(SUM(CASE WHEN b.status IN ('CONFIRMED', 'COMPLETED', 'APPROVED') THEN b.total_price - ROUND(b.total_price * 0.07) ELSE 0 END), 0) as host_earnings
+          COUNT(CASE WHEN b.status = 'COMPLETED' THEN 1 END) as completed_bookings,
+          COALESCE(SUM(CASE WHEN b.status = 'COMPLETED' THEN b.total_price ELSE 0 END), 0) as gross_revenue,
+          COALESCE(SUM(CASE WHEN b.status = 'COMPLETED' THEN ROUND(b.total_price * 0.07) ELSE 0 END), 0) as platform_fees,
+          COALESCE(SUM(CASE WHEN b.status = 'COMPLETED' THEN b.total_price - ROUND(b.total_price * 0.07) ELSE 0 END), 0) as host_earnings
         FROM airbnb_hosts h
         LEFT JOIN properties p ON p.host_id = h.id
         LEFT JOIN property_bookings b ON b.host_id = h.id
@@ -1599,7 +1599,7 @@ export function registerAdminOpsRoutes(app: Router) {
           stripeAccountId: row.stripe_account_id,
           propertyCount: Number(row.property_count) || 0,
           totalBookings: Number(row.total_bookings) || 0,
-          confirmedBookings: Number(row.confirmed_bookings) || 0,
+          completedBookings: Number(row.completed_bookings) || 0,
           grossRevenue,
           platformFees,
           hostEarnings,
