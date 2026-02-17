@@ -791,9 +791,8 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
         if (idFirst !== bookFirst || idLast !== bookLast) {
           return res.status(403).json({
             error: "Name mismatch",
-            message: `Please ensure the booking name matches your verified ID exactly. Your ID shows "${verif.verifiedFirstName} ${verif.verifiedLastName}".`,
-            verifiedFirstName: verif.verifiedFirstName,
-            verifiedLastName: verif.verifiedLastName,
+            message: "The name entered does not match your verified ID. Please ensure the booking name matches your ID exactly. If this issue persists, please contact our support team for assistance.",
+            supportUrl: "/contact",
           });
         }
       }

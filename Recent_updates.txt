@@ -3,13 +3,15 @@
 
 ## Improved Name Mismatch Error Message - Feb 18, 2026
 
-135. **Cleaner error when booking name doesn't match verified ID**
-    - Backend message now reads: "Please ensure the booking name matches your verified ID exactly. Your ID shows [name]."
-    - Frontend toast now uses `result.message` (friendly text) instead of `result.error` (short code)
+135. **Security fix: name mismatch error no longer exposes verified ID name**
+    - Error message now reads: "The name entered does not match your verified ID. Please ensure the booking name matches your ID exactly. If this issue persists, please contact our support team for assistance."
+    - No verified name, DOB, or any ID details are ever sent to the frontend
+    - Backend returns `supportUrl: "/contact"` on name mismatch
+    - Frontend shows the error toast, then auto-redirects to the contact/support page after 3 seconds
 
 **Files Modified:**
-- `server/property-routes.ts` — Updated mismatch error message text
-- `client/src/pages/PropertyBooking.tsx` — Use `result.message` for error display in both booking paths
+- `server/property-routes.ts` — Removed ID name from error response, added supportUrl
+- `client/src/pages/PropertyBooking.tsx` — Handle supportUrl redirect in both booking paths
 
 ---
 

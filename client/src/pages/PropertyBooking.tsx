@@ -229,7 +229,18 @@ export default function PropertyBooking() {
         });
 
         const result = await response.json();
-        if (!response.ok) throw new Error(result.message || result.error || "Failed to create booking");
+        if (!response.ok) {
+          if (result.supportUrl) {
+            toast({
+              title: "Booking Failed",
+              description: result.message,
+              variant: "destructive",
+            });
+            setTimeout(() => setLocation(result.supportUrl), 3000);
+            return;
+          }
+          throw new Error(result.message || result.error || "Failed to create booking");
+        }
 
         setBookingRef(result.booking.id);
         setBookingComplete(true);
@@ -278,7 +289,18 @@ export default function PropertyBooking() {
         }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message || result.error || "Failed to create booking");
+      if (!response.ok) {
+        if (result.supportUrl) {
+          toast({
+            title: "Booking Failed",
+            description: result.message,
+            variant: "destructive",
+          });
+          setTimeout(() => setLocation(result.supportUrl), 3000);
+          return;
+        }
+        throw new Error(result.message || result.error || "Failed to create booking");
+      }
 
       setBookingRef(result.booking.id);
       setBookingComplete(true);
