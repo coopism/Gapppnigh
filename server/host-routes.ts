@@ -5,7 +5,7 @@ import { authRateLimit, bookingRateLimit, uploadRateLimit } from "./rate-limit";
 import { 
   airbnbHosts, hostSessions, properties, propertyPhotos, 
   propertyAvailability, propertyBookings, propertyQA, propertyReviews,
-  users, userIdVerifications, gapNightRules
+  users, userIdVerifications, gapNightRules, icalConnections
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, count, sql, asc, or, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
@@ -443,6 +443,7 @@ router.post("/api/host/onboarding/publish", requireHostAuth, async (req: HostReq
       maxGuests, bedrooms, beds, bathrooms, amenities,
       weekdayPrice, weekendPrice, holidayPrice, cleaningFee,
       instantBook, gapDiscounts,
+      icalUrl, autoList,
     } = req.body;
 
     // Validate required fields
@@ -508,12 +509,24 @@ router.post("/api/host/onboarding/publish", requireHostAuth, async (req: HostReq
       autoPublish: false,
     });
 
-    // Store the tiered gap discounts + holiday price as JSON in a metadata approach
-    // We'll store weekend/holiday multipliers on the property itself for now
-    // Update property with weekend and holiday multiplier info via a simple approach
-    // The gap night discount tiers are stored in the gap_night_rules table's gap_night_discount field
-    // For the tiered system, we encode it in the property's service_fee field as a workaround
-    // Better approach: store as JSON in house_rules or a dedicated column
+    // Connect Airbnb iCal if provided
+    if (icalUrl?.trim()) {
+      await db.insert(icalConnections).values({
+        id: uuidv4(),
+        hostId,
+        propertyId,
+        icalUrl: icalUrl.trim(),
+        label: "Airbnb",
+        status: "pending",
+      });
+    }
+
+    // Set auto-publish on gap night rules if requested
+    if (autoList) {
+      await db.update(gapNightRules)
+        .set({ autoPublish: true })
+        .where(and(eq(gapNightRules.hostId, hostId), eq(gapNightRules.propertyId, propertyId)));
+    }
 
     res.json({
       property,

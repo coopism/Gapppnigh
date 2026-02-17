@@ -9,7 +9,7 @@ import {
   Home, Building2, DoorOpen, Sparkles, ChevronRight, ChevronLeft,
   Camera, MapPin, DollarSign, CalendarCheck, Percent, Eye, Upload,
   X, Check, Loader2, Wifi, Car, Waves, Flame, Wind, Tv, TreePine,
-  Dumbbell, ArrowUpDown, Bed, Bath, Users,
+  Dumbbell, ArrowUpDown, Bed, Bath, Users, Link2, Search, CalendarDays, ToggleRight,
 } from "lucide-react";
 
 // ========================================
@@ -47,7 +47,7 @@ const AMENITIES = [
   { name: "Balcony", icon: Home },
 ];
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 10;
 
 function hostEarnings(price: number): string {
   const earnings = price * (1 - SERVICE_FEE_PERCENT / 100);
@@ -112,10 +112,19 @@ export default function HostOnboarding() {
   const [weekdayPrice, setWeekdayPrice] = useState(150);
   const [weekendPrice, setWeekendPrice] = useState(180);
   const [holidayPrice, setHolidayPrice] = useState(220);
-  const [cleaningFee, setCleaningFee] = useState(50);
 
   // Booking settings
   const [bookingMode, setBookingMode] = useState<"approve" | "instant">("approve");
+
+  // Airbnb calendar sync + auto-listing
+  const [icalUrl, setIcalUrl] = useState("");
+  const [autoList, setAutoList] = useState(true);
+
+  // Address autocomplete
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [addressSearching, setAddressSearching] = useState(false);
+  const [addressQuery, setAddressQuery] = useState("");
+  const addressDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Gap night discounts
   const [gap3, setGap3] = useState(35);
@@ -137,6 +146,39 @@ export default function HostOnboarding() {
   }, [setLocation]);
 
   // Navigation
+  // Address autocomplete search
+  const searchAddress = (query: string) => {
+    setAddressQuery(query);
+    setAddress(query);
+    if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+    if (query.length < 4) { setAddressSuggestions([]); return; }
+    addressDebounceRef.current = setTimeout(async () => {
+      setAddressSearching(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=au&format=json&addressdetails=1&limit=5`,
+          { headers: { "Accept-Language": "en" } }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setAddressSuggestions(data);
+        }
+      } catch {}
+      finally { setAddressSearching(false); }
+    }, 300);
+  };
+
+  const selectAddress = (item: any) => {
+    const addr = item.address || {};
+    const road = [addr.house_number, addr.road].filter(Boolean).join(" ");
+    setAddress(road || item.display_name.split(",")[0]);
+    setAddressQuery(road || item.display_name.split(",")[0]);
+    setCity(addr.city || addr.town || addr.suburb || addr.village || "");
+    setStateName(addr.state || "");
+    setPostcode(addr.postcode || "");
+    setAddressSuggestions([]);
+  };
+
   const canGoNext = (): boolean => {
     switch (step) {
       case 0: return !!propertyType;
@@ -146,8 +188,9 @@ export default function HostOnboarding() {
       case 4: return address.trim().length > 0 && city.trim().length > 0;
       case 5: return weekdayPrice > 0;
       case 6: return true;
-      case 7: return true;
+      case 7: return true; // iCal is optional
       case 8: return true;
+      case 9: return true;
       default: return false;
     }
   };
@@ -210,9 +253,11 @@ export default function HostOnboarding() {
           weekdayPrice: Math.round(weekdayPrice * 100),
           weekendPrice: Math.round(weekendPrice * 100),
           holidayPrice: Math.round(holidayPrice * 100),
-          cleaningFee: Math.round(cleaningFee * 100),
+          cleaningFee: 0,
           instantBook: bookingMode === "instant",
           gapDiscounts: { gap3, gap7, gap31, gapOver31 },
+          icalUrl: icalUrl.trim() || undefined,
+          autoList,
         }),
       });
       const data = await res.json();
@@ -378,7 +423,7 @@ export default function HostOnboarding() {
           </div>
         );
 
-      // STEP 4: Address + Basics
+      // STEP 4: Address + Basics (with autocomplete)
       case 4:
         return (
           <div className="space-y-6">
@@ -387,9 +432,32 @@ export default function HostOnboarding() {
               <p className="text-muted-foreground mt-2">Your address is only shared with guests after they book.</p>
             </div>
             <div className="space-y-3">
-              <div>
+              <div className="relative">
                 <label className="text-sm font-medium">Street address</label>
-                <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main Street" />
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={addressQuery || address}
+                    onChange={e => searchAddress(e.target.value)}
+                    placeholder="Start typing your address..."
+                    className="pl-9"
+                  />
+                  {addressSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
+                </div>
+                {addressSuggestions.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                    {addressSuggestions.map((item: any, i: number) => (
+                      <button
+                        key={i}
+                        onClick={() => selectAddress(item)}
+                        className="w-full text-left px-4 py-3 text-sm hover:bg-muted transition-colors border-b border-border/30 last:border-0 flex items-start gap-2"
+                      >
+                        <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">{item.display_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -456,7 +524,7 @@ export default function HostOnboarding() {
           </div>
         );
 
-      // STEP 5: Pricing
+      // STEP 5: Pricing (typed inputs, no cleaning fee)
       case 5:
         return (
           <div className="space-y-6">
@@ -472,49 +540,29 @@ export default function HostOnboarding() {
                 { label: "Public holiday price", sublabel: "Auto-detected", value: holidayPrice, set: setHolidayPrice },
               ].map(p => (
                 <div key={p.label} className="bg-card border border-border/50 rounded-2xl p-5">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="font-semibold">{p.label}</p>
                       <p className="text-xs text-muted-foreground">{p.sublabel}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-2xl font-bold">${p.value}</span>
+                      <span className="text-lg font-bold text-muted-foreground">$</span>
+                      <Input
+                        type="number"
+                        value={p.value || ""}
+                        onChange={e => p.set(Math.max(0, Number(e.target.value)))}
+                        className="w-28 text-right text-2xl font-bold h-12"
+                        min={0}
+                      />
                       <span className="text-sm text-muted-foreground">/night</span>
                     </div>
                   </div>
-                  <input
-                    type="range"
-                    min={20}
-                    max={1000}
-                    step={5}
-                    value={p.value}
-                    onChange={e => p.set(Number(e.target.value))}
-                    className="w-full accent-primary"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground">
                     Guest pays <strong>${p.value}</strong> · You earn <strong>{hostEarnings(p.value)}</strong>
                     <span className="text-muted-foreground/60"> ({SERVICE_FEE_PERCENT}% GapNight service fee)</span>
                   </p>
                 </div>
               ))}
-
-              <div className="bg-card border border-border/50 rounded-2xl p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold">Cleaning fee</p>
-                    <p className="text-xs text-muted-foreground">One-time fee per stay</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold">$</span>
-                    <Input
-                      type="number"
-                      value={cleaningFee}
-                      onChange={e => setCleaningFee(Math.max(0, Number(e.target.value)))}
-                      className="w-24 text-right font-semibold"
-                    />
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         );
@@ -571,8 +619,70 @@ export default function HostOnboarding() {
           </div>
         );
 
-      // STEP 7: Gap night discounts
+      // STEP 7: Airbnb Calendar Sync + Auto-listing
       case 7:
+        return (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold font-display">Sync your Airbnb calendar</h1>
+              <p className="text-muted-foreground mt-2">
+                Connect your Airbnb calendar so we can automatically detect gap nights and list them for you. This step is optional — you can always add it later.
+              </p>
+            </div>
+
+            <div className="bg-card border border-border/50 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-primary" />
+                <p className="font-semibold">Airbnb iCal link</p>
+              </div>
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
+                <p className="text-xs text-muted-foreground">
+                  <strong className="text-foreground">How to find your iCal link:</strong> In Airbnb → Calendar → Availability settings → Export calendar → Copy the link
+                </p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Paste your Airbnb calendar URL (.ics)</label>
+                <Input
+                  placeholder="https://www.airbnb.com/calendar/ical/..."
+                  value={icalUrl}
+                  onChange={e => setIcalUrl(e.target.value)}
+                  className="h-11 font-mono text-xs"
+                />
+              </div>
+              {icalUrl && (
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <Check className="w-4 h-4" />
+                  <span>Calendar link added — we'll sync it after publishing.</span>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-card border border-border/50 rounded-2xl p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ToggleRight className={`w-6 h-6 ${autoList ? "text-primary" : "text-muted-foreground"}`} />
+                  <div>
+                    <p className="font-semibold">Auto-list gap nights</p>
+                    <p className="text-xs text-muted-foreground">Automatically publish gap nights as discounted deals when detected in your calendar.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setAutoList(!autoList)}
+                  className={`relative w-12 h-7 rounded-full transition-colors ${autoList ? "bg-primary" : "bg-muted"}`}
+                >
+                  <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${autoList ? "translate-x-5" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              Don't have an Airbnb listing yet? No worries — skip this step and add it later from your dashboard.
+            </p>
+          </div>
+        );
+
+      // STEP 8: Gap night discounts
+      case 8:
         return (
           <div className="space-y-6">
             <div>
@@ -615,8 +725,8 @@ export default function HostOnboarding() {
           </div>
         );
 
-      // STEP 8: Review & Publish
-      case 8:
+      // STEP 9: Review & Publish
+      case 9:
         return (
           <div className="space-y-6">
             <div>

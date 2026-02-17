@@ -1,6 +1,42 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Host Onboarding Improvements - Feb 18, 2026
+
+173. **Airbnb calendar sync step added (new step 7)**
+    - Hosts can paste their Airbnb iCal URL during onboarding
+    - Auto-listing toggle to automatically publish gap nights as deals
+    - iCal connection created on backend after property publish
+    - Step is optional — can skip and add later from dashboard
+
+174. **Address autocomplete (step 4)**
+    - Uses free Nominatim/OpenStreetMap API for Australian address lookup
+    - Debounced typeahead with search icon and loading spinner
+    - Selecting a suggestion auto-fills street, city, state, postcode
+    - User can still manually edit all fields after selection
+
+175. **Typed price inputs replace sliders (step 5)**
+    - Weekday, weekend, and holiday prices now use $ text inputs instead of range sliders
+    - Cleaner UX — type exact amounts like $1000, $500 etc.
+    - Still shows "Guest pays $X · You earn $Y (7% fee)" below each
+
+176. **Cleaning fee removed from onboarding**
+    - Cleaning fee input card removed entirely from step 5
+    - Publish payload sends cleaningFee: 0
+    - Host manages cleaning independently, not through GapNight
+
+177. **Onboarding now 10 steps (was 9)**
+    - 0: Property type → 1: Title → 2: Description → 3: Photos
+    - 4: Address (autocomplete) → 5: Pricing (typed) → 6: Booking settings
+    - 7: Airbnb calendar sync + auto-listing (NEW)
+    - 8: Gap night discounts → 9: Review & publish
+
+**Files Modified:**
+- `client/src/pages/host/HostOnboarding.tsx` — All UI changes
+- `server/host-routes.ts` — Accept icalUrl + autoList, create iCal connection record
+
+---
+
 ## Remove Guest Fees + Credit Display on Booking - Feb 18, 2026
 
 171. **Removed cleaning fee and GapNight service fee from guest-facing pricing**
