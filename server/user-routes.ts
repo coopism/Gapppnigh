@@ -642,6 +642,13 @@ export function registerUserAuthRoutes(app: Express) {
         });
       }
       
+      // Recalculate tier in case it's stale
+      const correctTier = rewards.calculateTier(userRewards.totalPointsEarned);
+      if (correctTier !== userRewards.tier) {
+        await storage.updateUserRewards(user.id, { tier: correctTier });
+        userRewards.tier = correctTier;
+      }
+      
       // Get next tier info
       const nextTierInfo = rewards.getNextTierInfo(userRewards.tier, userRewards.totalPointsEarned);
       

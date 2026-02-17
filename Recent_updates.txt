@@ -1,6 +1,18 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Fix Stale Tier Display - Feb 18, 2026
+
+178. **Tier now recalculated on every rewards fetch**
+    - Bug: tier stored in DB was "Bronze" even with 2,000 points (should be Platinum)
+    - Fix: `/api/auth/rewards` now recalculates tier from totalPointsEarned and updates DB if stale
+    - Thresholds: Bronze 0, Silver 100, Gold 500, Platinum 1000
+
+**Files Modified:**
+- `server/user-routes.ts` — Recalculate tier on rewards GET, update DB if mismatched
+
+---
+
 ## Host Onboarding Improvements - Feb 18, 2026
 
 173. **Airbnb calendar sync step added (new step 7)**
