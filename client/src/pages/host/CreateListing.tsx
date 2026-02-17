@@ -570,7 +570,7 @@ export default function CreateListing() {
   const canProceed = () => {
     if (step === 0) return true;
     if (step === 1) return true; // Optional step — skip allowed
-    if (step === 2) return !!(form.title && form.description && form.address && form.city);
+    if (step === 2) return !!(form.title && form.description && form.address && form.city && form.nearbyHighlight);
     if (step === 3) return true; // Calendar is optional but manual dates or iCal encouraged
     if (step === 4) return form.baseNightlyRate > 0;
     return true;
@@ -583,6 +583,7 @@ export default function CreateListing() {
       if (!form.description) missing.push("description");
       if (!form.address) missing.push("address");
       if (!form.city) missing.push("city");
+      if (!form.nearbyHighlight) missing.push("nearby highlight");
       return missing;
     }
     if (step === 4) {
@@ -897,8 +898,18 @@ export default function CreateListing() {
                   <Input value={form.postcode} onChange={e => updateForm({ postcode: e.target.value })} className="h-11" placeholder="2000" />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Nearby highlight</label>
-                  <Input value={form.nearbyHighlight} onChange={e => updateForm({ nearbyHighlight: e.target.value })} className="h-11" placeholder="5 min to beach" />
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Nearby highlight *</label>
+                  <Input
+                    value={form.nearbyHighlight}
+                    onChange={e => updateForm({ nearbyHighlight: e.target.value.slice(0, 50) })}
+                    maxLength={50}
+                    className={`h-11 ${!form.nearbyHighlight && step === 2 ? "border-destructive/50" : ""}`}
+                    placeholder="e.g. Rainforest retreat, 15min to Byron Bay"
+                  />
+                  <div className="flex justify-between mt-1">
+                    {!form.nearbyHighlight ? <p className="text-[11px] text-destructive">Required — a short location highlight for your listing</p> : <span />}
+                    <p className="text-[10px] text-muted-foreground">{(form.nearbyHighlight || "").length}/50</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1493,7 +1504,7 @@ export default function CreateListing() {
               size="lg"
               className="w-full h-14 text-base font-bold rounded-xl gap-2"
               onClick={handlePublish}
-              disabled={isPublishing || !form.title || !form.description || !form.address || !form.city || !form.baseNightlyRate}
+              disabled={isPublishing || !form.title || !form.description || !form.address || !form.city || !form.nearbyHighlight || !form.baseNightlyRate}
             >
               {isPublishing ? (
                 <><Loader2 className="h-5 w-5 animate-spin" /> Publishing…</>
@@ -1502,9 +1513,9 @@ export default function CreateListing() {
               )}
             </Button>
 
-            {(!form.title || !form.description || !form.address || !form.city || !form.baseNightlyRate) && (
+            {(!form.title || !form.description || !form.address || !form.city || !form.nearbyHighlight || !form.baseNightlyRate) && (
               <p className="text-xs text-destructive text-center">
-                Missing required fields: {[!form.title && "title", !form.description && "description", !form.address && "address", !form.city && "city", !form.baseNightlyRate && "price"].filter(Boolean).join(", ")}
+                Missing required fields: {[!form.title && "title", !form.description && "description", !form.address && "address", !form.city && "city", !form.nearbyHighlight && "nearby highlight", !form.baseNightlyRate && "price"].filter(Boolean).join(", ")}
               </p>
             )}
 

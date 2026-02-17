@@ -1,6 +1,19 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Nearby Highlight Now Required When Creating a Listing - Feb 18, 2026
+
+136. **Hosts must add a short location description (nearby highlight) when creating a listing**
+    - Field is now required with a 50-character max limit
+    - Shows character counter (X/50) and validation error if empty
+    - Added to step 2 validation, step errors, publish button disabled check, and missing fields warning
+    - Placeholder: "e.g. Rainforest retreat, 15min to Byron Bay"
+
+**Files Modified:**
+- `client/src/pages/host/CreateListing.tsx` — Made nearbyHighlight required, added maxLength + char counter
+
+---
+
 ## Improved Name Mismatch Error Message - Feb 18, 2026
 
 135. **Security fix: name mismatch error no longer exposes verified ID name**
