@@ -1,6 +1,40 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Admin: Host Revenue Tracking & Payout Management - Feb 18, 2026
+
+183. **Host Revenue page in admin panel**
+    - Summary cards: Gross Revenue, Platform Fees (7%), Host Earnings, Paid Out, Owed to Hosts
+    - Per-host breakdown table: properties, bookings, revenue, fees, earnings, paid, owed
+    - "Pay" button opens dialog to create a payout record with amount, method, reference, period, notes
+    - Revenue calculated from confirmed/completed/approved property bookings
+
+184. **Payout History page in admin panel**
+    - Lists all payout records with date, host, amount, platform fee, method, reference, period, status
+    - Status workflow: Pending → Processing → Completed (or Failed → Retry)
+    - Mark as completed with payment reference (bank transfer ref, Stripe ID)
+    - Filter by status (pending, processing, completed, failed)
+
+185. **hostPayouts database table**
+    - New `host_payouts` table: id, hostId, amount, platformFee, bookingIds, method, reference, notes, status, processedBy, processedAt, periodStart, periodEnd
+    - Indexes on host_id and status
+    - Bootstrap SQL for table creation
+
+186. **Backend API endpoints**
+    - GET `/api/x9k2p7m4/host-revenue` — aggregated host revenue with payout balances
+    - GET `/api/x9k2p7m4/payouts` — list payouts with host enrichment, filterable by status/host
+    - POST `/api/x9k2p7m4/payouts` — create payout (requires process_payouts permission)
+    - PATCH `/api/x9k2p7m4/payouts/:id` — update payout status/reference/notes
+    - Added process_payouts permission to admin role
+
+**Files Modified:**
+- `shared/schema.ts` — hostPayouts table, insert schema, type export
+- `server/bootstrap.ts` — CREATE TABLE + indexes for host_payouts
+- `server/admin-ops-routes.ts` — 4 new endpoints, hostPayouts import, process_payouts permission for admin role
+- `client/src/pages/admin/AdminDashboard.tsx` — HostRevenuePage, PayoutHistoryPage, nav items
+
+---
+
 ## Transparent Stripe Processing Fee + Amount Fix - Feb 18, 2026
 
 181. **Stripe processing fee shown transparently on booking page**

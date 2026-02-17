@@ -107,6 +107,10 @@ const NAV_ITEMS: NavItem[] = [
     { id: "users-hosts", label: "Hosts" },
   ]},
   { id: "payments", label: "Payments", icon: CreditCard },
+  { id: "host-payouts", label: "Host Payouts", icon: DollarSign, children: [
+    { id: "host-payouts-revenue", label: "Host Revenue" },
+    { id: "host-payouts-history", label: "Payout History" },
+  ]},
   { id: "promos", label: "Promotions", icon: Gift },
   { id: "reviews", label: "Reviews", icon: Star },
   { id: "content", label: "Content (CMS)", icon: FileText, children: [
@@ -304,6 +308,8 @@ export default function AdminDashboard() {
           {(activePage === "users-all" || activePage === "users") && <UsersPage />}
           {activePage === "users-hosts" && <HostsPage />}
           {activePage === "payments" && <PaymentsPage />}
+          {(activePage === "host-payouts-revenue" || activePage === "host-payouts") && <HostRevenuePage />}
+          {activePage === "host-payouts-history" && <PayoutHistoryPage />}
           {activePage === "promos" && <PromoCodesPage />}
           {activePage === "reviews" && <ReviewsPage />}
           {(activePage === "content-cities" || activePage === "content") && <CityPagesPage />}
@@ -2963,6 +2969,414 @@ function DiagnosticsPage() {
                 </div>
               </div>
             )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ========================================
+// R) HOST REVENUE PAGE
+// ========================================
+function HostRevenuePage() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [createPayoutHost, setCreatePayoutHost] = useState<any>(null);
+  const [payoutForm, setPayoutForm] = useState({ amount: "", method: "bank_transfer", reference: "", notes: "", periodStart: "", periodEnd: "" });
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    const res = await adminFetch("/host-revenue");
+    if (res.ok) setData(res.data);
+    else setError(res.error || "Failed to load");
+    setLoading(false);
+  };
+
+  const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+  const openCreatePayout = (host: any) => {
+    setCreatePayoutHost(host);
+    setPayoutForm({
+      amount: ((host.owed || 0) / 100).toFixed(2),
+      method: "bank_transfer",
+      reference: "",
+      notes: "",
+      periodStart: "",
+      periodEnd: "",
+    });
+  };
+
+  const submitPayout = async () => {
+    if (!createPayoutHost) return;
+    setCreating(true);
+    const res = await adminFetch("/payouts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hostId: createPayoutHost.hostId,
+        amount: Math.round(parseFloat(payoutForm.amount) * 100),
+        platformFee: Math.round(parseFloat(payoutForm.amount) * 100 * 0.07 / 0.93),
+        method: payoutForm.method,
+        reference: payoutForm.reference || undefined,
+        notes: payoutForm.notes || undefined,
+        periodStart: payoutForm.periodStart || undefined,
+        periodEnd: payoutForm.periodEnd || undefined,
+      }),
+    });
+    setCreating(false);
+    if (res.ok) {
+      setCreatePayoutHost(null);
+      load();
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  if (error) return <ErrorState error={error} onRetry={load} />;
+  if (!data) return null;
+
+  const s = data.summary || {};
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Gross Revenue</p>
+            <p className="text-xl font-bold">{formatCents(s.totalGrossRevenue)}</p>
+            <p className="text-xs text-muted-foreground">All confirmed bookings</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Platform Fees (7%)</p>
+            <p className="text-xl font-bold text-indigo-600">{formatCents(s.totalPlatformFees)}</p>
+            <p className="text-xs text-muted-foreground">GapNight revenue</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Host Earnings</p>
+            <p className="text-xl font-bold">{formatCents(s.totalHostEarnings)}</p>
+            <p className="text-xs text-muted-foreground">After platform fee</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Paid Out</p>
+            <p className="text-xl font-bold text-green-600">{formatCents(s.totalPaidOut)}</p>
+            <p className="text-xs text-muted-foreground">Completed payouts</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Owed to Hosts</p>
+            <p className="text-xl font-bold text-amber-600">{formatCents(s.totalOwed)}</p>
+            <p className="text-xs text-muted-foreground">{s.hostCount} hosts</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Per-Host Revenue Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Host Revenue Breakdown</CardTitle>
+          <CardDescription>Revenue and payout status per host</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {(data.hosts || []).length === 0 ? (
+            <p className="text-center py-8 text-slate-400">No hosts with revenue yet</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Host</TableHead>
+                    <TableHead className="text-xs">Properties</TableHead>
+                    <TableHead className="text-xs">Bookings</TableHead>
+                    <TableHead className="text-xs">Gross Revenue</TableHead>
+                    <TableHead className="text-xs">Platform Fee</TableHead>
+                    <TableHead className="text-xs">Host Earnings</TableHead>
+                    <TableHead className="text-xs">Paid</TableHead>
+                    <TableHead className="text-xs">Owed</TableHead>
+                    <TableHead className="text-xs">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.hosts.filter((h: any) => h.confirmedBookings > 0 || h.grossRevenue > 0).map((host: any) => (
+                    <TableRow key={host.hostId}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{host.hostName}</p>
+                          <p className="text-xs text-muted-foreground">{host.hostEmail}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">{host.propertyCount}</TableCell>
+                      <TableCell className="text-sm">{host.confirmedBookings}</TableCell>
+                      <TableCell className="text-sm font-mono">{formatCents(host.grossRevenue)}</TableCell>
+                      <TableCell className="text-sm font-mono text-indigo-600">{formatCents(host.platformFees)}</TableCell>
+                      <TableCell className="text-sm font-mono font-semibold">{formatCents(host.hostEarnings)}</TableCell>
+                      <TableCell className="text-sm font-mono text-green-600">{formatCents(host.totalPaid)}</TableCell>
+                      <TableCell>
+                        {host.owed > 0 ? (
+                          <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs font-mono">
+                            {formatCents(host.owed)}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">Settled</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {host.owed > 0 && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openCreatePayout(host)}>
+                            <DollarSign className="w-3 h-3 mr-1" /> Pay
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create Payout Dialog */}
+      <Dialog open={!!createPayoutHost} onOpenChange={open => !open && setCreatePayoutHost(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Payout</DialogTitle>
+            <DialogDescription>
+              Pay {createPayoutHost?.hostName} ({createPayoutHost?.hostEmail})
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-3 bg-slate-50 rounded-lg text-sm space-y-1">
+              <div className="flex justify-between"><span className="text-muted-foreground">Host Earnings:</span><span className="font-mono">{formatCents(createPayoutHost?.hostEarnings || 0)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Already Paid:</span><span className="font-mono text-green-600">{formatCents(createPayoutHost?.totalPaid || 0)}</span></div>
+              <div className="flex justify-between font-semibold"><span>Owed:</span><span className="font-mono text-amber-600">{formatCents(createPayoutHost?.owed || 0)}</span></div>
+            </div>
+            <div className="space-y-2">
+              <Label>Payout Amount ($)</Label>
+              <Input type="number" step="0.01" value={payoutForm.amount} onChange={e => setPayoutForm({...payoutForm, amount: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Method</Label>
+              <Select value={payoutForm.method} onValueChange={v => setPayoutForm({...payoutForm, method: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="stripe_connect">Stripe Connect</SelectItem>
+                  <SelectItem value="manual">Manual / Cash</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Reference (optional)</Label>
+              <Input placeholder="Bank transfer ref or Stripe ID" value={payoutForm.reference} onChange={e => setPayoutForm({...payoutForm, reference: e.target.value})} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Period Start</Label>
+                <Input type="date" value={payoutForm.periodStart} onChange={e => setPayoutForm({...payoutForm, periodStart: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Period End</Label>
+                <Input type="date" value={payoutForm.periodEnd} onChange={e => setPayoutForm({...payoutForm, periodEnd: e.target.value})} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Textarea placeholder="Internal notes about this payout..." value={payoutForm.notes} onChange={e => setPayoutForm({...payoutForm, notes: e.target.value})} className="min-h-[60px]" />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button className="flex-1" onClick={submitPayout} disabled={creating || !payoutForm.amount || parseFloat(payoutForm.amount) <= 0}>
+                {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                Create Payout
+              </Button>
+              <Button variant="outline" onClick={() => setCreatePayoutHost(null)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ========================================
+// S) PAYOUT HISTORY PAGE
+// ========================================
+function PayoutHistoryPage() {
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  useEffect(() => { load(); }, [statusFilter]);
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    const res = await adminFetch(`/payouts?${params}`);
+    if (res.ok) setPayouts(res.data.payouts || []);
+    else { setError(res.error || "Failed to load"); setPayouts([]); }
+    setLoading(false);
+  };
+
+  const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+  const updatePayout = async (payoutId: string, newStatus: string, reference?: string) => {
+    setActionLoading(payoutId);
+    const body: any = { status: newStatus };
+    if (reference) body.reference = reference;
+    await adminFetch(`/payouts/${payoutId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setActionLoading(null);
+    load();
+  };
+
+  const markCompleted = async (payoutId: string) => {
+    const ref = prompt("Enter payment reference (bank transfer ref, Stripe ID, etc.):");
+    if (ref === null) return;
+    await updatePayout(payoutId, "completed", ref || undefined);
+  };
+
+  const statusBadge = (status: string) => {
+    const map: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+      pending: { variant: "outline", label: "Pending" },
+      processing: { variant: "secondary", label: "Processing" },
+      completed: { variant: "default", label: "Completed" },
+      failed: { variant: "destructive", label: "Failed" },
+    };
+    const cfg = map[status] || { variant: "outline" as const, label: status };
+    return <Badge variant={cfg.variant} className="text-xs">{cfg.label}</Badge>;
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Payout History</CardTitle>
+              <CardDescription>{payouts.length} payouts</CardDescription>
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40 h-8 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div> :
+          error ? <ErrorState error={error} onRetry={load} /> :
+          payouts.length === 0 ? <p className="text-center py-8 text-slate-400">No payouts found</p> : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Host</TableHead>
+                    <TableHead className="text-xs">Amount</TableHead>
+                    <TableHead className="text-xs">Platform Fee</TableHead>
+                    <TableHead className="text-xs">Method</TableHead>
+                    <TableHead className="text-xs">Reference</TableHead>
+                    <TableHead className="text-xs">Period</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payouts.map((p: any) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{p.hostName}</p>
+                          <p className="text-xs text-muted-foreground">{p.hostEmail}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono font-semibold text-sm">{formatCents(p.amount)}</TableCell>
+                      <TableCell className="font-mono text-xs text-indigo-600">{formatCents(p.platformFee)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs capitalize">{(p.method || "").replace("_", " ")}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs font-mono max-w-[120px] truncate">{p.reference || "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {p.periodStart && p.periodEnd ? `${p.periodStart} → ${p.periodEnd}` : "—"}
+                      </TableCell>
+                      <TableCell>{statusBadge(p.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {p.status === "pending" && (
+                            <>
+                              <Button size="sm" variant="outline" className="h-6 text-xs px-2"
+                                disabled={actionLoading === p.id}
+                                onClick={() => updatePayout(p.id, "processing")}>
+                                {actionLoading === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Process"}
+                              </Button>
+                              <Button size="sm" variant="default" className="h-6 text-xs px-2"
+                                disabled={actionLoading === p.id}
+                                onClick={() => markCompleted(p.id)}>
+                                Complete
+                              </Button>
+                            </>
+                          )}
+                          {p.status === "processing" && (
+                            <Button size="sm" variant="default" className="h-6 text-xs px-2"
+                              disabled={actionLoading === p.id}
+                              onClick={() => markCompleted(p.id)}>
+                              {actionLoading === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Mark Paid"}
+                            </Button>
+                          )}
+                          {p.status === "failed" && (
+                            <Button size="sm" variant="outline" className="h-6 text-xs px-2"
+                              disabled={actionLoading === p.id}
+                              onClick={() => updatePayout(p.id, "pending")}>
+                              Retry
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Notes about payout process */}
+      <Card>
+        <CardContent className="p-4">
+          <h4 className="font-semibold text-sm mb-2">Payout Process</h4>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>1. Go to <strong>Host Revenue</strong> tab to see what's owed to each host</p>
+            <p>2. Click <strong>Pay</strong> to create a payout record with the amount and method</p>
+            <p>3. Transfer the funds via bank transfer or Stripe Connect</p>
+            <p>4. Come back here and mark the payout as <strong>Completed</strong> with the reference number</p>
           </div>
         </CardContent>
       </Card>

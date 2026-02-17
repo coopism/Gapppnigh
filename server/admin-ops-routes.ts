@@ -5,9 +5,9 @@ import {
   adminUsers, adminSessions, adminActivityLogs, users, bookings, deals, hotels, promoCodes,
   featureFlags, siteConfig, supportTickets, cmsCityPages, cmsBanners, cmsStaticPages,
   notificationTemplates, notificationLogs, properties, propertyBookings, propertyAvailability, airbnbHosts,
-  propertyReviews, userIdVerifications
+  propertyReviews, userIdVerifications, hostPayouts
 } from "@shared/schema";
-import { eq, desc, sql, and, gte, lte, count, ilike, or, asc, ne } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lte, count, ilike, or, asc, ne, inArray } from "drizzle-orm";
 
 const ADMIN_PREFIX = "/api/x9k2p7m4";
 
@@ -20,7 +20,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   admin: [
     "view_dashboard", "manage_deals", "manage_properties", "manage_inventory",
     "manage_users", "ban_users", "manage_bookings", "cancel_refund",
-    "view_payments", "manage_promos", "issue_credits", "manage_content",
+    "view_payments", "process_payouts", "manage_promos", "issue_credits", "manage_content",
     "send_notifications", "manage_support", "feature_flags", "view_audit_logs",
   ],
   support: [
@@ -1523,6 +1523,210 @@ export function registerAdminOpsRoutes(app: Router) {
     } catch (error) {
       console.error("Refund error:", error);
       res.status(500).json({ message: "Failed to process refund" });
+    }
+  });
+
+  // ========================================
+  // Q) HOST REVENUE & PAYOUTS
+  // ========================================
+
+  // Get aggregated host revenue stats
+  app.get(`${ADMIN_PREFIX}/host-revenue`, adminAuth, requirePermission("view_payments"), async (req, res) => {
+    try {
+      // Get all hosts with their booking revenue
+      const hostRevenue = await db.execute(sql`
+        SELECT
+          h.id as host_id,
+          h.name as host_name,
+          h.email as host_email,
+          h.stripe_account_id,
+          COUNT(DISTINCT p.id) as property_count,
+          COUNT(b.id) as total_bookings,
+          COUNT(CASE WHEN b.status IN ('CONFIRMED', 'COMPLETED', 'APPROVED') THEN 1 END) as confirmed_bookings,
+          COALESCE(SUM(CASE WHEN b.status IN ('CONFIRMED', 'COMPLETED', 'APPROVED') THEN b.total_price ELSE 0 END), 0) as gross_revenue,
+          COALESCE(SUM(CASE WHEN b.status IN ('CONFIRMED', 'COMPLETED', 'APPROVED') THEN ROUND(b.total_price * 0.07) ELSE 0 END), 0) as platform_fees,
+          COALESCE(SUM(CASE WHEN b.status IN ('CONFIRMED', 'COMPLETED', 'APPROVED') THEN b.total_price - ROUND(b.total_price * 0.07) ELSE 0 END), 0) as host_earnings
+        FROM airbnb_hosts h
+        LEFT JOIN properties p ON p.host_id = h.id
+        LEFT JOIN property_bookings b ON b.host_id = h.id
+        GROUP BY h.id, h.name, h.email, h.stripe_account_id
+        ORDER BY host_earnings DESC
+      `);
+
+      // Get total payouts already made per host
+      const payoutTotals = await db.execute(sql`
+        SELECT
+          host_id,
+          COALESCE(SUM(CASE WHEN status IN ('completed', 'processing') THEN amount ELSE 0 END), 0) as total_paid,
+          COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as pending_payout
+        FROM host_payouts
+        GROUP BY host_id
+      `);
+
+      const payoutMap: Record<string, { totalPaid: number; pendingPayout: number }> = {};
+      for (const row of payoutTotals.rows as any[]) {
+        payoutMap[row.host_id] = {
+          totalPaid: Number(row.total_paid) || 0,
+          pendingPayout: Number(row.pending_payout) || 0,
+        };
+      }
+
+      // Summary stats
+      let totalGrossRevenue = 0;
+      let totalPlatformFees = 0;
+      let totalHostEarnings = 0;
+      let totalPaidOut = 0;
+      let totalOwed = 0;
+
+      const hosts = (hostRevenue.rows as any[]).map(row => {
+        const grossRevenue = Number(row.gross_revenue) || 0;
+        const platformFees = Number(row.platform_fees) || 0;
+        const hostEarnings = Number(row.host_earnings) || 0;
+        const paid = payoutMap[row.host_id]?.totalPaid || 0;
+        const pending = payoutMap[row.host_id]?.pendingPayout || 0;
+        const owed = hostEarnings - paid - pending;
+
+        totalGrossRevenue += grossRevenue;
+        totalPlatformFees += platformFees;
+        totalHostEarnings += hostEarnings;
+        totalPaidOut += paid;
+        totalOwed += Math.max(owed, 0);
+
+        return {
+          hostId: row.host_id,
+          hostName: row.host_name,
+          hostEmail: row.host_email,
+          stripeAccountId: row.stripe_account_id,
+          propertyCount: Number(row.property_count) || 0,
+          totalBookings: Number(row.total_bookings) || 0,
+          confirmedBookings: Number(row.confirmed_bookings) || 0,
+          grossRevenue,
+          platformFees,
+          hostEarnings,
+          totalPaid: paid,
+          pendingPayout: pending,
+          owed: Math.max(owed, 0),
+        };
+      });
+
+      res.json({
+        hosts,
+        summary: {
+          totalGrossRevenue,
+          totalPlatformFees,
+          totalHostEarnings,
+          totalPaidOut,
+          totalOwed,
+          hostCount: hosts.length,
+        },
+      });
+    } catch (error) {
+      console.error("Host revenue error:", error);
+      res.status(500).json({ message: "Failed to load host revenue data" });
+    }
+  });
+
+  // List all payouts
+  app.get(`${ADMIN_PREFIX}/payouts`, adminAuth, requirePermission("view_payments"), async (req, res) => {
+    try {
+      const { status: statusFilter, hostId } = req.query;
+      const conditions: any[] = [];
+      if (statusFilter && statusFilter !== "all") conditions.push(eq(hostPayouts.status, statusFilter as string));
+      if (hostId) conditions.push(eq(hostPayouts.hostId, hostId as string));
+
+      const payouts = await db.select().from(hostPayouts)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(hostPayouts.createdAt))
+        .limit(200);
+
+      // Enrich with host names
+      const hostIds = [...new Set(payouts.map(p => p.hostId))];
+      const hostsData = hostIds.length > 0
+        ? await db.select({ id: airbnbHosts.id, name: airbnbHosts.name, email: airbnbHosts.email })
+            .from(airbnbHosts).where(inArray(airbnbHosts.id, hostIds))
+        : [];
+      const hostMap: Record<string, { name: string; email: string }> = {};
+      for (const h of hostsData) {
+        hostMap[h.id] = { name: h.name, email: h.email };
+      }
+
+      const enriched = payouts.map(p => ({
+        ...p,
+        hostName: hostMap[p.hostId]?.name || "Unknown",
+        hostEmail: hostMap[p.hostId]?.email || "",
+      }));
+
+      res.json({ payouts: enriched });
+    } catch (error) {
+      console.error("Payouts list error:", error);
+      res.status(500).json({ message: "Failed to load payouts" });
+    }
+  });
+
+  // Create a new payout
+  app.post(`${ADMIN_PREFIX}/payouts`, adminAuth, requirePermission("process_payouts"), async (req, res) => {
+    try {
+      const admin = (req as any).admin;
+      const { hostId, amount, platformFee, bookingIds, method, reference, notes, periodStart, periodEnd } = req.body;
+
+      if (!hostId || !amount) {
+        return res.status(400).json({ message: "hostId and amount are required" });
+      }
+
+      const payout = {
+        id: uuidv4(),
+        hostId,
+        amount: Math.round(amount),
+        platformFee: Math.round(platformFee || 0),
+        bookingIds: bookingIds || [],
+        method: method || "bank_transfer",
+        reference: reference || null,
+        notes: notes || null,
+        status: "pending" as const,
+        processedBy: null as string | null,
+        processedAt: null as Date | null,
+        periodStart: periodStart || null,
+        periodEnd: periodEnd || null,
+      };
+
+      await db.insert(hostPayouts).values(payout);
+      await auditLog(admin.id, "payout_created", "payments", "host_payout", payout.id,
+        { hostId, amount, method }, getIP(req));
+
+      res.json({ payout });
+    } catch (error) {
+      console.error("Create payout error:", error);
+      res.status(500).json({ message: "Failed to create payout" });
+    }
+  });
+
+  // Update payout status (mark as processing, completed, failed)
+  app.patch(`${ADMIN_PREFIX}/payouts/:payoutId`, adminAuth, requirePermission("process_payouts"), async (req, res) => {
+    try {
+      const admin = (req as any).admin;
+      const payoutId = req.params.payoutId as string;
+      const { status: newStatus, reference, notes } = req.body;
+
+      const [before] = await db.select().from(hostPayouts).where(eq(hostPayouts.id, payoutId)).limit(1);
+      if (!before) return res.status(404).json({ message: "Payout not found" });
+
+      const updates: any = { updatedAt: new Date() };
+      if (newStatus) updates.status = newStatus;
+      if (reference !== undefined) updates.reference = reference;
+      if (notes !== undefined) updates.notes = notes;
+      if (newStatus === "completed" || newStatus === "processing") {
+        updates.processedBy = admin.id;
+        updates.processedAt = new Date();
+      }
+
+      await db.update(hostPayouts).set(updates).where(eq(hostPayouts.id, payoutId));
+      await auditLog(admin.id, "payout_updated", "payments", "host_payout", payoutId,
+        { newStatus, reference }, getIP(req), { status: before.status }, { status: newStatus });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Update payout error:", error);
+      res.status(500).json({ message: "Failed to update payout" });
     }
   });
 

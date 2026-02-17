@@ -474,6 +474,30 @@ async function createTables() {
   `);
 
   // ========================================
+  // HOST PAYOUTS
+  // ========================================
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "host_payouts" (
+      "id" text PRIMARY KEY NOT NULL,
+      "host_id" text NOT NULL REFERENCES "airbnb_hosts"("id"),
+      "amount" integer NOT NULL,
+      "platform_fee" integer DEFAULT 0 NOT NULL,
+      "booking_ids" text[],
+      "method" text DEFAULT 'bank_transfer' NOT NULL,
+      "reference" text,
+      "notes" text,
+      "status" text DEFAULT 'pending' NOT NULL,
+      "processed_by" text,
+      "processed_at" timestamp,
+      "period_start" text,
+      "period_end" text,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  // ========================================
   // DRAFT LISTINGS + iCAL + GAP NIGHT RULES
   // ========================================
 
@@ -895,6 +919,10 @@ async function createTables() {
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_bookings_host_id ON "property_bookings"("host_id")`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_bookings_user_id ON "property_bookings"("user_id")`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_bookings_status ON "property_bookings"("status")`);
+
+  // Host payouts indexes
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_host_payouts_host_id ON "host_payouts"("host_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_host_payouts_status ON "host_payouts"("status")`);
 
   // Property Q&A indexes
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_property_qa_property_id ON "property_qa"("property_id")`);

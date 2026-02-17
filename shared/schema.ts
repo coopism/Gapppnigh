@@ -512,6 +512,24 @@ export const propertyBookings = pgTable("property_bookings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const hostPayouts = pgTable("host_payouts", {
+  id: text("id").primaryKey(), // UUID
+  hostId: text("host_id").notNull().references(() => airbnbHosts.id),
+  amount: integer("amount").notNull(), // in cents — amount paid to host
+  platformFee: integer("platform_fee").notNull().default(0), // GapNight's 7% cut in cents
+  bookingIds: text("booking_ids").array(), // array of booking IDs included in this payout
+  method: text("method").notNull().default("bank_transfer"), // bank_transfer | stripe_connect | manual
+  reference: text("reference"), // bank transfer ref or Stripe transfer ID
+  notes: text("notes"), // admin notes
+  status: text("status").notNull().default("pending"), // pending | processing | completed | failed
+  processedBy: text("processed_by"), // admin user ID who processed it
+  processedAt: timestamp("processed_at"),
+  periodStart: text("period_start"), // YYYY-MM-DD — payout covers bookings from this date
+  periodEnd: text("period_end"), // YYYY-MM-DD — payout covers bookings to this date
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const propertyQA = pgTable("property_qa", {
   id: text("id").primaryKey(), // UUID
   propertyId: text("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
@@ -819,6 +837,7 @@ export const insertPropertyBookingSchema = createInsertSchema(propertyBookings).
 export const insertPropertyQASchema = createInsertSchema(propertyQA).omit({ createdAt: true });
 export const insertUserIdVerificationSchema = createInsertSchema(userIdVerifications).omit({ createdAt: true, updatedAt: true });
 export const insertPropertyReviewSchema = createInsertSchema(propertyReviews).omit({ createdAt: true });
+export const insertHostPayoutSchema = createInsertSchema(hostPayouts).omit({ createdAt: true, updatedAt: true });
 export const insertDraftListingSchema = createInsertSchema(draftListings).omit({ createdAt: true, updatedAt: true });
 export const insertIcalConnectionSchema = createInsertSchema(icalConnections).omit({ createdAt: true, updatedAt: true });
 export const insertGapNightRuleSchema = createInsertSchema(gapNightRules).omit({ createdAt: true, updatedAt: true });
@@ -836,6 +855,7 @@ export type InsertPropertyBooking = z.infer<typeof insertPropertyBookingSchema>;
 export type PropertyQA = typeof propertyQA.$inferSelect;
 export type UserIdVerification = typeof userIdVerifications.$inferSelect;
 export type PropertyReview = typeof propertyReviews.$inferSelect;
+export type HostPayout = typeof hostPayouts.$inferSelect;
 export type DraftListing = typeof draftListings.$inferSelect;
 export type InsertDraftListing = z.infer<typeof insertDraftListingSchema>;
 export type IcalConnection = typeof icalConnections.$inferSelect;
