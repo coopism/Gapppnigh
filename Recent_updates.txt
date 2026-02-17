@@ -1,6 +1,18 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Improved Name Mismatch Error Message - Feb 18, 2026
+
+135. **Cleaner error when booking name doesn't match verified ID**
+    - Backend message now reads: "Please ensure the booking name matches your verified ID exactly. Your ID shows [name]."
+    - Frontend toast now uses `result.message` (friendly text) instead of `result.error` (short code)
+
+**Files Modified:**
+- `server/property-routes.ts` — Updated mismatch error message text
+- `client/src/pages/PropertyBooking.tsx` — Use `result.message` for error display in both booking paths
+
+---
+
 ## ID Verification: Name Matching, Storage & Booking Enforcement - Feb 18, 2026
 
 132. **Store verified identity from Stripe after ID verification**

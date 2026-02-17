@@ -229,7 +229,7 @@ export default function PropertyBooking() {
         });
 
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "Failed to create booking");
+        if (!response.ok) throw new Error(result.message || result.error || "Failed to create booking");
 
         setBookingRef(result.booking.id);
         setBookingComplete(true);
@@ -278,7 +278,7 @@ export default function PropertyBooking() {
         }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to create booking");
+      if (!response.ok) throw new Error(result.message || result.error || "Failed to create booking");
 
       setBookingRef(result.booking.id);
       setBookingComplete(true);
