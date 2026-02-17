@@ -1,6 +1,25 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Admin Add Points + Test User Seed Script - Feb 18, 2026
+
+147. **Admin can now add points to user accounts**
+    - New `POST /users/:userId/points` endpoint (creates rewards account if needed, logs transaction)
+    - "Add Points" UI in admin user detail dialog: points input, optional reason, Add button
+    - Refreshes user detail after adding to show updated balance
+
+148. **Seed script for test user (scoopmeals@gmail.com)**
+    - `server/seed-test-user.ts` — creates a completed booking + 500 reward points
+    - Run with: `npx tsx server/seed-test-user.ts` (requires user to be signed up first)
+    - Uses raw SQL to avoid schema/DB column mismatches
+
+**Files Modified:**
+- `server/admin-routes.ts` — Added points endpoint, imported userRewards + rewardsTransactions
+- `client/src/pages/admin/AdminDashboard.tsx` — Added Add Points UI in user detail dialog
+- `server/seed-test-user.ts` — New seed script
+
+---
+
 ## Fix Map Markers, Clean Up Filter UI, Fix Entire Home Filter - Feb 18, 2026
 
 144. **Fixed map price marker positioning**

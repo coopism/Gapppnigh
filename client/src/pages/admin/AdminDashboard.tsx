@@ -1153,6 +1153,9 @@ function UsersPage() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", email: "", phone: "" });
   const [saving, setSaving] = useState(false);
+  const [pointsToAdd, setPointsToAdd] = useState("");
+  const [pointsDesc, setPointsDesc] = useState("");
+  const [addingPoints, setAddingPoints] = useState(false);
 
   useEffect(() => { load(); }, [search]);
 
@@ -1191,6 +1194,24 @@ function UsersPage() {
       setEditing(false);
       viewDetails(selected.user.id);
       load();
+    }
+  };
+
+  const addPoints = async () => {
+    if (!selected || !pointsToAdd) return;
+    const pts = parseInt(pointsToAdd);
+    if (!pts || pts <= 0) return;
+    setAddingPoints(true);
+    const res = await adminFetch(`/users/${selected.user.id}/points`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ points: pts, description: pointsDesc || "Admin-awarded points" }),
+    });
+    setAddingPoints(false);
+    if (res.ok) {
+      setPointsToAdd("");
+      setPointsDesc("");
+      viewDetails(selected.user.id);
     }
   };
 
@@ -1351,6 +1372,30 @@ function UsersPage() {
                 ) : (
                   <p className="text-xs text-amber-700">No ID verification on file</p>
                 )}
+              </div>
+
+              {/* Add Points */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Add Points</p>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={pointsToAdd}
+                    onChange={e => setPointsToAdd(e.target.value)}
+                    placeholder="Points"
+                    className="h-8 text-sm w-24"
+                    min={1}
+                  />
+                  <Input
+                    value={pointsDesc}
+                    onChange={e => setPointsDesc(e.target.value)}
+                    placeholder="Reason (optional)"
+                    className="h-8 text-sm flex-1"
+                  />
+                  <Button size="sm" className="h-8 text-xs" onClick={addPoints} disabled={addingPoints || !pointsToAdd}>
+                    {addingPoints ? <Loader2 className="w-3 h-3 animate-spin" /> : "Add"}
+                  </Button>
+                </div>
               </div>
 
               {/* Admin notes */}

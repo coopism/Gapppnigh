@@ -7,7 +7,7 @@ import {
   adminUsers, adminSessions, adminActivityLogs, users, bookings, deals, hotels, hotelReviews, promoCodes,
   featureFlags, siteConfig, supportTickets, cmsCityPages, cmsBanners, cmsStaticPages,
   notificationTemplates, notificationLogs, properties, propertyBookings, propertyAvailability, airbnbHosts,
-  userIdVerifications
+  userIdVerifications, userRewards, rewardsTransactions
 } from "@shared/schema";
 import { eq, desc, sql, and, gte, lte, count, ilike, or, asc, inArray, ne } from "drizzle-orm";
 import { LOG_RETENTION_DAYS } from "./config";
@@ -444,6 +444,57 @@ export function registerAdminRoutes(app: Router) {
     } catch (error) {
       console.error("Update user error:", error);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Add points to user account
+  app.post(`${ADMIN_PREFIX}/users/:userId/points`, adminAuthMiddleware, async (req, res) => {
+    try {
+      const userId = req.params.userId as string;
+      const { points, description } = req.body;
+
+      if (!points || typeof points !== "number" || points <= 0) {
+        return res.status(400).json({ message: "Points must be a positive number" });
+      }
+
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      // Get or create rewards record
+      let [rewards] = await db.select().from(userRewards).where(eq(userRewards.userId, userId)).limit(1);
+      if (!rewards) {
+        const id = uuidv4();
+        await db.insert(userRewards).values({
+          id,
+          userId,
+          totalPointsEarned: 0,
+          currentPoints: 0,
+          creditBalance: 0,
+          tier: "Bronze",
+        });
+        [rewards] = await db.select().from(userRewards).where(eq(userRewards.userId, userId)).limit(1);
+      }
+
+      // Add points
+      await db.update(userRewards).set({
+        currentPoints: rewards.currentPoints + points,
+        totalPointsEarned: rewards.totalPointsEarned + points,
+        updatedAt: new Date(),
+      }).where(eq(userRewards.userId, userId));
+
+      // Create transaction record
+      await db.insert(rewardsTransactions).values({
+        id: uuidv4(),
+        userId,
+        type: "EARN",
+        points,
+        description: description || "Admin-awarded points",
+      });
+
+      res.json({ success: true, message: `${points} points added`, newBalance: rewards.currentPoints + points });
+    } catch (error) {
+      console.error("Add points error:", error);
+      res.status(500).json({ message: "Failed to add points" });
     }
   });
 
