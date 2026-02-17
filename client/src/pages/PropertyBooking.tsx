@@ -211,10 +211,15 @@ export default function PropertyBooking() {
   }, [watchedFields]);
 
   // Calculate pricing — no fees shown to guest, we take our cut from the host payout
-  const nightlyRate = property?.baseNightlyRate || 0;
-  const totalNightly = nightlyRate * nightsParam;
-  const creditApplied = Math.min(creditBalance, totalNightly); // can't exceed total
-  const grandTotal = totalNightly - creditApplied;
+  const nightlyRate = property?.baseNightlyRate || 0; // in cents
+  const totalNightly = nightlyRate * nightsParam; // in cents
+  const creditApplied = Math.min(creditBalance, totalNightly); // can't exceed total, in cents
+  const subtotal = totalNightly - creditApplied; // in cents
+  // Stripe processing fee: 1.75% + 30c for Australian cards (passed through transparently)
+  const STRIPE_PERCENT = 1.75;
+  const STRIPE_FIXED_CENTS = 30;
+  const stripeFee = subtotal > 0 ? Math.round(subtotal * STRIPE_PERCENT / 100) + STRIPE_FIXED_CENTS : 0;
+  const grandTotal = subtotal + stripeFee; // in cents, includes processing fee
 
   const handlePaymentSuccess = async (intentId: string) => {
     setPaymentIntentId(intentId);
@@ -769,7 +774,7 @@ export default function PropertyBooking() {
                     </div>
                   ) : (!user || idStatus === "verified") ? (
                     <StripePaymentForm
-                      amount={grandTotal}
+                      amount={grandTotal / 100}
                       currency="AUD"
                       dealId={propertyId}
                       hotelName={property.title}
@@ -903,8 +908,14 @@ export default function PropertyBooking() {
                       <span>−{formatPrice(creditApplied / 100, "AUD")}</span>
                     </div>
                   )}
+                  {stripeFee > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Payment processing</span>
+                      <span className="text-foreground">{formatPrice(stripeFee / 100, "AUD")}</span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-3">No hidden fees — the price you see is the price you pay.</p>
+                <p className="text-xs text-muted-foreground mt-3">All fees shown upfront — the price you see is the price you pay.</p>
               </div>
 
               <div className="p-4">

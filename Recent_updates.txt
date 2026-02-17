@@ -1,6 +1,23 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Transparent Stripe Processing Fee + Amount Fix - Feb 18, 2026
+
+181. **Stripe processing fee shown transparently on booking page**
+    - New "Payment processing" line item in pricing breakdown (1.75% + 30c)
+    - Guests see exact fee before paying — no surprise charges
+    - Updated message: "All fees shown upfront — the price you see is the price you pay"
+
+182. **Fixed double-conversion bug in PropertyBooking → StripePaymentForm**
+    - Bug: grandTotal was in cents but StripePaymentForm expected dollars (did ×100 again)
+    - Fix: now passes grandTotal / 100 (dollars) to StripePaymentForm
+    - Booking.tsx (hotel deals) was already correct; only PropertyBooking.tsx was affected
+
+**Files Modified:**
+- `client/src/pages/PropertyBooking.tsx` — Processing fee calc, amount fix, pricing breakdown update
+
+---
+
 ## Fix Booking Without Policy Agreement - Feb 18, 2026
 
 180. **Block booking submission if policy checkbox is unchecked**
