@@ -1,6 +1,25 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Fix Password Reset Email: Button Not Clickable + Going to Junk - Feb 18, 2026
+
+140. **Fixed reset button not clickable in email**
+    - Replaced simple `<a>` tag with table-based "bulletproof button" that works in Outlook, Gmail, Apple Mail
+    - Added `target="_blank"`, `rel="noopener noreferrer"`, MSO conditional comments for Outlook
+    - Added plaintext URL fallback below button: "If the button above doesn't work, copy and paste this link"
+
+141. **Improved email deliverability (reduce spam/junk placement)**
+    - Removed emoji from heading (spam trigger)
+    - Changed default from address from `bookings@` to `noreply@gapnight.com`
+    - Added plain text version (`text` field) to both verification and password reset emails
+    - Cleaned footer text: removed "Last-minute hotel deals at unbeatable prices" (spammy), replaced with "Accommodation you'll love, for less"
+    - Added proper HTML meta tags (`x-apple-disable-message-reformatting`, `format-detection`)
+
+**Files Modified:**
+- `server/user-email.ts` — Rebuilt password reset email template, added text versions to both emails
+
+---
+
 ## Admin User Management: Eye Button Fix, Edit Users, Phone Number - Feb 18, 2026
 
 137. **Fixed eye button (view user details) in admin dashboard**
