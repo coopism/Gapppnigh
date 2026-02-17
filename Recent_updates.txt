@@ -1,6 +1,32 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Airbnb-Style Map + Filter Bar on Deals Page - Feb 18, 2026
+
+142. **Map overhaul — Airbnb-style white pill price markers**
+    - Replaced SVG pin markers with white rounded pill badges showing price (e.g. "$244 AUD")
+    - Hover/click inverts to dark background, scales up slightly
+    - Click opens a clean popup with image, title, subtitle, price per night
+    - Popup links directly to the deal/property page
+    - Map now shows both deals AND properties (not just deals)
+    - Uses CartoDB Voyager tiles for a clean, modern look
+
+143. **Airbnb-style filter bar added below category chips**
+    - Horizontal pill bar: Filters button (with active count badge), quick type pills (Any type / Entire home / Room), Price range
+    - Expandable filter panel with 4 sections:
+      - **Recommended**: Instant Book, Self check-in, Kitchen, Pool/Hot tub (icon toggle cards)
+      - **Type of place**: Any type / Room / Entire home (segmented control)
+      - **Price range**: Min/Max dollar inputs
+      - **Rooms and beds**: Bedrooms, Beds, Bathrooms (+/- counters, "Any" default)
+    - Footer with "Clear all" link and "Show X stays" button
+    - All filters are fully functional — client-side filtering on combinedItems
+
+**Files Modified:**
+- `client/src/components/DealsMap.tsx` — Complete rewrite with price pill markers, popup cards, dual deal+property support
+- `client/src/pages/Home.tsx` — Added filter state, filter bar UI, filter panel, client-side filtering logic
+
+---
+
 ## Fix Password Reset Email: Button Not Clickable + Going to Junk - Feb 18, 2026
 
 140. **Fixed reset button not clickable in email**

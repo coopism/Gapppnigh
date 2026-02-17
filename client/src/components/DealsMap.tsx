@@ -1,114 +1,200 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import type { Deal } from "@shared/schema";
 import { formatPrice } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import "leaflet/dist/leaflet.css";
 
+interface MapItem {
+  id: string;
+  lat: number;
+  lng: number;
+  price: number;
+  currency: string;
+  label: string;
+  image: string;
+  subtitle: string;
+  link: string;
+  type: "deal" | "property";
+}
+
 interface DealsMapProps {
-  deals: Deal[];
+  deals?: Deal[];
+  properties?: any[];
+  selectedId?: string;
+  onSelect?: (id: string, type: "deal" | "property") => void;
+  // legacy compat
   selectedDealId?: string;
   onDealSelect?: (dealId: string) => void;
 }
 
-export function DealsMap({ deals, selectedDealId, onDealSelect }: DealsMapProps) {
+function normalizeItems(deals?: Deal[], properties?: any[]): MapItem[] {
+  const items: MapItem[] = [];
+
+  (deals || []).forEach(d => {
+    if (!d.latitude || !d.longitude) return;
+    items.push({
+      id: d.id,
+      lat: parseFloat(d.latitude),
+      lng: parseFloat(d.longitude),
+      price: d.dealPrice,
+      currency: d.currency,
+      label: d.hotelName,
+      image: d.imageUrl,
+      subtitle: `${d.rating}★ · ${d.nights}N · ${format(parseISO(d.checkInDate), "MMM d")}`,
+      link: `/deal/${d.id}`,
+      type: "deal",
+    });
+  });
+
+  (properties || []).forEach(p => {
+    if (!p.latitude || !p.longitude) return;
+    const price = p.baseNightlyRate ? p.baseNightlyRate / 100 : 0;
+    items.push({
+      id: p.id,
+      lat: parseFloat(p.latitude),
+      lng: parseFloat(p.longitude),
+      price,
+      currency: "AUD",
+      label: p.title || "Property",
+      image: p.coverImage || p.images?.[0] || "",
+      subtitle: `${p.city || ""} · ${p.maxGuests || 2} guests`,
+      link: `/property/${p.id}`,
+      type: "property",
+    });
+  });
+
+  return items;
+}
+
+export function DealsMap({ deals, properties, selectedId, onSelect, selectedDealId, onDealSelect }: DealsMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
-  const markers = useRef<L.Marker[]>([]);
-  
-  const validDeals = deals.filter(d => d.latitude && d.longitude);
-  
+  const markersRef = useRef<L.Marker[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const items = normalizeItems(deals, properties);
+  const selId = selectedId || selectedDealId || null;
+
   useEffect(() => {
-    if (!mapContainer.current || validDeals.length === 0) return;
-    
-    // Calculate center
-    const lats = validDeals.map(d => parseFloat(d.latitude!));
-    const lngs = validDeals.map(d => parseFloat(d.longitude!));
+    if (!mapContainer.current || items.length === 0) return;
+
+    const lats = items.map(i => i.lat);
+    const lngs = items.map(i => i.lng);
     const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
     const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-    
-    // Initialize map with clean CartoDB tiles
+
     map.current = L.map(mapContainer.current, {
       attributionControl: false,
       zoomControl: true,
-    }).setView([centerLat, centerLng], 8);
-    
-    // Add clean, minimal tile layer
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    }).setView([centerLat, centerLng], 10);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
     }).addTo(map.current);
-    
-    // Create custom icon
-    const createIcon = (isSelected: boolean) => L.divIcon({
-      className: 'custom-marker',
-      html: `
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="${isSelected ? '#f59e0b' : '#0ea5a5'}" stroke="white" stroke-width="1.5" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-          <circle cx="12" cy="10" r="3" fill="white"></circle>
-        </svg>
-      `,
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-    });
-    
-    // Add markers
-    validDeals.forEach((deal) => {
-      const popupContent = `
-        <div style="min-width: 200px; padding: 8px;">
-          <img src="${deal.imageUrl}" alt="${deal.hotelName}" style="width: 100%; height: 96px; object-fit: cover; border-radius: 6px; margin-bottom: 8px;" />
-          <h3 style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${deal.hotelName}</h3>
-          <div style="font-size: 12px; color: #666; margin-bottom: 4px;">⭐ ${deal.rating} (${deal.reviewCount})</div>
-          <div style="font-size: 12px; color: #666; margin-bottom: 8px;">📅 ${format(parseISO(deal.checkInDate), "MMM d")} (${deal.nights}N)</div>
-          <div style="display: flex; justify-between; align-items: center;">
-            <div>
-              <span style="font-size: 12px; text-decoration: line-through; color: #999;">${formatPrice(deal.normalPrice, deal.currency)}</span>
-              <span style="margin-left: 8px; font-weight: bold; color: #0ea5a5;">${formatPrice(deal.dealPrice, deal.currency)}</span>
-            </div>
-            <span style="font-size: 12px; font-weight: bold; color: #d97706; background: #fef3c7; padding: 2px 6px; border-radius: 4px;">${Math.round(((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100)}% OFF</span>
-          </div>
-        </div>
+
+    // Inject CSS for price pill markers
+    const styleId = "gapnight-map-markers";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        .gn-price-marker {
+          background: #fff;
+          color: #222;
+          font-weight: 700;
+          font-size: 13px;
+          padding: 4px 10px;
+          border-radius: 20px;
+          box-shadow: 0 2px 6px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.04);
+          white-space: nowrap;
+          cursor: pointer;
+          transition: transform 0.15s, box-shadow 0.15s, background 0.15s, color 0.15s;
+          line-height: 1.3;
+          text-align: center;
+        }
+        .gn-price-marker:hover, .gn-price-marker.active {
+          background: #222;
+          color: #fff;
+          transform: scale(1.08);
+          box-shadow: 0 4px 12px rgba(0,0,0,.25);
+          z-index: 1000 !important;
+        }
+        .gn-popup .leaflet-popup-content-wrapper {
+          border-radius: 12px;
+          padding: 0;
+          overflow: hidden;
+          box-shadow: 0 4px 20px rgba(0,0,0,.15);
+        }
+        .gn-popup .leaflet-popup-content {
+          margin: 0;
+          width: 240px !important;
+        }
+        .gn-popup .leaflet-popup-tip {
+          box-shadow: 0 2px 6px rgba(0,0,0,.1);
+        }
       `;
-      
-      const marker = L.marker(
-        [parseFloat(deal.latitude!), parseFloat(deal.longitude!)],
-        { icon: createIcon(selectedDealId === deal.id) }
-      )
-        .bindPopup(popupContent, { closeButton: false })
-        .addTo(map.current!)
-        .on('click', () => {
-          onDealSelect?.(deal.id);
-        });
-      
-      markers.current.push(marker);
-    });
-    
-    // Fit bounds
-    if (validDeals.length > 1) {
-      const bounds = L.latLngBounds(
-        validDeals.map(d => [parseFloat(d.latitude!), parseFloat(d.longitude!)] as [number, number])
-      );
-      map.current.fitBounds(bounds, { padding: [50, 50] });
+      document.head.appendChild(style);
     }
-    
+
+    items.forEach((item) => {
+      const priceText = formatPrice(item.price, item.currency);
+      const isActive = selId === item.id;
+
+      const icon = L.divIcon({
+        className: "",
+        html: `<div class="gn-price-marker${isActive ? " active" : ""}" data-id="${item.id}">${priceText}</div>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
+      });
+
+      const popupHtml = `
+        <a href="${item.link}" style="text-decoration:none;color:inherit;display:block;">
+          ${item.image ? `<img src="${item.image}" alt="" style="width:100%;height:130px;object-fit:cover;" onerror="this.style.display='none'" />` : ""}
+          <div style="padding:10px 12px;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:2px;color:#222;line-height:1.3;">${item.label}</div>
+            <div style="font-size:12px;color:#717171;margin-bottom:6px;">${item.subtitle}</div>
+            <div style="font-weight:700;font-size:15px;color:#222;">${priceText} <span style="font-weight:400;font-size:12px;color:#717171;">/ night</span></div>
+          </div>
+        </a>
+      `;
+
+      const marker = L.marker([item.lat, item.lng], { icon })
+        .bindPopup(popupHtml, { closeButton: false, className: "gn-popup", maxWidth: 240, minWidth: 240 })
+        .addTo(map.current!)
+        .on("click", () => {
+          setActiveId(item.id);
+          if (onSelect) onSelect(item.id, item.type);
+          else if (onDealSelect && item.type === "deal") onDealSelect(item.id);
+        });
+
+      markersRef.current.push(marker);
+    });
+
+    if (items.length > 1) {
+      const bounds = L.latLngBounds(items.map(i => [i.lat, i.lng] as [number, number]));
+      map.current.fitBounds(bounds, { padding: [40, 40] });
+    }
+
     return () => {
-      markers.current.forEach(m => m.remove());
-      markers.current = [];
+      markersRef.current.forEach(m => m.remove());
+      markersRef.current = [];
       map.current?.remove();
     };
-  }, [validDeals, selectedDealId, onDealSelect]);
-  
-  if (validDeals.length === 0) {
+  }, [items.length, selId]);
+
+  if (items.length === 0) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-muted rounded-xl">
-        <p className="text-muted-foreground">No deals with location data available</p>
+        <p className="text-muted-foreground">No listings with location data available</p>
       </div>
     );
   }
-  
+
   return (
-    <div 
-      ref={mapContainer} 
-      className="w-full h-full rounded-xl overflow-hidden" 
+    <div
+      ref={mapContainer}
+      className="w-full h-full rounded-xl overflow-hidden"
       data-testid="deals-map"
     />
   );

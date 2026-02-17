@@ -7,7 +7,7 @@ import { PropertyDealCard } from "@/components/PropertyDealCard";
 import { DealsMap } from "@/components/DealsMap";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
-import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map, X, Loader2 } from "lucide-react";
+import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map, X, Loader2, Zap, KeyRound, CookingPot, Bath, SlidersHorizontal, Home as HomeIcon, DoorOpen, Bed } from "lucide-react";
 import { debounce } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
@@ -126,6 +126,44 @@ export default function Home() {
   // Mobile search sheet state
   const [showMobileSearchSheet, setShowMobileSearchSheet] = useState(false);
 
+  // Filter state
+  const [showFilters, setShowFilters] = useState(false);
+  const [placeType, setPlaceType] = useState<"any" | "room" | "entire">("any");
+  const [priceMin, setPriceMin] = useState(0);
+  const [priceMax, setPriceMax] = useState(1000);
+  const [filterBedrooms, setFilterBedrooms] = useState(0); // 0 = Any
+  const [filterBeds, setFilterBeds] = useState(0);
+  const [filterBathrooms, setFilterBathrooms] = useState(0);
+  const [filterInstantBook, setFilterInstantBook] = useState(false);
+  const [filterSelfCheckIn, setFilterSelfCheckIn] = useState(false);
+  const [filterKitchen, setFilterKitchen] = useState(false);
+  const [filterPool, setFilterPool] = useState(false);
+
+  const activeFilterCount = [
+    placeType !== "any",
+    priceMin > 0 || priceMax < 1000,
+    filterBedrooms > 0,
+    filterBeds > 0,
+    filterBathrooms > 0,
+    filterInstantBook,
+    filterSelfCheckIn,
+    filterKitchen,
+    filterPool,
+  ].filter(Boolean).length;
+
+  const clearAllFilters = () => {
+    setPlaceType("any");
+    setPriceMin(0);
+    setPriceMax(1000);
+    setFilterBedrooms(0);
+    setFilterBeds(0);
+    setFilterBathrooms(0);
+    setFilterInstantBook(false);
+    setFilterSelfCheckIn(false);
+    setFilterKitchen(false);
+    setFilterPool(false);
+  };
+
   // Calculate date filter values based on selection
   const getDateFilterParams = () => {
     const today = new Date();
@@ -198,8 +236,39 @@ export default function Home() {
     while (pi < propItems.length) {
       result.push(propItems[pi++]);
     }
-    return result;
-  }, [deals, propertiesData]);
+
+    // Apply client-side filters
+    return result.filter((item: any) => {
+      // Price filter
+      const price = item._type === "deal" ? item.dealPrice : (item.baseNightlyRate ? item.baseNightlyRate / 100 : 0);
+      if (priceMin > 0 && price < priceMin) return false;
+      if (priceMax < 1000 && price > priceMax) return false;
+
+      // Place type filter (properties only — deals don't have propertyType)
+      if (placeType !== "any" && item._type === "property") {
+        const pt = (item.propertyType || "").toLowerCase();
+        if (placeType === "entire" && !["house", "apartment", "villa", "cabin", "cottage"].includes(pt)) return false;
+        if (placeType === "room" && !["room", "private room", "shared room"].includes(pt)) return false;
+      }
+
+      // Bedrooms / beds / bathrooms (properties only)
+      if (item._type === "property") {
+        if (filterBedrooms > 0 && (item.bedrooms || 0) < filterBedrooms) return false;
+        if (filterBeds > 0 && (item.beds || 0) < filterBeds) return false;
+        if (filterBathrooms > 0 && (item.bathrooms || 0) < filterBathrooms) return false;
+      }
+
+      // Amenity-based filters
+      const amenities = (item.amenities || []).map((a: string) => a.toLowerCase());
+      if (filterKitchen && !amenities.some((a: string) => a.includes("kitchen"))) return false;
+      if (filterPool && !amenities.some((a: string) => a.includes("pool") || a.includes("hot tub"))) return false;
+
+      // Self check-in (property field)
+      if (filterSelfCheckIn && item._type === "property" && !item.selfCheckIn) return false;
+
+      return true;
+    });
+  }, [deals, propertiesData, placeType, priceMin, priceMax, filterBedrooms, filterBeds, filterBathrooms, filterInstantBook, filterSelfCheckIn, filterKitchen, filterPool]);
 
   const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label || "Deal Score";
 
@@ -716,6 +785,187 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Filter Bar */}
+        <div className="flex items-center gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
+          <Button
+            variant={activeFilterCount > 0 ? "default" : "outline"}
+            size="sm"
+            className="rounded-full gap-2 font-medium h-9 shrink-0"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="bg-background text-foreground rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold">{activeFilterCount}</span>
+            )}
+          </Button>
+
+          {/* Quick filter pills */}
+          {(["any", "entire", "room"] as const).map(t => (
+            <Button
+              key={t}
+              variant={placeType === t ? "default" : "outline"}
+              size="sm"
+              className="rounded-full h-9 shrink-0 font-medium"
+              onClick={() => setPlaceType(t)}
+            >
+              {t === "any" ? "Any type" : t === "entire" ? "Entire home" : "Room"}
+            </Button>
+          ))}
+
+          <Button
+            variant={priceMin > 0 || priceMax < 1000 ? "default" : "outline"}
+            size="sm"
+            className="rounded-full h-9 shrink-0 font-medium"
+            onClick={() => setShowFilters(true)}
+          >
+            Price range
+          </Button>
+
+          {activeFilterCount > 0 && (
+            <Button variant="ghost" size="sm" className="rounded-full h-9 shrink-0 text-muted-foreground" onClick={clearAllFilters}>
+              Clear all
+            </Button>
+          )}
+        </div>
+
+        {/* Expanded Filter Panel */}
+        {showFilters && (
+          <div className="bg-card border border-border rounded-2xl p-5 mb-6 shadow-lg animate-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-lg">Filters</h3>
+              <button onClick={() => setShowFilters(false)} className="p-1.5 rounded-full hover:bg-muted transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Recommended for you */}
+              <div>
+                <h4 className="font-semibold text-sm mb-3">Recommended</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: "instantBook", label: "Instant Book", icon: Zap, active: filterInstantBook, toggle: () => setFilterInstantBook(!filterInstantBook) },
+                    { key: "selfCheckIn", label: "Self check-in", icon: KeyRound, active: filterSelfCheckIn, toggle: () => setFilterSelfCheckIn(!filterSelfCheckIn) },
+                    { key: "kitchen", label: "Kitchen", icon: CookingPot, active: filterKitchen, toggle: () => setFilterKitchen(!filterKitchen) },
+                    { key: "pool", label: "Pool / Hot tub", icon: Bath, active: filterPool, toggle: () => setFilterPool(!filterPool) },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={f.toggle}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all text-xs font-medium ${
+                        f.active
+                          ? "border-foreground bg-foreground/5 text-foreground"
+                          : "border-border text-muted-foreground hover:border-foreground/30"
+                      }`}
+                    >
+                      <f.icon className="w-5 h-5" />
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Type of place */}
+              <div>
+                <h4 className="font-semibold text-sm mb-3">Type of place</h4>
+                <div className="flex gap-1 p-1 bg-muted rounded-xl">
+                  {(["any", "room", "entire"] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setPlaceType(t)}
+                      className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                        placeType === t ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      {t === "any" ? "Any type" : t === "entire" ? "Entire home" : "Room"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price range */}
+              <div>
+                <h4 className="font-semibold text-sm mb-3">Price range</h4>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="text-xs text-muted-foreground mb-1 block">Minimum</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                        <input
+                          type="number"
+                          value={priceMin || ""}
+                          onChange={e => setPriceMin(Math.max(0, parseInt(e.target.value) || 0))}
+                          placeholder="0"
+                          className="w-full h-10 pl-7 pr-3 rounded-lg border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-end pb-2 text-muted-foreground">—</div>
+                    <div className="flex-1">
+                      <label className="text-xs text-muted-foreground mb-1 block">Maximum</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                        <input
+                          type="number"
+                          value={priceMax >= 1000 ? "" : priceMax}
+                          onChange={e => setPriceMax(parseInt(e.target.value) || 1000)}
+                          placeholder="1000+"
+                          className="w-full h-10 pl-7 pr-3 rounded-lg border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rooms and beds */}
+              <div>
+                <h4 className="font-semibold text-sm mb-3">Rooms and beds</h4>
+                <div className="space-y-3">
+                  {[
+                    { label: "Bedrooms", value: filterBedrooms, set: setFilterBedrooms },
+                    { label: "Beds", value: filterBeds, set: setFilterBeds },
+                    { label: "Bathrooms", value: filterBathrooms, set: setFilterBathrooms },
+                  ].map(r => (
+                    <div key={r.label} className="flex items-center justify-between">
+                      <span className="text-sm">{r.label}</span>
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          onClick={() => r.set(Math.max(0, r.value - 1))}
+                          disabled={r.value <= 0}
+                          className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:border-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-medium">{r.value === 0 ? "Any" : r.value + "+"}</span>
+                        <button
+                          onClick={() => r.set(Math.min(8, r.value + 1))}
+                          disabled={r.value >= 8}
+                          className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:border-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between mt-5 pt-4 border-t border-border">
+              <button onClick={clearAllFilters} className="text-sm font-semibold underline underline-offset-2 text-muted-foreground hover:text-foreground transition-colors">
+                Clear all
+              </button>
+              <Button onClick={() => setShowFilters(false)} className="rounded-xl px-6">
+                Show {combinedItems.length} {combinedItems.length === 1 ? "stay" : "stays"}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Section Header + Sort + View Toggle - Aligned */}
         <div className="flex items-center justify-between mb-6 gap-4">
           {/* Left: Title + Results count */}
@@ -821,7 +1071,7 @@ export default function Home() {
           </div>
         ) : viewMode === "map" ? (
           <div className="h-[500px] md:h-[600px] rounded-xl overflow-hidden border border-border/50">
-            <DealsMap deals={combinedItems.filter((i: any) => i._type === "deal") || []} />
+            <DealsMap deals={combinedItems.filter((i: any) => i._type === "deal") || []} properties={combinedItems.filter((i: any) => i._type === "property") || []} />
           </div>
         ) : (
           <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" staggerDelay={0.06}>
