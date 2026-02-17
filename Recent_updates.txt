@@ -1,6 +1,19 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Fix: Host Message Guest — Proper Modal UI - Feb 18, 2026
+
+193. **Replaced browser prompt() with proper modal dialog for host messaging**
+    - Custom modal with guest name, booking details, textarea, character count, Send button
+    - Available on PENDING_APPROVAL ("Message Guest Before Deciding"), CONFIRMED/APPROVED, and COMPLETED bookings
+    - Uses dedicated sendMessageToGuest function with loading state and error handling
+    - z-index 60 to layer above the booking detail modal
+
+**Files Modified:**
+- `client/src/pages/host/HostDashboard.tsx` — Message dialog state, sendMessageToGuest function, modal UI, replaced all prompt() calls
+
+---
+
 ## Booking Cancellation, Host Messaging & 24hr Free Cancellation Badge - Feb 18, 2026
 
 188. **User cancellation with 24hr free window**

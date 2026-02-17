@@ -795,7 +795,34 @@ function BookingsTab() {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [declineReason, setDeclineReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [messageDialogBooking, setMessageDialogBooking] = useState<any>(null);
+  const [messageText, setMessageText] = useState("");
+  const [messageSending, setMessageSending] = useState(false);
   const { toast } = useToast();
+
+  const sendMessageToGuest = async () => {
+    if (!messageText.trim() || !messageDialogBooking) return;
+    setMessageSending(true);
+    try {
+      const res = await fetch(`/api/host/bookings/${messageDialogBooking.id}/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ message: messageText.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Message sent!", description: "Check the Messages tab for the conversation" });
+        setMessageDialogBooking(null);
+        setMessageText("");
+      } else {
+        toast({ title: "Error", description: data.error || "Failed to send message", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
+    }
+    setMessageSending(false);
+  };
 
   useEffect(() => { loadBookings(); }, [filter]);
 
@@ -1007,29 +1034,8 @@ function BookingsTab() {
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Actions</h4>
                   <div className="space-y-2">
                     <div className="flex gap-2">
-                      <Button variant="outline" className="flex-1 text-sm" disabled={actionLoading}
-                        onClick={async () => {
-                          const msg = prompt("Send a message to the guest:");
-                          if (!msg?.trim()) return;
-                          setActionLoading(true);
-                          try {
-                            const res = await fetch(`/api/host/bookings/${selectedBooking.id}/message`, {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              credentials: "include",
-                              body: JSON.stringify({ message: msg.trim() }),
-                            });
-                            const data = await res.json();
-                            if (res.ok) {
-                              toast({ title: "Message sent!", description: "Check the Messages tab for the conversation" });
-                            } else {
-                              toast({ title: "Error", description: data.error, variant: "destructive" });
-                            }
-                          } catch {
-                            toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
-                          }
-                          setActionLoading(false);
-                        }}>
+                      <Button variant="outline" className="flex-1 text-sm"
+                        onClick={() => { setMessageDialogBooking(selectedBooking); setMessageText(""); }}>
                         <Mail className="w-4 h-4 mr-1.5" /> Message Guest
                       </Button>
                       <Button variant="destructive" className="flex-1 text-sm" disabled={actionLoading}
@@ -1063,34 +1069,23 @@ function BookingsTab() {
                 </div>
               )}
 
-              {/* Message guest for any active booking */}
+              {/* Message guest for completed bookings */}
               {selectedBooking.status === "COMPLETED" && selectedBooking.userId && (
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Actions</h4>
-                  <Button variant="outline" className="w-full text-sm" disabled={actionLoading}
-                    onClick={async () => {
-                      const msg = prompt("Send a message to the guest:");
-                      if (!msg?.trim()) return;
-                      setActionLoading(true);
-                      try {
-                        const res = await fetch(`/api/host/bookings/${selectedBooking.id}/message`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          credentials: "include",
-                          body: JSON.stringify({ message: msg.trim() }),
-                        });
-                        const data = await res.json();
-                        if (res.ok) {
-                          toast({ title: "Message sent!", description: "Check the Messages tab for the conversation" });
-                        } else {
-                          toast({ title: "Error", description: data.error, variant: "destructive" });
-                        }
-                      } catch {
-                        toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
-                      }
-                      setActionLoading(false);
-                    }}>
+                  <Button variant="outline" className="w-full text-sm"
+                    onClick={() => { setMessageDialogBooking(selectedBooking); setMessageText(""); }}>
                     <Mail className="w-4 h-4 mr-1.5" /> Message Guest
+                  </Button>
+                </div>
+              )}
+
+              {/* Message guest for pending bookings */}
+              {selectedBooking.status === "PENDING_APPROVAL" && selectedBooking.userId && (
+                <div className="mt-2">
+                  <Button variant="outline" size="sm" className="w-full text-xs"
+                    onClick={() => { setMessageDialogBooking(selectedBooking); setMessageText(""); }}>
+                    <Mail className="w-3.5 h-3.5 mr-1.5" /> Message Guest Before Deciding
                   </Button>
                 </div>
               )}
@@ -1104,6 +1099,57 @@ function BookingsTab() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Message Guest Dialog */}
+      {messageDialogBooking && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => setMessageDialogBooking(null)}>
+          <div className="bg-card rounded-2xl border border-border shadow-2xl max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-border/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-lg">Message Guest</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {messageDialogBooking.guestFirstName} {messageDialogBooking.guestLastName} · {messageDialogBooking.propertyTitle}
+                  </p>
+                </div>
+                <button onClick={() => setMessageDialogBooking(null)}
+                  className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground">✕</button>
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground">
+                <p>Booking <span className="font-mono">{messageDialogBooking.id}</span></p>
+                <p>{messageDialogBooking.checkInDate} → {messageDialogBooking.checkOutDate} · {messageDialogBooking.nights} night{messageDialogBooking.nights !== 1 ? "s" : ""}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Your message</label>
+                <Textarea
+                  placeholder="Type your message to the guest..."
+                  value={messageText}
+                  onChange={e => setMessageText(e.target.value)}
+                  rows={4}
+                  className="text-sm resize-none"
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground mt-1">{messageText.length}/2000</p>
+              </div>
+              <div className="flex gap-2">
+                <Button className="flex-1" disabled={messageSending || !messageText.trim()}
+                  onClick={sendMessageToGuest}>
+                  {messageSending ? (
+                    <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" /> Sending...</>
+                  ) : (
+                    <><Send className="w-4 h-4 mr-1.5" /> Send Message</>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={() => setMessageDialogBooking(null)} disabled={messageSending}>
+                  Cancel
+                </Button>
+              </div>
             </div>
           </div>
         </div>
