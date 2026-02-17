@@ -7,7 +7,7 @@ import { PropertyDealCard } from "@/components/PropertyDealCard";
 import { DealsMap } from "@/components/DealsMap";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
-import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map, X, Loader2, Zap, KeyRound, CookingPot, Bath, SlidersHorizontal, Home as HomeIcon, DoorOpen, Bed } from "lucide-react";
+import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map, X, Loader2, Zap, KeyRound, CookingPot, Bath, SlidersHorizontal, Home as HomeIcon, DoorOpen, Bed, Car, Wifi, Wind, Dog, Waves, ChevronUp } from "lucide-react";
 import { debounce } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
@@ -136,6 +136,12 @@ export default function Home() {
   const [filterSelfCheckIn, setFilterSelfCheckIn] = useState(false);
   const [filterKitchen, setFilterKitchen] = useState(false);
   const [filterPool, setFilterPool] = useState(false);
+  const [filterParking, setFilterParking] = useState(false);
+  const [filterWifi, setFilterWifi] = useState(false);
+  const [filterAC, setFilterAC] = useState(false);
+  const [filterWasher, setFilterWasher] = useState(false);
+  const [filterPets, setFilterPets] = useState(false);
+  const [showMoreAmenities, setShowMoreAmenities] = useState(false);
 
   const activeFilterCount = [
     placeType !== "any",
@@ -147,6 +153,11 @@ export default function Home() {
     filterSelfCheckIn,
     filterKitchen,
     filterPool,
+    filterParking,
+    filterWifi,
+    filterAC,
+    filterWasher,
+    filterPets,
   ].filter(Boolean).length;
 
   const clearAllFilters = () => {
@@ -160,6 +171,12 @@ export default function Home() {
     setFilterSelfCheckIn(false);
     setFilterKitchen(false);
     setFilterPool(false);
+    setFilterParking(false);
+    setFilterWifi(false);
+    setFilterAC(false);
+    setFilterWasher(false);
+    setFilterPets(false);
+    setShowMoreAmenities(false);
   };
 
   // Calculate date filter values based on selection
@@ -261,13 +278,20 @@ export default function Home() {
       const amenities = (item.amenities || []).map((a: string) => a.toLowerCase());
       if (filterKitchen && !amenities.some((a: string) => a.includes("kitchen"))) return false;
       if (filterPool && !amenities.some((a: string) => a.includes("pool") || a.includes("hot tub"))) return false;
+      if (filterParking && !amenities.some((a: string) => a.includes("parking"))) return false;
+      if (filterWifi && !amenities.some((a: string) => a.includes("wifi") || a.includes("wi-fi"))) return false;
+      if (filterAC && !amenities.some((a: string) => a.includes("air conditioning") || a.includes("ac"))) return false;
+      if (filterWasher && !amenities.some((a: string) => a.includes("washer") || a.includes("washing"))) return false;
 
       // Self check-in (property field)
       if (filterSelfCheckIn && item._type === "property" && !item.selfCheckIn) return false;
 
+      // Pets
+      if (filterPets && item._type === "property" && !item.petFriendly) return false;
+
       return true;
     });
-  }, [deals, propertiesData, placeType, priceMin, priceMax, filterBedrooms, filterBeds, filterBathrooms, filterInstantBook, filterSelfCheckIn, filterKitchen, filterPool]);
+  }, [deals, propertiesData, placeType, priceMin, priceMax, filterBedrooms, filterBeds, filterBathrooms, filterInstantBook, filterSelfCheckIn, filterKitchen, filterPool, filterParking, filterWifi, filterAC, filterWasher, filterPets]);
 
   const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label || "Deal Score";
 
@@ -787,15 +811,64 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Recommended for you */}
+              {/* Booking options */}
               <div>
-                <h4 className="font-semibold text-sm mb-3">Recommended</h4>
+                <h4 className="font-semibold text-sm mb-3">Booking options</h4>
+                <div className="space-y-2">
+                  {[
+                    { key: "instantBook", label: "Instant Book", desc: "Book without waiting for approval", icon: Zap, active: filterInstantBook, toggle: () => setFilterInstantBook(!filterInstantBook) },
+                    { key: "selfCheckIn", label: "Self check-in", desc: "Access with a lockbox or keypad", icon: KeyRound, active: filterSelfCheckIn, toggle: () => setFilterSelfCheckIn(!filterSelfCheckIn) },
+                    { key: "pets", label: "Allows pets", desc: "Bring your furry friends", icon: Dog, active: filterPets, toggle: () => setFilterPets(!filterPets) },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={f.toggle}
+                      className={`flex items-center gap-3 w-full p-3 rounded-xl border transition-all text-left ${
+                        f.active
+                          ? "border-foreground bg-foreground/5"
+                          : "border-border hover:border-foreground/30"
+                      }`}
+                    >
+                      <f.icon className={`w-5 h-5 shrink-0 ${f.active ? "text-foreground" : "text-muted-foreground"}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{f.label}</p>
+                        <p className="text-xs text-muted-foreground">{f.desc}</p>
+                      </div>
+                      {f.active && <Check className="w-4 h-4 text-foreground shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Type of place */}
+                <h4 className="font-semibold text-sm mt-5 mb-3">Type of place</h4>
+                <div className="flex gap-1 p-1 bg-muted rounded-xl">
+                  {(["any", "room", "entire"] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setPlaceType(t)}
+                      className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                        placeType === t ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      {t === "any" ? "Any type" : t === "entire" ? "Entire home" : "Room"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Amenities */}
+              <div>
+                <h4 className="font-semibold text-sm mb-3">Amenities</h4>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { key: "instantBook", label: "Instant Book", icon: Zap, active: filterInstantBook, toggle: () => setFilterInstantBook(!filterInstantBook) },
-                    { key: "selfCheckIn", label: "Self check-in", icon: KeyRound, active: filterSelfCheckIn, toggle: () => setFilterSelfCheckIn(!filterSelfCheckIn) },
+                    { key: "wifi", label: "Wi-Fi", icon: Wifi, active: filterWifi, toggle: () => setFilterWifi(!filterWifi) },
                     { key: "kitchen", label: "Kitchen", icon: CookingPot, active: filterKitchen, toggle: () => setFilterKitchen(!filterKitchen) },
-                    { key: "pool", label: "Pool / Hot tub", icon: Bath, active: filterPool, toggle: () => setFilterPool(!filterPool) },
+                    { key: "parking", label: "Free parking", icon: Car, active: filterParking, toggle: () => setFilterParking(!filterParking) },
+                    { key: "pool", label: "Pool / Hot tub", icon: Waves, active: filterPool, toggle: () => setFilterPool(!filterPool) },
+                    ...(showMoreAmenities ? [
+                      { key: "ac", label: "Air conditioning", icon: Wind, active: filterAC, toggle: () => setFilterAC(!filterAC) },
+                      { key: "washer", label: "Washing machine", icon: Wind, active: filterWasher, toggle: () => setFilterWasher(!filterWasher) },
+                    ] : []),
                   ].map(f => (
                     <button
                       key={f.key}
@@ -811,24 +884,12 @@ export default function Home() {
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Type of place */}
-              <div>
-                <h4 className="font-semibold text-sm mb-3">Type of place</h4>
-                <div className="flex gap-1 p-1 bg-muted rounded-xl">
-                  {(["any", "room", "entire"] as const).map(t => (
-                    <button
-                      key={t}
-                      onClick={() => setPlaceType(t)}
-                      className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                        placeType === t ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
-                      }`}
-                    >
-                      {t === "any" ? "Any type" : t === "entire" ? "Entire home" : "Room"}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  onClick={() => setShowMoreAmenities(!showMoreAmenities)}
+                  className="text-sm font-semibold underline underline-offset-2 text-muted-foreground hover:text-foreground mt-2 flex items-center gap-1"
+                >
+                  {showMoreAmenities ? <>Show less <ChevronUp className="w-3 h-3" /></> : <>Show more <ChevronDown className="w-3 h-3" /></>}
+                </button>
               </div>
 
               {/* Price range */}

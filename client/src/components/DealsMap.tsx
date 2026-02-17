@@ -59,7 +59,7 @@ function normalizeItems(deals?: Deal[], properties?: any[]): MapItem[] {
       label: p.title || "Property",
       image: p.coverImage || p.images?.[0] || "",
       subtitle: `${p.city || ""} · ${p.maxGuests || 2} guests`,
-      link: `/property/${p.id}`,
+      link: `/stays/${p.id}`,
       type: "property",
     });
   });
@@ -126,17 +126,28 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
           z-index: 1000 !important;
         }
         .gn-popup .leaflet-popup-content-wrapper {
-          border-radius: 12px;
+          border-radius: 16px;
           padding: 0;
           overflow: hidden;
-          box-shadow: 0 4px 20px rgba(0,0,0,.15);
+          box-shadow: 0 6px 24px rgba(0,0,0,.18);
+          background: #fff;
+          border: none;
         }
         .gn-popup .leaflet-popup-content {
           margin: 0;
-          width: 240px !important;
+          width: 260px !important;
+          line-height: 1.4;
+        }
+        .gn-popup .leaflet-popup-tip-container {
+          margin-top: -1px;
         }
         .gn-popup .leaflet-popup-tip {
-          box-shadow: 0 2px 6px rgba(0,0,0,.1);
+          background: #fff;
+          box-shadow: 0 2px 6px rgba(0,0,0,.08);
+          border: none;
+        }
+        .gn-popup .leaflet-popup-close-button {
+          display: none;
         }
       `;
       document.head.appendChild(style);
@@ -154,18 +165,18 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
       });
 
       const popupHtml = `
-        <a href="${item.link}" style="text-decoration:none;color:inherit;display:block;">
-          ${item.image ? `<img src="${item.image}" alt="" style="width:100%;height:130px;object-fit:cover;" onerror="this.style.display='none'" />` : ""}
-          <div style="padding:10px 12px;">
-            <div style="font-weight:700;font-size:14px;margin-bottom:2px;color:#222;line-height:1.3;">${item.label}</div>
-            <div style="font-size:12px;color:#717171;margin-bottom:6px;">${item.subtitle}</div>
-            <div style="font-weight:700;font-size:15px;color:#222;">${priceText} <span style="font-weight:400;font-size:12px;color:#717171;">/ night</span></div>
+        <a href="${item.link}" style="text-decoration:none;color:inherit;display:block;background:#fff;border-radius:16px;overflow:hidden;">
+          ${item.image ? `<div style="width:100%;height:150px;overflow:hidden;"><img src="${item.image}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.style.display='none'" /></div>` : ""}
+          <div style="padding:12px 14px 14px;">
+            <div style="font-weight:600;font-size:14px;color:#222;line-height:1.35;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.label}</div>
+            <div style="font-size:12px;color:#717171;margin-bottom:8px;">${item.subtitle}</div>
+            <div><span style="font-weight:700;font-size:16px;color:#222;">${priceText}</span><span style="font-weight:400;font-size:13px;color:#717171;"> / night</span></div>
           </div>
         </a>
       `;
 
       const marker = L.marker([item.lat, item.lng], { icon })
-        .bindPopup(popupHtml, { closeButton: false, className: "gn-popup", maxWidth: 240, minWidth: 240 })
+        .bindPopup(popupHtml, { closeButton: false, className: "gn-popup", maxWidth: 260, minWidth: 260 })
         .addTo(map.current!)
         .on("click", () => {
           setActiveId(item.id);

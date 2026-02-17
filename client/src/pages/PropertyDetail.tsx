@@ -47,10 +47,18 @@ function MessageHostButton({ hostId, hostName, propertyId, propertyTitle }: { ho
   const [msg, setMsg] = useState("");
   const [sending, setSending] = useState(false);
 
+  const handleOpen = () => {
+    if (!user) {
+      setLocation(`/login?redirect=/stays/${propertyId}`);
+      return;
+    }
+    setOpen(true);
+  };
+
   const send = async () => {
     if (!msg.trim() || sending) return;
     if (!user) {
-      toast({ title: "Sign in required", description: "Please log in to message hosts.", variant: "destructive" });
+      setLocation(`/login?redirect=/stays/${propertyId}`);
       return;
     }
     setSending(true);
@@ -79,7 +87,7 @@ function MessageHostButton({ hostId, hostName, propertyId, propertyTitle }: { ho
 
   return (
     <>
-      <Button variant="outline" className="mt-4 gap-2" onClick={() => setOpen(true)}>
+      <Button variant="outline" className="mt-4 gap-2" onClick={handleOpen}>
         <MessageCircle className="w-4 h-4" /> Message {hostName}
       </Button>
       {open && (

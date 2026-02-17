@@ -1,6 +1,39 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Map Popup Fix + Expanded Filters + Toast Styling + Message Auth - Feb 18, 2026
+
+167. **Fixed map listing popup styling**
+    - White background with proper 16px rounded corners, no dark bg bleed
+    - Taller image (150px), better text spacing, truncated titles
+    - Hidden close button, cleaner tip/shadow styling
+    - Fixed property links to use /stays/ path
+
+168. **Expanded Airbnb-style filters**
+    - Booking options section: Instant Book, Self check-in, Allows pets (with descriptions)
+    - Amenities section: Wi-Fi, Kitchen, Free parking, Pool/Hot tub + "Show more" for AC, Washing machine
+    - All new filters apply client-side with proper amenity string matching
+    - Active filter count badge updated to include all new filters
+
+169. **Improved toast/error message styling**
+    - Toasts now appear centered at top of screen (not tucked in corner)
+    - Rounded-2xl with shadow-2xl for prominence
+    - Destructive variant: white bg with red border/text (not solid red block)
+    - Dark mode: dark red bg with light red text
+
+170. **Message host auth redirect**
+    - Clicking "Message Host" when not logged in now redirects to /login with return URL
+    - No more ugly red error toast for unauthenticated users
+    - After login, user returns to the property page they were on
+
+**Files Modified:**
+- `client/src/components/DealsMap.tsx` — Popup CSS + HTML fix, property link fix
+- `client/src/pages/Home.tsx` — Expanded filters (parking, wifi, AC, washer, pets, show more)
+- `client/src/components/ui/toast.tsx` — Centered viewport, nicer destructive variant
+- `client/src/pages/PropertyDetail.tsx` — Message auth redirect to login instead of toast
+
+---
+
 ## Pricing Display + Booking & Liability Policy - Feb 18, 2026
 
 164. **Updated pricing display on booking page**
