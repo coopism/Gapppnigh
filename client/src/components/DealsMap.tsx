@@ -122,8 +122,8 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
         .gn-price-marker:hover, .gn-price-marker.active {
           background: #222;
           color: #fff;
-          transform: scale(1.08);
-          box-shadow: 0 4px 12px rgba(0,0,0,.25);
+          transform: translate(-50%, -50%) scale(1.02);
+          box-shadow: 0 3px 8px rgba(0,0,0,.2);
           z-index: 1000 !important;
         }
         .gn-popup .leaflet-popup-content-wrapper {

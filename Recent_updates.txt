@@ -1,6 +1,17 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Remove Category Chips + Fix Map Hover - Feb 18, 2026
+
+149. **Removed category chip buttons** (All Deals, Last Minute, Trending, Beach, City, Luxury, Boutique)
+150. **Fixed map marker hover** — reduced scale from 1.08 to 1.02, preserved translate so markers don't jump
+
+**Files Modified:**
+- `client/src/pages/Home.tsx` — Removed category chips section
+- `client/src/components/DealsMap.tsx` — Toned down hover effect
+
+---
+
 ## Admin Add Points + Test User Seed Script - Feb 18, 2026
 
 147. **Admin can now add points to user accounts**

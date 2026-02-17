@@ -777,30 +777,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Category Chips */}
-        <div className="relative w-full mb-6">
-          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              data-testid={`chip-category-${cat.toLowerCase().replace(/\s+/g, '-')}`}
-              className={`
-                whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-medium transition-all shrink-0
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-                ${
-                  activeCategory === cat
-                    ? "bg-foreground text-background shadow-md"
-                    : "bg-card border border-border text-foreground hover-elevate"
-                }
-              `}
-            >
-              {cat}
-            </button>
-          ))}
-          </div>
-        </div>
-
         {/* Expanded Filter Panel */}
         {showFilters && (
           <div className="bg-card border border-border rounded-2xl p-5 mb-6 shadow-lg animate-in slide-in-from-top-2 duration-200">
