@@ -1001,6 +1001,100 @@ function BookingsTab() {
                 </div>
               )}
 
+              {/* Cancel + Message actions for confirmed/approved bookings */}
+              {(selectedBooking.status === "CONFIRMED" || selectedBooking.status === "APPROVED") && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Actions</h4>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1 text-sm" disabled={actionLoading}
+                        onClick={async () => {
+                          const msg = prompt("Send a message to the guest:");
+                          if (!msg?.trim()) return;
+                          setActionLoading(true);
+                          try {
+                            const res = await fetch(`/api/host/bookings/${selectedBooking.id}/message`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              credentials: "include",
+                              body: JSON.stringify({ message: msg.trim() }),
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                              toast({ title: "Message sent!", description: "Check the Messages tab for the conversation" });
+                            } else {
+                              toast({ title: "Error", description: data.error, variant: "destructive" });
+                            }
+                          } catch {
+                            toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
+                          }
+                          setActionLoading(false);
+                        }}>
+                        <Mail className="w-4 h-4 mr-1.5" /> Message Guest
+                      </Button>
+                      <Button variant="destructive" className="flex-1 text-sm" disabled={actionLoading}
+                        onClick={async () => {
+                          if (!confirm("Cancel this booking? The guest will receive a full refund.")) return;
+                          setActionLoading(true);
+                          try {
+                            const res = await fetch(`/api/host/bookings/${selectedBooking.id}/cancel`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              credentials: "include",
+                              body: JSON.stringify({ reason: "Host cancelled the booking" }),
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                              toast({ title: "Booking cancelled", description: data.message });
+                              setSelectedBooking(null);
+                              loadBookings();
+                            } else {
+                              toast({ title: "Error", description: data.error, variant: "destructive" });
+                            }
+                          } catch {
+                            toast({ title: "Error", description: "Failed to cancel", variant: "destructive" });
+                          }
+                          setActionLoading(false);
+                        }}>
+                        Cancel Booking
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Message guest for any active booking */}
+              {selectedBooking.status === "COMPLETED" && selectedBooking.userId && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Actions</h4>
+                  <Button variant="outline" className="w-full text-sm" disabled={actionLoading}
+                    onClick={async () => {
+                      const msg = prompt("Send a message to the guest:");
+                      if (!msg?.trim()) return;
+                      setActionLoading(true);
+                      try {
+                        const res = await fetch(`/api/host/bookings/${selectedBooking.id}/message`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({ message: msg.trim() }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          toast({ title: "Message sent!", description: "Check the Messages tab for the conversation" });
+                        } else {
+                          toast({ title: "Error", description: data.error, variant: "destructive" });
+                        }
+                      } catch {
+                        toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
+                      }
+                      setActionLoading(false);
+                    }}>
+                    <Mail className="w-4 h-4 mr-1.5" /> Message Guest
+                  </Button>
+                </div>
+              )}
+
               {/* Decline reason display */}
               {selectedBooking.status === "DECLINED" && selectedBooking.hostDeclineReason && (
                 <div>

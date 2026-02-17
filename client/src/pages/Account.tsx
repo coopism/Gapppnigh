@@ -571,6 +571,10 @@ export default function Account() {
               <User className="w-4 h-4 mr-2" />
               Profile
             </TabsTrigger>
+            <TabsTrigger value="stays">
+              <MapPin className="w-4 h-4 mr-2" />
+              My Stays
+            </TabsTrigger>
             <TabsTrigger value="bookings">
               <Calendar className="w-4 h-4 mr-2" />
               Bookings
@@ -847,6 +851,10 @@ export default function Account() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="stays">
+            <PropertyStaysTab />
           </TabsContent>
 
           <TabsContent value="bookings">
@@ -1714,5 +1722,205 @@ function AccountAlerts({ csrfToken }: { csrfToken: string | null }) {
         </Button>
       </CardFooter>
     </Card>
+  );
+}
+
+// ========================================
+// PROPERTY STAYS TAB (with cancellation)
+// ========================================
+function PropertyStaysTab() {
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+
+  useEffect(() => { loadBookings(); }, []);
+
+  const loadBookings = async () => {
+    try {
+      const res = await fetch("/api/auth/property-bookings?limit=50", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setBookings(data.bookings || []);
+      } else {
+        setError("Failed to load stays");
+      }
+    } catch { setError("Network error"); }
+    setIsLoading(false);
+  };
+
+  const cancelBooking = async (bookingId: string) => {
+    setCancellingId(bookingId);
+    try {
+      const res = await fetch(`/api/auth/property-bookings/${bookingId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCancelConfirmId(null);
+        loadBookings();
+      } else {
+        alert(data.error || "Failed to cancel");
+      }
+    } catch { alert("Network error"); }
+    setCancellingId(null);
+  };
+
+  const canCancel = (b: any) => {
+    const cancellable = ["PENDING_APPROVAL", "APPROVED", "CONFIRMED"];
+    if (!cancellable.includes(b.status)) return false;
+    const created = new Date(b.createdAt).getTime();
+    const hoursSince = (Date.now() - created) / (1000 * 60 * 60);
+    if (hoursSince <= 24) return true;
+    const checkIn = new Date(b.checkInDate + "T00:00:00").getTime();
+    const hoursUntil = (checkIn - Date.now()) / (1000 * 60 * 60);
+    return hoursUntil >= 24;
+  };
+
+  const cancellationTimeLeft = (b: any) => {
+    const created = new Date(b.createdAt).getTime();
+    const deadline = created + 24 * 60 * 60 * 1000;
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return null;
+    const hrs = Math.floor(remaining / (1000 * 60 * 60));
+    const mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hrs}h ${mins}m`;
+  };
+
+  const statusBadge = (status: string) => {
+    const map: Record<string, string> = {
+      PENDING_APPROVAL: "bg-amber-100 text-amber-800",
+      APPROVED: "bg-blue-100 text-blue-800",
+      CONFIRMED: "bg-green-100 text-green-800",
+      COMPLETED: "bg-emerald-100 text-emerald-800",
+      CANCELLED_BY_GUEST: "bg-red-100 text-red-800",
+      CANCELLED_BY_HOST: "bg-red-100 text-red-800",
+      DECLINED: "bg-gray-100 text-gray-800",
+      PAYMENT_FAILED: "bg-red-100 text-red-800",
+    };
+    const label = status.replace(/_/g, " ");
+    return <span className={`px-2.5 py-0.5 text-xs font-medium rounded-full ${map[status] || "bg-gray-100 text-gray-800"}`}>{label}</span>;
+  };
+
+  if (isLoading) return <Card><CardContent className="py-8 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" /></CardContent></Card>;
+  if (error) return <Card><CardContent className="py-8 text-center"><AlertCircle className="w-8 h-8 mx-auto text-muted-foreground mb-2" /><p className="text-muted-foreground">{error}</p></CardContent></Card>;
+
+  if (bookings.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="font-semibold mb-2">No property stays yet</h3>
+          <p className="text-muted-foreground mb-4">Browse gap night properties and book your first stay!</p>
+          <Link href="/properties">
+            <Button>Browse properties</Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {bookings.map((b) => {
+        const timeLeft = cancellationTimeLeft(b);
+        return (
+          <Card key={b.id} className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex flex-col md:flex-row justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">{b.property?.title || "Property"}</h3>
+                      <p className="text-muted-foreground flex items-center gap-1 mt-1 text-sm">
+                        <MapPin className="w-3 h-3" />
+                        {b.property?.city || "—"}
+                      </p>
+                    </div>
+                    {statusBadge(b.status)}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Check-in</p>
+                        <p className="font-medium">{b.checkInDate}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Check-out</p>
+                        <p className="font-medium">{b.checkOutDate}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Duration</p>
+                        <p className="font-medium">{b.nights} night{b.nights > 1 ? "s" : ""}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Host</p>
+                        <p className="font-medium">{b.host?.name || "—"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 24hr free cancellation countdown */}
+                  {timeLeft && canCancel(b) && (
+                    <div className="mt-3 flex items-center gap-2 text-xs text-green-700 bg-green-50 px-3 py-1.5 rounded-lg w-fit">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      Free cancellation — {timeLeft} left
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col items-end justify-between border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-6">
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Total</p>
+                    <p className="text-2xl font-bold text-primary">${((b.totalPrice || 0) / 100).toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">AUD</p>
+                  </div>
+                  <div className="space-y-2 w-full mt-3">
+                    <p className="text-xs text-muted-foreground text-right">Ref: {b.id}</p>
+                    {canCancel(b) && (
+                      cancelConfirmId === b.id ? (
+                        <div className="space-y-2">
+                          <p className="text-xs text-red-600 text-center">Are you sure?</p>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="destructive" className="flex-1 text-xs"
+                              disabled={cancellingId === b.id}
+                              onClick={() => cancelBooking(b.id)}>
+                              {cancellingId === b.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Yes, Cancel"}
+                            </Button>
+                            <Button size="sm" variant="outline" className="flex-1 text-xs"
+                              onClick={() => setCancelConfirmId(null)}>
+                              No
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" className="w-full text-xs text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => setCancelConfirmId(b.id)}>
+                          <X className="w-3 h-3 mr-1" /> Cancel Booking
+                        </Button>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
   );
 }

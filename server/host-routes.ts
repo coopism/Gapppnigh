@@ -5,7 +5,8 @@ import { authRateLimit, bookingRateLimit, uploadRateLimit } from "./rate-limit";
 import { 
   airbnbHosts, hostSessions, properties, propertyPhotos, 
   propertyAvailability, propertyBookings, propertyQA, propertyReviews,
-  users, userIdVerifications, gapNightRules, icalConnections
+  users, userIdVerifications, gapNightRules, icalConnections,
+  conversations, messages
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, count, sql, asc, or, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
@@ -1514,6 +1515,167 @@ router.post("/api/host/bookings/:bookingId/decline", requireHostAuth, async (req
   } catch (error) {
     console.error("Decline booking error:", error);
     res.status(500).json({ error: "Failed to decline booking" });
+  }
+});
+
+// ========================================
+// HOST CANCELLATION
+// ========================================
+router.post("/api/host/bookings/:bookingId/cancel", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const bookingId = req.params.bookingId as string;
+    const { reason } = req.body;
+
+    const [booking] = await db
+      .select()
+      .from(propertyBookings)
+      .where(and(
+        eq(propertyBookings.id, bookingId),
+        eq(propertyBookings.hostId, req.hostId!)
+      ))
+      .limit(1);
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    const cancellableStatuses = ["PENDING_APPROVAL", "APPROVED", "CONFIRMED"];
+    if (!cancellableStatuses.includes(booking.status)) {
+      return res.status(400).json({ error: `Cannot cancel a booking with status: ${booking.status}` });
+    }
+
+    // Cancel/refund Stripe payment
+    if (booking.stripePaymentIntentId) {
+      try {
+        const { stripe } = await import("./stripe");
+        if (stripe) {
+          const pi = await stripe.paymentIntents.retrieve(booking.stripePaymentIntentId);
+          if (pi.status === "requires_capture") {
+            await stripe.paymentIntents.cancel(booking.stripePaymentIntentId);
+          } else if (pi.status === "succeeded") {
+            await stripe.refunds.create({ payment_intent: booking.stripePaymentIntentId });
+          }
+        }
+      } catch (stripeError) {
+        console.error("Stripe cancel/refund error:", stripeError);
+      }
+    }
+
+    const [updated] = await db
+      .update(propertyBookings)
+      .set({
+        status: "CANCELLED_BY_HOST",
+        hostDeclineReason: reason || "Host cancelled the booking",
+        hostDecisionAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(propertyBookings.id, bookingId))
+      .returning();
+
+    // Re-open availability dates
+    try {
+      const checkIn = new Date(booking.checkInDate + "T00:00:00");
+      const checkOut = new Date(booking.checkOutDate + "T00:00:00");
+      const dates: string[] = [];
+      for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
+        dates.push(d.toISOString().split("T")[0]);
+      }
+      if (dates.length > 0) {
+        await db.update(propertyAvailability)
+          .set({ isAvailable: true })
+          .where(and(
+            eq(propertyAvailability.propertyId, booking.propertyId),
+            inArray(propertyAvailability.date, dates)
+          ));
+      }
+    } catch (availError) {
+      console.error("Failed to re-open availability:", availError);
+    }
+
+    res.json({ booking: updated, message: "Booking cancelled — guest will receive a full refund" });
+  } catch (error) {
+    console.error("Host cancel booking error:", error);
+    res.status(500).json({ error: "Failed to cancel booking" });
+  }
+});
+
+// ========================================
+// HOST-INITIATED MESSAGING FROM BOOKING
+// ========================================
+router.post("/api/host/bookings/:bookingId/message", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const bookingId = req.params.bookingId as string;
+    const { message } = req.body;
+
+    if (!message?.trim()) {
+      return res.status(400).json({ error: "Message is required" });
+    }
+
+    const [booking] = await db
+      .select()
+      .from(propertyBookings)
+      .where(and(
+        eq(propertyBookings.id, bookingId),
+        eq(propertyBookings.hostId, req.hostId!)
+      ))
+      .limit(1);
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    if (!booking.userId) {
+      return res.status(400).json({ error: "No guest user linked to this booking" });
+    }
+
+    // Check if conversation already exists for this host+guest+property
+    let [existing] = await db
+      .select()
+      .from(conversations)
+      .where(and(
+        eq(conversations.guestId, booking.userId),
+        eq(conversations.hostId, req.hostId!),
+        eq(conversations.propertyId, booking.propertyId)
+      ))
+      .limit(1);
+
+    let convoId: string;
+    if (existing) {
+      convoId = existing.id;
+    } else {
+      convoId = uuidv4();
+      await db.insert(conversations).values({
+        id: convoId,
+        guestId: booking.userId,
+        hostId: req.hostId!,
+        propertyId: booking.propertyId,
+        bookingId: bookingId,
+        subject: `Booking ${bookingId}`,
+        lastMessageAt: new Date(),
+        guestUnread: 1,
+      });
+    }
+
+    // Insert the message
+    const msgId = uuidv4();
+    await db.insert(messages).values({
+      id: msgId,
+      conversationId: convoId,
+      senderId: req.hostId!,
+      senderType: "host",
+      content: message.trim().slice(0, 2000),
+    });
+
+    // Update conversation
+    await db.update(conversations).set({
+      lastMessageAt: new Date(),
+      guestUnread: sql`${conversations.guestUnread} + 1`,
+    }).where(eq(conversations.id, convoId));
+
+    res.json({ conversationId: convoId, messageId: msgId, message: "Message sent to guest" });
+  } catch (error) {
+    console.error("Host message guest error:", error);
+    res.status(500).json({ error: "Failed to send message" });
   }
 });
 

@@ -1010,11 +1010,11 @@ function PropertyBookingsPage() {
 
   const cancelBooking = async (id: string) => {
     const reason = prompt("Cancel reason:");
-    if (!reason) return;
+    if (reason === null) return;
     await adminFetch(`/property-bookings/${id}/cancel`, {
-      method: "PATCH",
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
+      body: JSON.stringify({ reason: reason || "Admin cancelled" }),
     });
     load();
   };
@@ -1066,7 +1066,7 @@ function PropertyBookingsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {b.status === "confirmed" && (
+                    {["PENDING_APPROVAL", "APPROVED", "CONFIRMED"].includes(b.status) && (
                       <Button size="sm" variant="ghost" className="h-7 text-xs text-red-600" onClick={() => cancelBooking(b.id)}>
                         Cancel
                       </Button>

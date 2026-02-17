@@ -1527,7 +1527,79 @@ export function registerAdminOpsRoutes(app: Router) {
   });
 
   // ========================================
-  // Q) HOST REVENUE & PAYOUTS
+  // Q) ADMIN BOOKING CANCELLATION
+  // ========================================
+  app.post(`${ADMIN_PREFIX}/property-bookings/:bookingId/cancel`, adminAuth, requirePermission("manage_bookings"), async (req, res) => {
+    try {
+      const admin = (req as any).admin;
+      const bookingId = req.params.bookingId as string;
+      const { reason } = req.body;
+
+      const [booking] = await db.select().from(propertyBookings).where(eq(propertyBookings.id, bookingId)).limit(1);
+      if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+      const cancellableStatuses = ["PENDING_APPROVAL", "APPROVED", "CONFIRMED"];
+      if (!cancellableStatuses.includes(booking.status)) {
+        return res.status(400).json({ message: `Cannot cancel a booking with status: ${booking.status}` });
+      }
+
+      // Cancel/refund Stripe payment
+      if (booking.stripePaymentIntentId) {
+        try {
+          const { stripe } = await import("./stripe");
+          if (stripe) {
+            const pi = await stripe.paymentIntents.retrieve(booking.stripePaymentIntentId);
+            if (pi.status === "requires_capture") {
+              await stripe.paymentIntents.cancel(booking.stripePaymentIntentId);
+            } else if (pi.status === "succeeded") {
+              await stripe.refunds.create({ payment_intent: booking.stripePaymentIntentId });
+            }
+          }
+        } catch (stripeError) {
+          console.error("Stripe cancel/refund error:", stripeError);
+        }
+      }
+
+      await db.update(propertyBookings).set({
+        status: "CANCELLED_BY_HOST",
+        specialRequests: booking.specialRequests
+          ? `${booking.specialRequests}\n[Admin cancelled: ${reason || "No reason given"}]`
+          : `[Admin cancelled: ${reason || "No reason given"}]`,
+        updatedAt: new Date(),
+      }).where(eq(propertyBookings.id, bookingId));
+
+      // Re-open availability dates
+      try {
+        const checkIn = new Date(booking.checkInDate + "T00:00:00");
+        const checkOut = new Date(booking.checkOutDate + "T00:00:00");
+        const dates: string[] = [];
+        for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
+          dates.push(d.toISOString().split("T")[0]);
+        }
+        if (dates.length > 0) {
+          await db.update(propertyAvailability)
+            .set({ isAvailable: true })
+            .where(and(
+              eq(propertyAvailability.propertyId, booking.propertyId),
+              inArray(propertyAvailability.date, dates)
+            ));
+        }
+      } catch (availError) {
+        console.error("Failed to re-open availability:", availError);
+      }
+
+      await auditLog(admin.id, "booking_cancelled", "bookings", "property_booking", bookingId,
+        { reason, previousStatus: booking.status }, getIP(req), { status: booking.status }, { status: "CANCELLED_BY_HOST" });
+
+      res.json({ success: true, message: "Booking cancelled and refund initiated" });
+    } catch (error) {
+      console.error("Admin cancel booking error:", error);
+      res.status(500).json({ message: "Failed to cancel booking" });
+    }
+  });
+
+  // ========================================
+  // R) HOST REVENUE & PAYOUTS
   // ========================================
 
   // Get aggregated host revenue stats

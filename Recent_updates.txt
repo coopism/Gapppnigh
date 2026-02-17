@@ -1,6 +1,47 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Booking Cancellation, Host Messaging & 24hr Free Cancellation Badge - Feb 18, 2026
+
+188. **User cancellation with 24hr free window**
+    - New "My Stays" tab in Account page showing all property bookings with status, dates, host, pricing
+    - Cancel button with confirmation dialog — available within 24hrs of booking or 24hrs before check-in
+    - Live countdown showing "Free cancellation — Xh Ym left" on each eligible booking
+    - Stripe payment auto-cancelled/refunded on cancellation
+    - Availability dates re-opened when booking is cancelled
+
+189. **Host cancellation from dashboard**
+    - Cancel button on confirmed/approved bookings in host booking detail modal
+    - Confirmation prompt before cancelling — guest receives full refund
+    - Stripe payment auto-cancelled/refunded, availability re-opened
+
+190. **Admin cancellation from admin panel**
+    - Cancel button on all active bookings (PENDING_APPROVAL, APPROVED, CONFIRMED)
+    - Prompts for reason, logs to audit trail
+    - Stripe payment auto-cancelled/refunded, availability re-opened
+
+191. **Host-to-guest messaging from booking detail**
+    - "Message Guest" button on confirmed, approved, and completed bookings in host dashboard
+    - Creates or reuses existing conversation linked to the property/booking
+    - Messages appear in host Messages tab and guest's messaging inbox
+
+192. **24hr free cancellation badge**
+    - Green checkmark badge on every property listing card: "Free cancellation within 24hrs"
+    - Enhanced booking sidebar on property detail page with emerald badge
+    - Replaces generic cancellation policy text with specific 24hr messaging
+
+**Files Modified:**
+- `server/property-routes.ts` — User cancellation endpoint with 24hr window, Stripe refund, availability re-open
+- `server/host-routes.ts` — Host cancellation + host-initiated messaging endpoints, conversations/messages imports
+- `server/admin-ops-routes.ts` — Admin cancellation endpoint with audit logging
+- `client/src/pages/Account.tsx` — New "My Stays" tab with PropertyStaysTab component, cancel UI
+- `client/src/pages/host/HostDashboard.tsx` — Cancel + Message Guest buttons in booking modal
+- `client/src/pages/admin/AdminDashboard.tsx` — Fixed admin cancel to POST, expanded cancellable statuses
+- `client/src/components/PropertyDealCard.tsx` — 24hr free cancellation badge on listing cards
+- `client/src/pages/PropertyDetail.tsx` — Enhanced booking sidebar with 24hr cancellation badge
+
+---
+
 ## Admin: Host Revenue Tracking & Payout Management - Feb 18, 2026
 
 183. **Host Revenue page in admin panel**
@@ -20,7 +61,12 @@
     - Indexes on host_id and status
     - Bootstrap SQL for table creation
 
-186. **Backend API endpoints**
+186. **Fix: Revenue only counts COMPLETED bookings**
+    - Bug: CONFIRMED and APPROVED bookings were counted as revenue owed to hosts
+    - Fix: Only bookings with status `COMPLETED` (guest has stayed) count toward revenue/payouts
+    - Column renamed from "Bookings" to "Completed" in the table
+
+187. **Backend API endpoints**
     - GET `/api/x9k2p7m4/host-revenue` — aggregated host revenue with payout balances
     - GET `/api/x9k2p7m4/payouts` — list payouts with host enrichment, filterable by status/host
     - POST `/api/x9k2p7m4/payouts` — create payout (requires process_payouts permission)

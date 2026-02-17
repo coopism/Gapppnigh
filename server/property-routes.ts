@@ -1001,4 +1001,111 @@ router.get("/api/auth/property-bookings", async (req: any, res: Response) => {
   }
 });
 
+// ========================================
+// USER CANCELLATION (24hr free cancellation window)
+// ========================================
+router.post("/api/auth/property-bookings/:bookingId/cancel", async (req: any, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const bookingId = req.params.bookingId as string;
+
+    const [booking] = await db
+      .select()
+      .from(propertyBookings)
+      .where(and(
+        eq(propertyBookings.id, bookingId),
+        eq(propertyBookings.userId, req.user.id)
+      ))
+      .limit(1);
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    // Only allow cancellation of active bookings
+    const cancellableStatuses = ["PENDING_APPROVAL", "APPROVED", "CONFIRMED"];
+    if (!cancellableStatuses.includes(booking.status)) {
+      return res.status(400).json({ error: `Cannot cancel a booking with status: ${booking.status}` });
+    }
+
+    // Check 24hr cancellation window (from booking creation time)
+    const bookingCreatedAt = new Date(booking.createdAt).getTime();
+    const now = Date.now();
+    const hoursSinceBooking = (now - bookingCreatedAt) / (1000 * 60 * 60);
+    const withinFreeWindow = hoursSinceBooking <= 24;
+
+    // Also check: must be at least 24hrs before check-in
+    const checkInDate = new Date(booking.checkInDate + "T00:00:00");
+    const hoursUntilCheckIn = (checkInDate.getTime() - now) / (1000 * 60 * 60);
+
+    if (!withinFreeWindow && hoursUntilCheckIn < 24) {
+      return res.status(400).json({ 
+        error: "Cancellation window has passed. Free cancellation is available within 24 hours of booking or at least 24 hours before check-in." 
+      });
+    }
+
+    // Cancel the Stripe payment if exists
+    if (booking.stripePaymentIntentId) {
+      try {
+        if (stripe) {
+          const pi = await stripe.paymentIntents.retrieve(booking.stripePaymentIntentId);
+          if (pi.status === "requires_capture") {
+            await stripe.paymentIntents.cancel(booking.stripePaymentIntentId);
+          } else if (pi.status === "succeeded") {
+            await stripe.refunds.create({ payment_intent: booking.stripePaymentIntentId });
+          }
+        }
+      } catch (stripeError) {
+        console.error("Stripe cancel/refund error:", stripeError);
+      }
+    }
+
+    // Update booking status
+    const [updated] = await db
+      .update(propertyBookings)
+      .set({
+        status: "CANCELLED_BY_GUEST",
+        specialRequests: booking.specialRequests 
+          ? `${booking.specialRequests}\n[Cancelled by guest - ${withinFreeWindow ? "within 24hr window" : "before check-in"}]`
+          : `[Cancelled by guest - ${withinFreeWindow ? "within 24hr window" : "before check-in"}]`,
+        updatedAt: new Date(),
+      })
+      .where(eq(propertyBookings.id, bookingId))
+      .returning();
+
+    // Re-open the availability dates
+    try {
+      const checkIn = new Date(booking.checkInDate + "T00:00:00");
+      const checkOut = new Date(booking.checkOutDate + "T00:00:00");
+      const dates: string[] = [];
+      for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
+        dates.push(d.toISOString().split("T")[0]);
+      }
+      if (dates.length > 0) {
+        await db.update(propertyAvailability)
+          .set({ isAvailable: true })
+          .where(and(
+            eq(propertyAvailability.propertyId, booking.propertyId),
+            inArray(propertyAvailability.date, dates)
+          ));
+      }
+    } catch (availError) {
+      console.error("Failed to re-open availability:", availError);
+    }
+
+    res.json({ 
+      booking: updated, 
+      message: withinFreeWindow 
+        ? "Booking cancelled — full refund within 24hr free cancellation window" 
+        : "Booking cancelled — refund processed" 
+    });
+  } catch (error) {
+    console.error("User cancel booking error:", error);
+    res.status(500).json({ error: "Failed to cancel booking" });
+  }
+});
+
 export default router;
