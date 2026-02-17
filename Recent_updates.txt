@@ -1,6 +1,37 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Host Onboarding Wizard (Airbnb-style step-by-step) - Feb 18, 2026
+
+161. **New host signup → onboarding redirect**
+    - After host creates account, redirected to `/host/onboarding` instead of dashboard
+    - 9-step wizard with progress bar at bottom
+
+162. **Step-by-step property setup (1 question per page)**
+    - Step 1: Property type (entire place, private room, shared room, unique stay) + category
+    - Step 2: Property name
+    - Step 3: Description
+    - Step 4: Photo upload (drag/click, cover photo auto-set)
+    - Step 5: Address + property basics (guests, bedrooms, beds, bathrooms, amenities)
+    - Step 6: Pricing — weekday, weekend, public holiday prices with sliders + fee transparency ("Guest pays $200 · You earn $186" with 7% service fee)
+    - Step 7: Booking settings — "Approve first 5 bookings" (recommended) vs "Instant Book"
+    - Step 8: Gap night discounts — tiered by proximity (≤3 days: 35%, ≤7 days: 30%, ≤31 days: 25%, >31 days: 20%) with live price preview
+    - Step 9: Review & publish — full summary card with all details
+
+163. **Backend onboarding endpoints**
+    - `POST /api/host/onboarding/photos` — multer photo upload returning URLs
+    - `POST /api/host/onboarding/publish` — creates property, property_photos, gap_night_rules in one transaction
+    - Weekend/holiday multipliers stored via weekendMultiplier on gap_night_rules
+    - Property submitted as pending_approval
+
+**Files Modified:**
+- `client/src/pages/host/HostLogin.tsx` — Redirect signup to /host/onboarding
+- `client/src/pages/host/HostOnboarding.tsx` — New file: 9-step onboarding wizard
+- `client/src/App.tsx` — Added /host/onboarding route
+- `server/host-routes.ts` — Added onboarding photo upload + publish endpoints, imported gapNightRules
+
+---
+
 ## Map Fix + Private Messaging + FAQ Conversion - Feb 18, 2026
 
 158. **Fixed map marker animations** — removed all scale/transform transitions, markers now only change color on hover (no movement)

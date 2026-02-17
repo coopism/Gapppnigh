@@ -88,8 +88,8 @@ export default function HostLogin() {
         return;
       }
 
-      toast({ title: "Account created!", description: "Welcome to GapNight Hosting" });
-      setLocation("/host/dashboard");
+      toast({ title: "Account created!", description: "Let's set up your first property" });
+      setLocation("/host/onboarding");
     } catch (error) {
       toast({ title: "Error", description: "Failed to connect to server", variant: "destructive" });
     } finally {
