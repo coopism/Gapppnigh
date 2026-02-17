@@ -1,6 +1,20 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Gap Night Stay Length Filter - Feb 18, 2026
+
+179. **Night count selector on property detail page**
+    - Users pick 1, 2, or 3 nights via pill buttons above the gap night list
+    - Generates sliding windows of the selected length from consecutive gap nights
+    - e.g. a 3-night consecutive block shows as three 1-night options, two 2-night options, or one 3-night option
+    - Selection resets when switching night count
+    - Default is 1 night
+
+**Files Modified:**
+- `client/src/pages/PropertyDetail.tsx` — Added nightFilter state, generateFixedNightWindows(), night selector UI
+
+---
+
 ## Fix Stale Tier Display - Feb 18, 2026
 
 178. **Tier now recalculated on every rewards fetch**

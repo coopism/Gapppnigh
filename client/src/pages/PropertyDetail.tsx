@@ -147,6 +147,35 @@ function groupConsecutiveGapNights(gapNights: any[]): GapNightRange[] {
   return ranges;
 }
 
+function generateFixedNightWindows(gapNights: any[], nightCount: number): GapNightRange[] {
+  if (gapNights.length === 0) return [];
+  const sorted = [...gapNights].sort((a, b) => a.date.localeCompare(b.date));
+  // Group into consecutive runs first
+  const runs: any[][] = [];
+  let current: any[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(sorted[i - 1].date + "T00:00:00");
+    const curr = new Date(sorted[i].date + "T00:00:00");
+    const diff = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+    if (diff === 1) {
+      current.push(sorted[i]);
+    } else {
+      runs.push(current);
+      current = [sorted[i]];
+    }
+  }
+  runs.push(current);
+  // Generate sliding windows of nightCount from each run
+  const windows: GapNightRange[] = [];
+  for (const run of runs) {
+    if (run.length < nightCount) continue;
+    for (let i = 0; i <= run.length - nightCount; i++) {
+      windows.push(buildRange(run.slice(i, i + nightCount)));
+    }
+  }
+  return windows;
+}
+
 function buildRange(dates: any[]): GapNightRange {
   const totalOriginal = dates.reduce((sum: number, d: any) => sum + d.nightlyRate, 0);
   const totalDiscounted = dates.reduce((sum: number, d: any) => {
@@ -191,6 +220,7 @@ export default function PropertyDetail() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRange, setSelectedRange] = useState<number | null>(null);
+  const [nightFilter, setNightFilter] = useState<number>(1);
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [showAllAmenities, setShowAllAmenities] = useState(false);
 
@@ -254,7 +284,7 @@ export default function PropertyDetail() {
   }
 
   const gapNights = availability.filter((a: any) => a.isGapNight && a.isAvailable);
-  const ranges = groupConsecutiveGapNights(gapNights);
+  const ranges = generateFixedNightWindows(gapNights, nightFilter);
   const maxDiscount = gapNights.length > 0
     ? Math.max(...gapNights.map((gn: any) => gn.gapNightDiscount || 0))
     : 0;
@@ -541,10 +571,26 @@ export default function PropertyDetail() {
             <div className="sticky top-6 space-y-4">
               {/* Availability Selector */}
               <div className="bg-card rounded-xl border border-border/50 overflow-hidden shadow-lg">
-                <div className="px-4 py-3 border-b border-border/50 bg-muted/30">
+                <div className="px-4 py-3 border-b border-border/50 bg-muted/30 space-y-2">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary" />
                     <h3 className="font-semibold text-foreground text-sm">Available Gap Nights</h3>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground mr-1">Nights:</span>
+                    {[1, 2, 3].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => { setNightFilter(n); setSelectedRange(null); }}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                          nightFilter === n
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
