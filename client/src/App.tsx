@@ -46,6 +46,7 @@ import HostProfile from "@/pages/HostProfile";
 import PropertyBooking from "@/pages/PropertyBooking";
 import SavedListings from "@/pages/SavedListings";
 import ContactUs from "@/pages/ContactUs";
+import Messages from "@/pages/Messages";
 import { initAuth } from "@/hooks/useAuth";
 
 function MainRouter() {
@@ -77,6 +78,8 @@ function MainRouter() {
       <Route path="/stays" component={Stays} />
       <Route path="/stays/:id" component={PropertyDetail} />
       <Route path="/host-profile/:id" component={HostProfile} />
+      <Route path="/messages" component={Messages} />
+      <Route path="/messages/:id" component={Messages} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -105,6 +108,8 @@ function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
       <Route path="/stays" component={Stays} />
       <Route path="/stays/:id" component={PropertyDetail} />
       <Route path="/host-profile/:id" component={HostProfile} />
+      <Route path="/messages" component={Messages} />
+      <Route path="/messages/:id" component={Messages} />
       <Route>
         <ComingSoon onPartnerAccess={onPartnerAccess} />
       </Route>

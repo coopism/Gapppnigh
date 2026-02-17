@@ -1,6 +1,39 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Map Fix + Private Messaging + FAQ Conversion - Feb 18, 2026
+
+158. **Fixed map marker animations** — removed all scale/transform transitions, markers now only change color on hover (no movement)
+
+159. **Private messaging system (guest ↔ host)**
+    - New `conversations` + `messages` DB tables with indexes
+    - Guest endpoints: create conversation, list conversations, get/send messages, unread count
+    - Host endpoints: list conversations, get/send messages, unread count
+    - Guest `/messages` page with conversation list and thread view
+    - "Message Host" button + dialog on property detail page
+    - Messages tab in host dashboard with conversation list and reply UI
+    - Unread badges on both sides
+
+160. **Q&A converted to host-authored FAQ**
+    - Property detail page now shows only host-authored FAQ entries (no user question form)
+    - "Still have questions?" prompt directs guests to message the host privately
+    - Host dashboard Q&A tab renamed to "FAQ" — removed guest questions section
+    - Added note directing hosts to check Messages tab for guest inquiries
+    - Removed dead `questionText`, `askingQuestion`, `handleAskQuestion` code from PropertyDetail
+
+**Files Modified:**
+- `shared/schema.ts` — Added conversations + messages tables
+- `server/messaging-routes.ts` — New file: all messaging API endpoints
+- `server/routes.ts` — Registered messaging routes
+- `server/bootstrap.ts` — Added conversations + messages table creation + indexes
+- `client/src/pages/Messages.tsx` — New file: guest messaging page
+- `client/src/pages/PropertyDetail.tsx` — Message Host button, FAQ section, removed Q&A form
+- `client/src/pages/host/HostDashboard.tsx` — Messages tab, FAQ tab rename, removed guest Q section
+- `client/src/components/DealsMap.tsx` — Removed scale transition from markers
+- `client/src/App.tsx` — Added /messages routes
+
+---
+
 ## Host ID Verification + Verified Badge - Feb 18, 2026
 
 154. **Host ID verification via Stripe Identity**

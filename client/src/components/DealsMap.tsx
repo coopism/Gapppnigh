@@ -109,7 +109,7 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
           box-shadow: 0 2px 6px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.04);
           white-space: nowrap;
           cursor: pointer;
-          transition: transform 0.15s, box-shadow 0.15s, background 0.15s, color 0.15s;
+          transition: background 0.15s, color 0.15s, box-shadow 0.15s;
           line-height: 1;
           text-align: center;
           position: relative;
@@ -122,8 +122,7 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
         .gn-price-marker:hover, .gn-price-marker.active {
           background: #222;
           color: #fff;
-          transform: translate(-50%, -50%) scale(1.02);
-          box-shadow: 0 3px 8px rgba(0,0,0,.2);
+          box-shadow: 0 2px 8px rgba(0,0,0,.25);
           z-index: 1000 !important;
         }
         .gn-popup .leaflet-popup-content-wrapper {

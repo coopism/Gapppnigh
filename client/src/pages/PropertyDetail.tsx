@@ -12,7 +12,7 @@ import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import { useAuthStore } from "@/hooks/useAuth";
 import {
   Star, MapPin, Bed, Users, Wifi, Dumbbell, Car, UtensilsCrossed, Waves,
-  Sparkles, Wine, Umbrella, Bell, ConciergeBell, Heart, Shield, Clock,
+  Sparkles, Wine, Umbrella, Bell, ConciergeBell, Heart, Shield, Clock, HelpCircle,
   MessageCircle, ArrowLeft, Calendar, Check, Share2, Send, ChevronDown,
   Navigation as NavIcon, KeyRound, Dog, Award, Zap, Flame, Tv, Wind,
   WashingMachine, Mountain, TreePine, Home, Ban, Cigarette, PartyPopper,
@@ -37,6 +37,74 @@ function formatShortDate(dateStr: string): string {
     : day === 2 || day === 22 ? "nd"
     : day === 3 || day === 23 ? "rd" : "th";
   return `${date.toLocaleDateString("en-AU", { month: "short" })} ${day}${suffix}`;
+}
+
+function MessageHostButton({ hostId, hostName, propertyId, propertyTitle }: { hostId: string; hostName: string; propertyId: string; propertyTitle: string }) {
+  const { user } = useAuthStore();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const send = async () => {
+    if (!msg.trim() || sending) return;
+    if (!user) {
+      toast({ title: "Sign in required", description: "Please log in to message hosts.", variant: "destructive" });
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await fetch("/api/messages/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ hostId, propertyId, subject: propertyTitle, message: msg.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Message sent!", description: `Your message to ${hostName} has been sent.` });
+        setOpen(false);
+        setMsg("");
+        setLocation(`/messages/${data.conversationId}`);
+      } else {
+        toast({ title: "Error", description: data.error || "Failed to send", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to connect", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <>
+      <Button variant="outline" className="mt-4 gap-2" onClick={() => setOpen(true)}>
+        <MessageCircle className="w-4 h-4" /> Message {hostName}
+      </Button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setOpen(false)}>
+          <div className="bg-card rounded-2xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-1">Message {hostName}</h3>
+            <p className="text-sm text-muted-foreground mb-4">About: {propertyTitle}</p>
+            <textarea
+              className="w-full border border-border rounded-xl p-3 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+              rows={4}
+              placeholder="Hi! I have a question about your property..."
+              value={msg}
+              onChange={e => setMsg(e.target.value)}
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button size="sm" onClick={send} disabled={!msg.trim() || sending} className="gap-1.5">
+                <Send className="w-3.5 h-3.5" /> {sending ? "Sending..." : "Send"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 interface GapNightRange {
@@ -115,8 +183,6 @@ export default function PropertyDetail() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRange, setSelectedRange] = useState<number | null>(null);
-  const [questionText, setQuestionText] = useState("");
-  const [askingQuestion, setAskingQuestion] = useState(false);
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [showAllAmenities, setShowAllAmenities] = useState(false);
 
@@ -190,35 +256,6 @@ export default function PropertyDetail() {
   const handleBooking = () => {
     if (selectedGapRange) {
       setLocation(`/booking/property/${params.id}?checkIn=${selectedGapRange.startDate}&checkOut=${selectedGapRange.endDate}&nights=${selectedGapRange.nights}`);
-    }
-  };
-
-  const handleAskQuestion = async () => {
-    if (!user) {
-      setLocation(`/login?redirect=/stays/${params.id}`);
-      return;
-    }
-    if (questionText.trim().length < 5) {
-      toast({ title: "Question too short", description: "Please write at least 5 characters.", variant: "destructive" });
-      return;
-    }
-    setAskingQuestion(true);
-    try {
-      const res = await fetch(`/api/properties/${params.id}/questions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ question: questionText.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      setQa(prev => [{ ...data.question, userName: user.name || "You" }, ...prev]);
-      setQuestionText("");
-      toast({ title: "Question submitted", description: "The host will be notified and can respond." });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setAskingQuestion(false);
     }
   };
 
@@ -434,6 +471,7 @@ export default function PropertyDetail() {
                     </div>
                   </div>
                 </Link>
+                <MessageHostButton hostId={hostData.id} hostName={hostData.name} propertyId={property.id} propertyTitle={property.title} />
               </div>
             )}
 
@@ -586,80 +624,38 @@ export default function PropertyDetail() {
 
         {/* Q&A + Reviews - Full width below */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Q&A Section */}
+          {/* FAQ Section - Host-authored */}
           <div>
             <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-              <MessageCircle className="w-5 h-5" />
-              Questions & Answers
+              <HelpCircle className="w-5 h-5" />
+              Frequently Asked Questions
             </h2>
 
-            {/* Host FAQs */}
-            {(() => {
-              const hostFaqs = qa.filter((q: any) => q.isHostFaq && q.isPublic);
-              const guestQs = qa.filter((q: any) => !q.isHostFaq && q.isPublic);
-              return (
-                <>
-                  {hostFaqs.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-2">Frequently Asked</h3>
-                      <div className="space-y-2">
-                        {hostFaqs.map((q: any) => (
-                          <div key={q.id} className="bg-card rounded-xl border border-border/50 p-4">
-                            <p className="font-medium text-sm text-foreground">Q: {q.question}</p>
-                            <p className="text-sm text-muted-foreground mt-1.5">A: {q.answer}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Ask a question form */}
-                  <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
-                    <div className="p-4 border-b border-border/50">
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder={user ? "Ask the host a question..." : "Sign in to ask a question"}
-                          value={questionText}
-                          onChange={(e) => setQuestionText(e.target.value)}
-                          disabled={!user || askingQuestion}
-                          className="flex-1"
-                        />
-                        <Button
-                          size="icon"
-                          onClick={handleAskQuestion}
-                          disabled={!questionText.trim() || askingQuestion}
-                        >
-                          <Send className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      {!user && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          <Link href={`/login?redirect=/stays/${params.id}`} className="text-primary hover:underline">Sign in</Link> to ask a question
-                        </p>
-                      )}
-                    </div>
-                    {guestQs.length > 0 ? (
-                      <div className="divide-y divide-border/50">
-                        {guestQs.map((q: any) => (
-                          <div key={q.id} className="p-4">
-                            <p className="font-medium text-sm text-foreground">Q: {q.question}</p>
-                            {q.answer ? (
-                              <p className="text-sm text-muted-foreground mt-2">A: {q.answer}</p>
-                            ) : (
-                              <p className="text-xs text-muted-foreground mt-2 italic">Awaiting host response</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-4 text-center text-sm text-muted-foreground">
-                        {hostFaqs.length > 0 ? "Have another question? Ask above!" : "No questions yet. Be the first to ask!"}
-                      </div>
-                    )}
+            {qa.filter((q: any) => q.isPublic && q.answer).length > 0 ? (
+              <div className="space-y-2">
+                {qa.filter((q: any) => q.isPublic && q.answer).map((q: any) => (
+                  <div key={q.id} className="bg-card rounded-xl border border-border/50 p-4">
+                    <p className="font-medium text-sm text-foreground">{q.question}</p>
+                    <p className="text-sm text-muted-foreground mt-1.5">{q.answer}</p>
                   </div>
-                </>
-              );
-            })()}
+                ))}
+              </div>
+            ) : (
+              <div className="bg-card rounded-xl border border-border/50 p-6 text-center">
+                <p className="text-sm text-muted-foreground">No FAQs added yet.</p>
+              </div>
+            )}
+
+            {hostData && (
+              <div className="mt-4 bg-muted/50 rounded-xl p-4 flex items-center gap-3">
+                <MessageCircle className="w-5 h-5 text-muted-foreground shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-foreground">Still have questions?</p>
+                  <p className="text-xs text-muted-foreground">Send {hostData.name} a private message.</p>
+                </div>
+                <MessageHostButton hostId={hostData.id} hostName={hostData.name} propertyId={property.id} propertyTitle={property.title} />
+              </div>
+            )}
           </div>
 
           {/* Reviews */}

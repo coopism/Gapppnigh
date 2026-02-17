@@ -843,6 +843,39 @@ export type InsertIcalConnection = z.infer<typeof insertIcalConnectionSchema>;
 export type GapNightRule = typeof gapNightRules.$inferSelect;
 export type InsertGapNightRule = z.infer<typeof insertGapNightRuleSchema>;
 
+// ========================================
+// MESSAGING TABLES
+// ========================================
+
+export const conversations = pgTable("conversations", {
+  id: text("id").primaryKey(), // UUID
+  propertyId: text("property_id").references(() => properties.id),
+  bookingId: text("booking_id"),
+  guestId: text("guest_id").notNull().references(() => users.id),
+  hostId: text("host_id").notNull().references(() => airbnbHosts.id),
+  subject: text("subject"),
+  lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+  guestUnread: integer("guest_unread").notNull().default(0),
+  hostUnread: integer("host_unread").notNull().default(0),
+  status: text("status").notNull().default("active"), // active | archived
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const messages = pgTable("messages", {
+  id: text("id").primaryKey(), // UUID
+  conversationId: text("conversation_id").notNull().references(() => conversations.id),
+  senderId: text("sender_id").notNull(), // user ID or host ID
+  senderType: text("sender_type").notNull(), // "guest" | "host"
+  content: text("content").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertConversationSchema = createInsertSchema(conversations).omit({ createdAt: true });
+export const insertMessageSchema = createInsertSchema(messages).omit({ createdAt: true });
+export type Conversation = typeof conversations.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+
 // Zod Schemas
 export const insertDealSchema = createInsertSchema(deals);
 export const insertWaitlistSchema = createInsertSchema(waitlist).omit({ id: true });

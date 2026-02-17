@@ -12,7 +12,7 @@ import { Footer } from "@/components/Footer";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import {
   Home, CalendarDays, Calendar, MessageSquare, UserCircle, ChevronLeft, ChevronRight,
-  BookOpen, TrendingUp, Clock, CheckCircle2, HelpCircle, DollarSign, LogOut, ShieldCheck, AlertTriangle
+  BookOpen, TrendingUp, Clock, CheckCircle2, HelpCircle, DollarSign, LogOut, ShieldCheck, AlertTriangle, Mail, Send, ArrowLeft
 } from "lucide-react";
 
 export default function HostDashboard() {
@@ -147,7 +147,8 @@ export default function HostDashboard() {
             <TabsTrigger value="properties" className="gap-1.5"><Home className="w-3.5 h-3.5" /> Properties</TabsTrigger>
             <TabsTrigger value="bookings" className="gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Bookings</TabsTrigger>
             <TabsTrigger value="availability" className="gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Calendar</TabsTrigger>
-            <TabsTrigger value="qa" className="gap-1.5"><MessageSquare className="w-3.5 h-3.5" /> Q&A</TabsTrigger>
+            <TabsTrigger value="messages" className="gap-1.5"><Mail className="w-3.5 h-3.5" /> Messages</TabsTrigger>
+            <TabsTrigger value="qa" className="gap-1.5"><HelpCircle className="w-3.5 h-3.5" /> FAQ</TabsTrigger>
             <TabsTrigger value="profile" className="gap-1.5"><UserCircle className="w-3.5 h-3.5" /> Profile</TabsTrigger>
           </TabsList>
 
@@ -155,6 +156,7 @@ export default function HostDashboard() {
           <TabsContent value="properties"><PropertiesTab /></TabsContent>
           <TabsContent value="bookings"><BookingsTab /></TabsContent>
           <TabsContent value="availability"><AvailabilityTab /></TabsContent>
+          <TabsContent value="messages"><HostMessagesTab /></TabsContent>
           <TabsContent value="qa"><QATab /></TabsContent>
           <TabsContent value="profile"><ProfileTab host={host} onUpdate={checkAuth} /></TabsContent>
         </Tabs>
@@ -1425,7 +1427,6 @@ function QATab() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [properties, setProperties] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [answerText, setAnswerText] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   // FAQ form
@@ -1452,27 +1453,6 @@ function QATab() {
         setQuestions(data.questions || []);
       }
     } catch { } finally { setIsLoading(false); }
-  };
-
-  const handleAnswer = async (questionId: string) => {
-    const answer = answerText[questionId];
-    if (!answer?.trim()) return;
-
-    try {
-      const res = await fetch(`/api/host/qa/${questionId}/answer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ answer }),
-      });
-      if (res.ok) {
-        toast({ title: "Answer posted!" });
-        loadQuestions();
-        setAnswerText(prev => ({ ...prev, [questionId]: "" }));
-      }
-    } catch {
-      toast({ title: "Error", description: "Failed to post answer", variant: "destructive" });
-    }
   };
 
   const handlePublishFaq = async () => {
@@ -1517,8 +1497,6 @@ function QATab() {
   if (isLoading) return <div className="text-center py-12">Loading questions...</div>;
 
   const hostFaqs = questions.filter(q => q.isHostFaq);
-  const guestUnanswered = questions.filter(q => !q.isHostFaq && !q.answer);
-  const guestAnswered = questions.filter(q => !q.isHostFaq && q.answer);
 
   return (
     <div className="space-y-8">
@@ -1586,57 +1564,13 @@ function QATab() {
         )}
       </div>
 
-      {/* Guest Questions */}
-      <div>
-        <h2 className="text-xl font-bold text-foreground mb-4">Guest Questions</h2>
-
-        {guestUnanswered.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold mb-3 text-amber-500 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Needs Reply ({guestUnanswered.length})
-            </h3>
-            <div className="grid gap-3">
-              {guestUnanswered.map((q: any) => (
-                <Card key={q.id}>
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground mb-1">{q.propertyTitle} · {q.userName}</p>
-                    <p className="font-medium text-sm mb-3">"{q.question}"</p>
-                    <div className="flex gap-2">
-                      <Textarea placeholder="Type your answer..."
-                        value={answerText[q.id] || ""}
-                        onChange={e => setAnswerText(prev => ({ ...prev, [q.id]: e.target.value }))}
-                        rows={2} className="flex-1 text-sm" />
-                      <Button size="sm"
-                        onClick={() => handleAnswer(q.id)} disabled={!answerText[q.id]?.trim()}>Reply</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {guestAnswered.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold mb-3">Answered ({guestAnswered.length})</h3>
-            <div className="grid gap-3">
-              {guestAnswered.map((q: any) => (
-                <div key={q.id} className="bg-card rounded-xl border border-border/50 p-4">
-                  <p className="text-xs text-muted-foreground mb-1">{q.propertyTitle} · {q.userName}</p>
-                  <p className="font-medium text-sm">Q: "{q.question}"</p>
-                  <p className="text-sm mt-1 text-primary">A: {q.answer}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {guestUnanswered.length === 0 && guestAnswered.length === 0 && (
-          <div className="bg-card rounded-xl border border-border/50 p-6 text-center">
-            <MessageSquare className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">No guest questions yet. Questions from potential guests will appear here.</p>
-          </div>
-        )}
+      {/* Info about messaging */}
+      <div className="bg-muted/50 rounded-xl p-4 flex items-center gap-3">
+        <Mail className="w-5 h-5 text-muted-foreground shrink-0" />
+        <div>
+          <p className="text-sm font-medium text-foreground">Guest questions come via Messages</p>
+          <p className="text-xs text-muted-foreground">Guests can message you directly from your listing. Check the Messages tab for new conversations.</p>
+        </div>
       </div>
     </div>
   );
@@ -1728,6 +1662,162 @@ function ProfileTab({ host, onUpdate }: { host: any; onUpdate: () => void }) {
           {isSaving ? "Saving..." : "Save Profile"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function HostMessagesTab() {
+  const [convos, setConvos] = useState<any[]>([]);
+  const [activeConvo, setActiveConvo] = useState<string | null>(null);
+  const [msgs, setMsgs] = useState<any[]>([]);
+  const [guest, setGuest] = useState<any>(null);
+  const [convoData, setConvoData] = useState<any>(null);
+  const [newMsg, setNewMsg] = useState("");
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const bottomRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => { fetchConvos(); }, []);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+
+  const fetchConvos = async () => {
+    try {
+      const res = await fetch("/api/host/messages/conversations", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setConvos(data.conversations || []);
+      }
+    } catch {} finally { setLoading(false); }
+  };
+
+  const openConvo = async (id: string) => {
+    setActiveConvo(id);
+    try {
+      const res = await fetch(`/api/host/messages/conversations/${id}`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setMsgs(data.messages || []);
+        setGuest(data.guest);
+        setConvoData(data.conversation);
+        fetchConvos(); // refresh unread counts
+      }
+    } catch {}
+  };
+
+  const sendMessage = async () => {
+    if (!newMsg.trim() || !activeConvo || sending) return;
+    setSending(true);
+    try {
+      const res = await fetch(`/api/host/messages/conversations/${activeConvo}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ message: newMsg.trim() }),
+      });
+      if (res.ok) {
+        setNewMsg("");
+        openConvo(activeConvo);
+      }
+    } catch {} finally { setSending(false); }
+  };
+
+  const timeAgo = (d: string) => {
+    const diff = Date.now() - new Date(d).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Now";
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h`;
+    return `${Math.floor(hrs / 24)}d`;
+  };
+
+  if (loading) return <div className="text-center py-12 text-muted-foreground">Loading messages...</div>;
+
+  // Thread view
+  if (activeConvo && convoData) {
+    return (
+      <div className="space-y-4">
+        <button onClick={() => setActiveConvo(null)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-4 h-4" /> Back to conversations
+        </button>
+        <Card className="overflow-hidden">
+          <div className="p-4 border-b border-border/50 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+              {guest?.name?.charAt(0) || "G"}
+            </div>
+            <div>
+              <p className="font-semibold text-sm">{guest?.name || "Guest"}</p>
+              {convoData.subject && <p className="text-xs text-muted-foreground">{convoData.subject}</p>}
+            </div>
+          </div>
+          <CardContent className="p-4 max-h-[400px] overflow-y-auto space-y-3">
+            {msgs.map((m: any) => (
+              <div key={m.id} className={`flex ${m.senderType === "host" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
+                  m.senderType === "host"
+                    ? "bg-primary text-primary-foreground rounded-br-md"
+                    : "bg-muted text-foreground rounded-bl-md"
+                }`}>
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                  <p className={`text-[10px] mt-1 ${m.senderType === "host" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                    {timeAgo(m.createdAt)}
+                  </p>
+                </div>
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </CardContent>
+          <div className="p-4 border-t border-border/50 flex gap-2">
+            <Input
+              value={newMsg}
+              onChange={e => setNewMsg(e.target.value)}
+              placeholder="Type a reply..."
+              className="flex-1"
+              onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
+            />
+            <Button onClick={sendMessage} disabled={!newMsg.trim() || sending} size="icon">
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Conversations list
+  return (
+    <div>
+      <h2 className="text-lg font-bold mb-4">Messages</h2>
+      {convos.length === 0 ? (
+        <div className="text-center py-16">
+          <Mail className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">No messages yet. When guests message you, they'll appear here.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {convos.map((c: any) => (
+            <Card key={c.id} className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => openConvo(c.id)}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+                  {c.guestName?.charAt(0) || "G"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm">{c.guestName || "Guest"}</span>
+                    <span className="text-xs text-muted-foreground">{timeAgo(c.lastMessageAt)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{c.propertyTitle || c.subject || "Conversation"}</p>
+                </div>
+                {c.hostUnread > 0 && (
+                  <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 text-[10px] font-bold flex items-center justify-center shrink-0">
+                    {c.hostUnread}
+                  </span>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

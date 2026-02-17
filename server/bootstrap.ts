@@ -933,6 +933,39 @@ async function createTables() {
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_gap_night_rules_host_id ON "gap_night_rules"("host_id")`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_gap_night_rules_property_id ON "gap_night_rules"("property_id")`);
 
+  // Messaging tables
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "conversations" (
+      "id" text PRIMARY KEY NOT NULL,
+      "property_id" text REFERENCES "properties"("id"),
+      "booking_id" text,
+      "guest_id" text NOT NULL REFERENCES "users"("id"),
+      "host_id" text NOT NULL REFERENCES "airbnb_hosts"("id"),
+      "subject" text,
+      "last_message_at" timestamp DEFAULT now() NOT NULL,
+      "guest_unread" integer DEFAULT 0 NOT NULL,
+      "host_unread" integer DEFAULT 0 NOT NULL,
+      "status" text DEFAULT 'active' NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "messages" (
+      "id" text PRIMARY KEY NOT NULL,
+      "conversation_id" text NOT NULL REFERENCES "conversations"("id"),
+      "sender_id" text NOT NULL,
+      "sender_type" text NOT NULL,
+      "content" text NOT NULL,
+      "is_read" boolean DEFAULT false NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_conversations_guest_id ON "conversations"("guest_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_conversations_host_id ON "conversations"("host_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON "messages"("conversation_id")`);
+
   // Migration: add host ID verification columns to airbnb_hosts
   await db.execute(sql`
     DO $$
