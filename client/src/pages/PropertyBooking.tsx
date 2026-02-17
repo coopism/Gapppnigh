@@ -279,6 +279,10 @@ export default function PropertyBooking() {
   };
 
   const onSubmit = async (data: BookingForm) => {
+    if (!policyAgreed) {
+      toast({ title: "Policy Required", description: "Please agree to the Booking & Liability Policy before submitting.", variant: "destructive" });
+      return;
+    }
     if (!property || !paymentComplete || !paymentIntentId) {
       toast({ title: "Payment Required", description: "Please complete payment first.", variant: "destructive" });
       return;

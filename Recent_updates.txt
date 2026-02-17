@@ -1,6 +1,18 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Fix Booking Without Policy Agreement - Feb 18, 2026
+
+180. **Block booking submission if policy checkbox is unchecked**
+    - Bug: form could submit even without checking the Booking & Liability Policy box
+    - Fix: added early return guard in onSubmit that shows a toast error if policyAgreed is false
+    - Button was already disabled, but form submit (e.g. Enter key) bypassed it
+
+**Files Modified:**
+- `client/src/pages/PropertyBooking.tsx` — Added policyAgreed check in onSubmit handler
+
+---
+
 ## Gap Night Stay Length Filter - Feb 18, 2026
 
 179. **Night count selector on property detail page**
