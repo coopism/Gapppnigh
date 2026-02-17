@@ -933,6 +933,22 @@ async function createTables() {
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_gap_night_rules_host_id ON "gap_night_rules"("host_id")`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_gap_night_rules_property_id ON "gap_night_rules"("property_id")`);
 
+  // Migration: add host ID verification columns to airbnb_hosts
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='airbnb_hosts' AND column_name='id_verified') THEN
+        ALTER TABLE "airbnb_hosts" ADD COLUMN "id_verified" boolean DEFAULT false NOT NULL;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='airbnb_hosts' AND column_name='id_verified_at') THEN
+        ALTER TABLE "airbnb_hosts" ADD COLUMN "id_verified_at" timestamp;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='airbnb_hosts' AND column_name='stripe_verification_session_id') THEN
+        ALTER TABLE "airbnb_hosts" ADD COLUMN "stripe_verification_session_id" text;
+      END IF;
+    END $$;
+  `);
+
   console.log("Indexes created!");
 }
 

@@ -9,7 +9,7 @@ import { PropertyDealCard } from "@/components/PropertyDealCard";
 import { formatPrice } from "@/lib/utils";
 import {
   Star, MapPin, Shield, Clock, MessageCircle, ChevronLeft, Calendar,
-  Home, Check, Award, Users, Heart,
+  Home, Check, Award, Users, Heart, ShieldCheck,
 } from "lucide-react";
 
 function formatMemberSince(dateStr: string): string {
@@ -88,7 +88,12 @@ export default function HostProfile() {
                   {host.name.charAt(0)}
                 </div>
               )}
-              <h1 className="text-2xl font-bold">{host.name}</h1>
+              <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
+                {host.name}
+                {host.idVerified && (
+                  <span title="ID Verified" className="text-primary"><ShieldCheck className="w-5 h-5" /></span>
+                )}
+              </h1>
               <p className="text-sm text-muted-foreground mt-1">Member since {formatMemberSince(host.createdAt)}</p>
               
             </CardContent>

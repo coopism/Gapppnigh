@@ -1,6 +1,37 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Host ID Verification + Verified Badge - Feb 18, 2026
+
+154. **Host ID verification via Stripe Identity**
+    - `POST /api/host/verify-identity` — creates Stripe Identity session with selfie matching
+    - `GET /api/host/verify-identity/status` — checks and auto-updates verification status
+    - `idVerified` + `idVerifiedAt` fields on `airbnb_hosts` schema
+    - DB migration in bootstrap.ts to add columns if missing
+
+155. **Verified badge on host name**
+    - ShieldCheck icon next to host name on: host dashboard header, property detail page, public host profile page
+    - Badge only shows when `idVerified === true`
+
+156. **ID verification banner in host dashboard**
+    - Amber warning banner shown when host hasn't verified ID
+    - "Verify Now" button launches Stripe Identity flow
+    - Auto-checks status on dashboard load (handles return from Stripe)
+
+157. **idVerified included in all host API responses**
+    - `/api/host/me`, `/api/properties` (batch enrichment), `/api/properties/:id`, `/api/hosts/:id/profile`
+
+**Files Modified:**
+- `shared/schema.ts` — idVerified, idVerifiedAt, stripeVerificationSessionId on airbnbHosts
+- `server/host-routes.ts` — Added verify-identity endpoints, idVerified in /me response
+- `server/property-routes.ts` — Added hostIdVerified to batch helper, property detail, host profile
+- `server/bootstrap.ts` — Migration for id_verified columns
+- `client/src/pages/host/HostDashboard.tsx` — Verification banner, badge, startVerification flow
+- `client/src/pages/PropertyDetail.tsx` — Verified badge next to "Hosted by" name
+- `client/src/pages/HostProfile.tsx` — Verified badge next to host name
+
+---
+
 ## Remove Category Chips + Major Performance Optimization - Feb 18, 2026
 
 149. **Fully removed category chips** — deleted CATEGORIES constant, activeCategory state, and category param from API calls

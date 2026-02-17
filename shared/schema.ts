@@ -382,6 +382,9 @@ export const airbnbHosts = pgTable("airbnb_hosts", {
   averageResponseTime: integer("average_response_time").default(60), // minutes
   responseRate: integer("response_rate").default(100), // percentage
   isSuperhost: boolean("is_superhost").notNull().default(false),
+  idVerified: boolean("id_verified").notNull().default(false),
+  idVerifiedAt: timestamp("id_verified_at"),
+  stripeVerificationSessionId: text("stripe_verification_session_id"),
   stripeAccountId: text("stripe_account_id"), // for payouts
   isActive: boolean("is_active").notNull().default(true),
   emailVerifiedAt: timestamp("email_verified_at"),

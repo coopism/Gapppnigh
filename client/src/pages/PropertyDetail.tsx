@@ -16,7 +16,7 @@ import {
   MessageCircle, ArrowLeft, Calendar, Check, Share2, Send, ChevronDown,
   Navigation as NavIcon, KeyRound, Dog, Award, Zap, Flame, Tv, Wind,
   WashingMachine, Mountain, TreePine, Home, Ban, Cigarette, PartyPopper,
-  AlertTriangle, Info, CreditCard,
+  AlertTriangle, Info, CreditCard, ShieldCheck,
 } from "lucide-react";
 
 function formatReadableDate(dateStr: string): string {
@@ -411,7 +411,12 @@ export default function PropertyDetail() {
             {/* Host info - Airbnb style */}
             {hostData && (
               <div>
-                <h2 className="text-xl font-bold text-foreground mb-4">Hosted by {hostData.name}</h2>
+                <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                  Hosted by {hostData.name}
+                  {hostData.idVerified && (
+                    <span title="ID Verified" className="inline-flex items-center gap-1 text-sm font-medium text-primary"><ShieldCheck className="w-5 h-5" /></span>
+                  )}
+                </h2>
                 <Link href={`/host-profile/${hostData.id}`}>
                   <div className="flex items-start gap-4 hover:opacity-80 transition-opacity cursor-pointer">
                     <div className="w-14 h-14 rounded-full bg-foreground text-background flex items-center justify-center font-bold text-xl shrink-0">

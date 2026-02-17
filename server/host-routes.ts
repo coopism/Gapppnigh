@@ -298,6 +298,8 @@ router.get("/api/host/me", requireHostAuth, async (req: HostRequest, res: Respon
       profilePhoto: host.profilePhoto,
       averageResponseTime: host.averageResponseTime,
       responseRate: host.responseRate,
+      idVerified: host.idVerified || false,
+      idVerifiedAt: host.idVerifiedAt,
       createdAt: host.createdAt,
     },
   });
@@ -324,6 +326,91 @@ router.put("/api/host/profile", requireHostAuth, async (req: HostRequest, res: R
   } catch (error) {
     console.error("Update host profile error:", error);
     res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+// ========================================
+// HOST ID VERIFICATION (Stripe Identity)
+// ========================================
+
+router.post("/api/host/verify-identity", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const hostId = req.hostId!;
+    const host = req.hostData!;
+
+    if (host.idVerified) {
+      return res.json({ status: "verified", message: "ID already verified" });
+    }
+
+    const { stripe } = await import("./stripe");
+    if (!stripe) {
+      return res.status(500).json({ error: "Stripe not configured" });
+    }
+
+    const returnUrl = req.body?.returnUrl || req.headers.referer || "https://www.gapnight.com/host/dashboard";
+
+    const verificationSession = await stripe.identity.verificationSessions.create({
+      type: "document",
+      metadata: { hostId, type: "host" },
+      options: {
+        document: {
+          require_matching_selfie: true,
+        },
+      },
+      return_url: returnUrl,
+    });
+
+    await db.update(airbnbHosts).set({
+      stripeVerificationSessionId: verificationSession.id,
+      updatedAt: new Date(),
+    }).where(eq(airbnbHosts.id, hostId));
+
+    res.json({
+      url: verificationSession.url,
+      sessionId: verificationSession.id,
+      status: "pending",
+    });
+  } catch (error) {
+    console.error("Host verify-identity error:", error);
+    res.status(500).json({ error: "Failed to create verification session" });
+  }
+});
+
+router.get("/api/host/verify-identity/status", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const host = req.hostData!;
+
+    if (host.idVerified) {
+      return res.json({ status: "verified", verifiedAt: host.idVerifiedAt });
+    }
+
+    if (!host.stripeVerificationSessionId) {
+      return res.json({ status: "unverified" });
+    }
+
+    const { stripe } = await import("./stripe");
+    if (!stripe) {
+      return res.json({ status: "pending" });
+    }
+
+    const session = await stripe.identity.verificationSessions.retrieve(host.stripeVerificationSessionId);
+
+    if (session.status === "verified") {
+      await db.update(airbnbHosts).set({
+        idVerified: true,
+        idVerifiedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(airbnbHosts.id, host.id));
+
+      return res.json({ status: "verified", verifiedAt: new Date() });
+    } else if (session.status === "requires_input" || session.last_error) {
+      return res.json({ status: "failed", reason: session.last_error?.reason || "Verification failed" });
+    }
+
+    return res.json({ status: "pending" });
+  } catch (error) {
+    console.error("Host verify-identity status error:", error);
+    res.status(500).json({ error: "Failed to check verification status" });
   }
 });
 

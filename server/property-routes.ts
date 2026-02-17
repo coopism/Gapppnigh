@@ -32,6 +32,7 @@ async function batchGetPropertyDetails(propertyIds: string[]): Promise<Map<strin
       hostProfilePhoto: airbnbHosts.profilePhoto,
       hostAvgResponseTime: airbnbHosts.averageResponseTime,
       hostResponseRate: airbnbHosts.responseRate,
+      hostIdVerified: airbnbHosts.idVerified,
     })
     .from(properties)
     .leftJoin(airbnbHosts, eq(properties.hostId, airbnbHosts.id))
@@ -73,6 +74,7 @@ async function batchGetPropertyDetails(propertyIds: string[]): Promise<Map<strin
         profilePhoto: pd.hostProfilePhoto,
         averageResponseTime: pd.hostAvgResponseTime,
         responseRate: pd.hostResponseRate,
+        idVerified: pd.hostIdVerified || false,
       } : null,
       gapNights: gapNights.map(gn => ({
         date: gn.date,
@@ -244,6 +246,7 @@ router.get("/api/properties/:propertyId", async (req: Request, res: Response) =>
         bio: airbnbHosts.bio,
         averageResponseTime: airbnbHosts.averageResponseTime,
         responseRate: airbnbHosts.responseRate,
+        idVerified: airbnbHosts.idVerified,
         createdAt: airbnbHosts.createdAt,
       })
       .from(airbnbHosts)
@@ -391,6 +394,7 @@ router.get("/api/hosts/:hostId/profile", async (req: Request, res: Response) => 
         bio: airbnbHosts.bio,
         averageResponseTime: airbnbHosts.averageResponseTime,
         responseRate: airbnbHosts.responseRate,
+        idVerified: airbnbHosts.idVerified,
         createdAt: airbnbHosts.createdAt,
       })
       .from(airbnbHosts)

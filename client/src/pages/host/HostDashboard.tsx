@@ -12,7 +12,7 @@ import { Footer } from "@/components/Footer";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import {
   Home, CalendarDays, Calendar, MessageSquare, UserCircle, ChevronLeft, ChevronRight,
-  BookOpen, TrendingUp, Clock, CheckCircle2, HelpCircle, DollarSign, LogOut
+  BookOpen, TrendingUp, Clock, CheckCircle2, HelpCircle, DollarSign, LogOut, ShieldCheck, AlertTriangle
 } from "lucide-react";
 
 export default function HostDashboard() {
@@ -20,10 +20,50 @@ export default function HostDashboard() {
   const { toast } = useToast();
   const [host, setHost] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Check verification status on load (in case they just returned from Stripe)
+  useEffect(() => {
+    if (host && !host.idVerified) {
+      fetch("/api/host/verify-identity/status", { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.status === "verified") {
+            setHost((prev: any) => ({ ...prev, idVerified: true, idVerifiedAt: data.verifiedAt }));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [host?.id]);
+
+  const startVerification = async () => {
+    setVerifying(true);
+    try {
+      const res = await fetch("/api/host/verify-identity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ returnUrl: window.location.href }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else if (data.status === "verified") {
+        toast({ title: "Already verified", description: "Your ID has been confirmed." });
+        setHost((prev: any) => ({ ...prev, idVerified: true }));
+      } else {
+        toast({ title: "Error", description: data.error || "Failed to start verification", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to connect to server", variant: "destructive" });
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const checkAuth = async () => {
     try {
@@ -68,8 +108,11 @@ export default function HostDashboard() {
             <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Host</span>
           </Link>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-foreground font-medium hidden sm:inline">
+            <span className="text-sm text-foreground font-medium hidden sm:inline flex items-center gap-1.5">
               {host.name}
+              {host.idVerified && (
+                <span title="ID Verified"><ShieldCheck className="w-4 h-4 text-primary" /></span>
+              )}
             </span>
             
             <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
@@ -78,6 +121,24 @@ export default function HostDashboard() {
           </div>
         </div>
       </header>
+
+      {/* ID Verification Banner */}
+      {!host.idVerified && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Verify your identity</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Confirm your ID to get a verified badge on your listings and build trust with guests.</p>
+              </div>
+            </div>
+            <Button size="sm" onClick={startVerification} disabled={verifying} className="shrink-0">
+              {verifying ? "Starting..." : "Verify Now"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <Tabs defaultValue="overview">
