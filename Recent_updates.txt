@@ -1,6 +1,30 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Fix Map Markers, Clean Up Filter UI, Fix Entire Home Filter - Feb 18, 2026
+
+144. **Fixed map price marker positioning**
+    - Markers now center correctly on their map point (fixed iconAnchor/iconSize)
+    - Added `transform: translate(-50%, -50%)` for proper pill centering
+    - Cleared Leaflet default div-icon background/border
+
+145. **Cleaned up filter UI — removed clunky pill buttons**
+    - Removed standalone "Any type / Entire home / Room / Price range" button row
+    - Added a single filter icon button (circle with sliders icon) next to the search button in the search bar
+    - Shows active filter count badge when filters are applied
+    - All filter options remain in the expandable filter panel
+
+146. **Fixed "Entire home" filter not working**
+    - Property types in schema are `entire_place`, `private_room`, `shared_room`, `unique_stay`
+    - Filter was matching against wrong values ("house", "apartment" etc.)
+    - Now correctly matches: entire → `entire_place` + `unique_stay`, room → `private_room` + `shared_room`
+
+**Files Modified:**
+- `client/src/components/DealsMap.tsx` — Fixed marker iconAnchor, added wrapper CSS
+- `client/src/pages/Home.tsx` — Removed pill bar, added filter button to search bar, fixed propertyType matching
+
+---
+
 ## Airbnb-Style Map + Filter Bar on Deals Page - Feb 18, 2026
 
 142. **Map overhaul — Airbnb-style white pill price markers**

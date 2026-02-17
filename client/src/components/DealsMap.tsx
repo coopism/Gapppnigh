@@ -104,14 +104,20 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
           color: #222;
           font-weight: 700;
           font-size: 13px;
-          padding: 4px 10px;
+          padding: 5px 10px;
           border-radius: 20px;
           box-shadow: 0 2px 6px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.04);
           white-space: nowrap;
           cursor: pointer;
           transition: transform 0.15s, box-shadow 0.15s, background 0.15s, color 0.15s;
-          line-height: 1.3;
+          line-height: 1;
           text-align: center;
+          position: relative;
+          transform: translate(-50%, -50%);
+        }
+        .gn-marker-wrap {
+          background: none !important;
+          border: none !important;
         }
         .gn-price-marker:hover, .gn-price-marker.active {
           background: #222;
@@ -142,10 +148,10 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
       const isActive = selId === item.id;
 
       const icon = L.divIcon({
-        className: "",
+        className: "gn-marker-wrap",
         html: `<div class="gn-price-marker${isActive ? " active" : ""}" data-id="${item.id}">${priceText}</div>`,
-        iconSize: [0, 0],
-        iconAnchor: [0, 0],
+        iconSize: [80, 28],
+        iconAnchor: [40, 14],
       });
 
       const popupHtml = `

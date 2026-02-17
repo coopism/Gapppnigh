@@ -246,9 +246,9 @@ export default function Home() {
 
       // Place type filter (properties only — deals don't have propertyType)
       if (placeType !== "any" && item._type === "property") {
-        const pt = (item.propertyType || "").toLowerCase();
-        if (placeType === "entire" && !["house", "apartment", "villa", "cabin", "cottage"].includes(pt)) return false;
-        if (placeType === "room" && !["room", "private room", "shared room"].includes(pt)) return false;
+        const pt = (item.propertyType || "entire_place").toLowerCase();
+        if (placeType === "entire" && pt !== "entire_place" && pt !== "unique_stay") return false;
+        if (placeType === "room" && pt !== "private_room" && pt !== "shared_room") return false;
       }
 
       // Bedrooms / beds / bathrooms (properties only)
@@ -758,6 +758,22 @@ export default function Home() {
                 <Search className="w-5 h-5" />
               )}
             </Button>
+
+            {/* Filter Button — next to search */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`relative h-12 w-12 rounded-full border shrink-0 flex items-center justify-center transition-all ${
+                activeFilterCount > 0
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-card text-foreground hover:border-foreground/50"
+              }`}
+              aria-label="Filters"
+            >
+              <SlidersHorizontal className="w-5 h-5" />
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-5 h-5 text-[10px] font-bold flex items-center justify-center">{activeFilterCount}</span>
+              )}
+            </button>
           </div>
         </div>
 
@@ -783,50 +799,6 @@ export default function Home() {
             </button>
           ))}
           </div>
-        </div>
-
-        {/* Filter Bar */}
-        <div className="flex items-center gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
-          <Button
-            variant={activeFilterCount > 0 ? "default" : "outline"}
-            size="sm"
-            className="rounded-full gap-2 font-medium h-9 shrink-0"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="bg-background text-foreground rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold">{activeFilterCount}</span>
-            )}
-          </Button>
-
-          {/* Quick filter pills */}
-          {(["any", "entire", "room"] as const).map(t => (
-            <Button
-              key={t}
-              variant={placeType === t ? "default" : "outline"}
-              size="sm"
-              className="rounded-full h-9 shrink-0 font-medium"
-              onClick={() => setPlaceType(t)}
-            >
-              {t === "any" ? "Any type" : t === "entire" ? "Entire home" : "Room"}
-            </Button>
-          ))}
-
-          <Button
-            variant={priceMin > 0 || priceMax < 1000 ? "default" : "outline"}
-            size="sm"
-            className="rounded-full h-9 shrink-0 font-medium"
-            onClick={() => setShowFilters(true)}
-          >
-            Price range
-          </Button>
-
-          {activeFilterCount > 0 && (
-            <Button variant="ghost" size="sm" className="rounded-full h-9 shrink-0 text-muted-foreground" onClick={clearAllFilters}>
-              Clear all
-            </Button>
-          )}
         </div>
 
         {/* Expanded Filter Panel */}
