@@ -57,7 +57,7 @@ function calculateDealScore(property: any): number {
 
 function getGapNightRangeLabel(property: any): string {
   const gapNights = property.gapNights || [];
-  if (gapNights.length === 0) return "Available";
+  if (gapNights.length === 0) return "No availability";
   // Group consecutive dates into ranges
   const dates = gapNights.map((gn: any) => gn.date).sort();
   let ranges = 0;
@@ -87,6 +87,7 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
   const { isPropertySaved, toggleSaveProperty } = useSavedListings();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const isSaved = isPropertySaved(property.id);
+  const hasAvailability = (property.gapNights?.length || 0) > 0;
   
   const lowestGapRate = property.gapNights?.length > 0
     ? Math.min(...property.gapNights.map((gn: any) => gn.discountedRate))
@@ -113,8 +114,17 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
 
   return (
     <>
-      <Link href={`/stays/${property.id}`} className="block group" data-testid={`property-card-${property.id}`}>
-      <div className="bg-card rounded-xl overflow-hidden border border-border/50 hover:shadow-xl hover:border-primary/30 transition-all duration-300 flex flex-col h-full">
+      <Link 
+        href={hasAvailability ? `/stays/${property.id}` : "#"}
+        className={`block group ${!hasAvailability ? "pointer-events-auto" : ""}`}
+        data-testid={`property-card-${property.id}`}
+        onClick={!hasAvailability ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+      >
+      <div className={`bg-card rounded-xl overflow-hidden border transition-all duration-300 flex flex-col h-full ${
+        hasAvailability 
+          ? "border-border/50 hover:shadow-xl hover:border-primary/30" 
+          : "border-border/30 opacity-55 grayscale-[40%] cursor-default"
+      }`}>
         {/* Image Section */}
         <div className="relative w-full aspect-[4/3] overflow-hidden">
           <img
@@ -209,7 +219,9 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
           )}
 
           {/* Availability line */}
-          <div className="flex items-center gap-1.5 text-[10px] md:text-xs text-muted-foreground mb-2">
+          <div className={`flex items-center gap-1.5 text-[10px] md:text-xs mb-2 ${
+            hasAvailability ? "text-muted-foreground" : "text-rose-500 font-medium"
+          }`}>
             <CalendarDays className="w-3 h-3 md:w-3.5 md:h-3.5" />
             <span>{getGapNightRangeLabel(property)}</span>
           </div>

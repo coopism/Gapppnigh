@@ -1,6 +1,19 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Grey Out Properties With No Gap Night Availability - Feb 18, 2026
+
+131. **Properties with no gap night dates now appear greyed out with "No availability"**
+    - Card shows reduced opacity (55%) + partial grayscale when `gapNights` is empty
+    - Availability label changes from "Available" to "No availability" in rose/red text
+    - Card link is disabled (click does nothing) so users can't navigate to unavailable properties
+    - Properties WITH gap nights remain fully interactive and styled normally
+
+**Files Modified:**
+- `client/src/components/PropertyDealCard.tsx` — Added `hasAvailability` flag, greyed-out styling, disabled navigation
+
+---
+
 ## Revert: Properties Must Be Approved Before Showing - Feb 18, 2026
 
 130. **Reverted pending_approval inclusion — only `status: "approved"` properties appear publicly**
