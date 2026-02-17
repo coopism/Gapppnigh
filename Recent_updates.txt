@@ -1,6 +1,40 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Pricing Display + Booking & Liability Policy - Feb 18, 2026
+
+164. **Updated pricing display on booking page**
+    - Total now shown prominently at top with "Includes:" breakdown below
+    - Shows nightly rate × nights, cleaning fee, and GapNight service fee (8%)
+    - Cleaner layout matching Airbnb-style pricing summary
+
+165. **Comprehensive Booking & Liability Policy (/booking-policy)**
+    - 13-section legally structured policy covering:
+      - Guest responsibilities & duty of care
+      - Damage liability & financial responsibility (no cap, photo evidence, 14-day claim window)
+      - Stolen/missing items liability
+      - Cancellation & refund policy (48h threshold, no-show, force majeure)
+      - Payment terms (auth hold, capture on approval)
+      - Insurance & indemnity (guest + host indemnification, travel insurance recommendation)
+      - Dispute resolution (direct → GapNight mediation → external)
+      - Safety & compliance
+      - Privacy & data (Australian Privacy Act 1988)
+      - Severability, entire agreement, amendments clauses
+    - Governed by NSW law with court jurisdiction clause
+
+166. **Mandatory policy agreement checkbox before booking**
+    - Checkbox must be ticked before "Submit Booking Request" button is enabled
+    - Links to full policy page
+    - Warning message shown if policy not agreed after payment
+    - Explicit consent text referencing damage liability, cancellation terms, dispute resolution
+
+**Files Modified:**
+- `client/src/pages/PropertyBooking.tsx` — Pricing "Includes" layout, policy checkbox, disabled submit without agreement
+- `client/src/pages/BookingPolicy.tsx` — New file: full 13-section booking & liability policy
+- `client/src/App.tsx` — Added /booking-policy route
+
+---
+
 ## Host Onboarding Wizard (Airbnb-style step-by-step) - Feb 18, 2026
 
 161. **New host signup → onboarding redirect**

@@ -8,7 +8,7 @@ import { z } from "zod";
 import {
   ArrowLeft, Star, MapPin, Calendar, CreditCard, User, Mail, Phone,
   MessageSquare, ChevronDown, ChevronUp, Check, Shield, Clock, AlertCircle, Loader, Users, Heart,
-  ScanFace, ExternalLink, RefreshCw, CheckCircle2, XCircle
+  ScanFace, ExternalLink, RefreshCw, CheckCircle2, XCircle, FileText
 } from "lucide-react";
 import { StripePaymentForm } from "@/components/StripePaymentForm";
 import { Button } from "@/components/ui/button";
@@ -67,6 +67,7 @@ export default function PropertyBooking() {
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [guestDetailsValid, setGuestDetailsValid] = useState(false);
+  const [policyAgreed, setPolicyAgreed] = useState(false);
 
   // ID Verification state
   const [idStatus, setIdStatus] = useState<"loading" | "unverified" | "pending" | "verified" | "failed">("loading");
@@ -766,8 +767,24 @@ export default function PropertyBooking() {
                   ) : null}
                 </div>
 
+                {/* Booking Policy Agreement */}
+                <div className="bg-card rounded-xl p-5 border border-border/50">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="policy-agree"
+                      checked={policyAgreed}
+                      onChange={e => setPolicyAgreed(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-border accent-primary shrink-0"
+                    />
+                    <label htmlFor="policy-agree" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+                      I have read and agree to the <Link href="/booking-policy" className="text-primary font-medium hover:underline">GapNight Booking & Liability Policy</Link>, including the guest responsibilities, damage liability, cancellation terms, and dispute resolution process. I understand that I am financially responsible for any damage caused to the property during my stay.
+                    </label>
+                  </div>
+                </div>
+
                 {paymentComplete && (
-                  <Button type="submit" size="lg" className="w-full font-bold" disabled={isSubmitting}>
+                  <Button type="submit" size="lg" className="w-full font-bold" disabled={isSubmitting || !policyAgreed}>
                     {isSubmitting ? (
                       <><Loader className="w-4 h-4 mr-2 animate-spin" /> Submitting Request...</>
                     ) : (
@@ -776,8 +793,14 @@ export default function PropertyBooking() {
                   </Button>
                 )}
 
+                {!policyAgreed && paymentComplete && (
+                  <p className="text-xs text-amber-600 text-center flex items-center justify-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Please agree to the Booking Policy to continue
+                  </p>
+                )}
+
                 <p className="text-xs text-muted-foreground text-center">
-                  By submitting this request, you agree to our Terms of Service and Privacy Policy.
+                  By submitting this request, you agree to our <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link>, <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>, and <Link href="/booking-policy" className="text-primary hover:underline">Booking & Liability Policy</Link>.
                   You won't be charged until the host approves your booking.
                 </p>
               </form>
@@ -848,10 +871,14 @@ export default function PropertyBooking() {
               </div>
 
               <div className="p-4 border-b border-border/50">
-                <h4 className="font-bold text-foreground mb-3">Price Details</h4>
-                <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-bold text-lg text-foreground">Total</span>
+                  <span className="font-bold text-2xl text-foreground">{formatPrice(grandTotal / 100, "AUD")}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">Includes:</p>
+                <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">{nightsParam} night{nightsParam > 1 ? "s" : ""}</span>
+                    <span className="text-muted-foreground">{nightsParam} night{nightsParam > 1 ? "s" : ""} × {formatPrice(nightlyRate / 100, "AUD")}</span>
                     <span className="text-foreground">{formatPrice(totalNightly / 100, "AUD")}</span>
                   </div>
                   {cleaningFee > 0 && (
@@ -864,10 +891,6 @@ export default function PropertyBooking() {
                     <span className="text-muted-foreground">GapNight service fee (8%)</span>
                     <span className="text-foreground">{formatPrice(serviceFee / 100, "AUD")}</span>
                   </div>
-                </div>
-                <div className="flex justify-between items-center mt-4 pt-4 border-t border-border/50">
-                  <span className="font-bold text-lg text-foreground">Total</span>
-                  <span className="font-bold text-xl text-foreground">{formatPrice(grandTotal / 100, "AUD")}</span>
                 </div>
               </div>
 
