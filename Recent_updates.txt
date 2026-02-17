@@ -1,6 +1,27 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Expanded Property Editor with All CreateListing Fields - Feb 18, 2026
+
+194. **Property editor now matches CreateListing wizard fields**
+    - Check-in/check-out time pickers
+    - Cancellation policy selector (flexible/moderate/strict)
+    - Min notice selector (same day, 1-7 days)
+    - Gap Night Pricing section: discount slider (10-60%), weekday/weekend multipliers
+    - Amenities toggle chips (WiFi, Kitchen, Pool, Parking, etc.)
+    - New toggles: smoking allowed, instant book, block day after booking, manual approval
+    - All fields save to both `properties` table and `gap_night_rules` table
+
+195. **Backend: host properties list now includes gap night rules**
+    - GET `/api/host/properties` enriches each property with its `gapNightRule` data
+    - PUT `/api/host/properties/:id` now accepts nested `gapNightRule` object and upserts to `gap_night_rules` table
+
+**Files Modified:**
+- `server/host-routes.ts` — Enriched properties list with gapNightRules, property update upserts gap_night_rules
+- `client/src/pages/host/HostDashboard.tsx` — Expanded editForm state + UI with all new fields
+
+---
+
 ## Fix: Host Message Guest — Proper Modal UI - Feb 18, 2026
 
 193. **Replaced browser prompt() with proper modal dialog for host messaging**

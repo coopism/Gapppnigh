@@ -411,6 +411,7 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Edit form state
+  const gnr = property.gapNightRule;
   const [editForm, setEditForm] = useState({
     title: property.title || "",
     description: property.description || "",
@@ -432,6 +433,19 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
     nearbyHighlight: property.nearbyHighlight || "",
     selfCheckIn: property.selfCheckIn || false,
     petFriendly: property.petFriendly || false,
+    smokingAllowed: property.smokingAllowed || false,
+    instantBook: property.instantBook || false,
+    checkInTime: property.checkInTime || "15:00",
+    checkOutTime: property.checkOutTime || "10:00",
+    cancellationPolicy: property.cancellationPolicy || "moderate",
+    amenities: property.amenities || [],
+    // Gap night rule fields
+    gapNightDiscount: gnr?.gapNightDiscount ?? 30,
+    weekdayMultiplier: gnr?.weekdayMultiplier || "1.0",
+    weekendMultiplier: gnr?.weekendMultiplier || "1.0",
+    minNotice: gnr?.minNotice ?? 1,
+    prepBuffer: gnr?.prepBuffer || false,
+    manualApproval: gnr?.manualApproval ?? true,
   });
 
   const loadPhotos = async () => {
@@ -529,14 +543,25 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
   const handleSaveEdit = async () => {
     setIsSaving(true);
     try {
+      const { gapNightDiscount, weekdayMultiplier, weekendMultiplier, minNotice, prepBuffer, manualApproval, ...propertyFields } = editForm;
       const res = await fetch(`/api/host/properties/${property.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          ...editForm,
+          ...propertyFields,
           baseNightlyRate: Math.round(parseFloat(editForm.baseNightlyRate) * 100),
           cleaningFee: editForm.cleaningFee ? Math.round(parseFloat(editForm.cleaningFee) * 100) : 0,
+          gapNightRule: {
+            gapNightDiscount,
+            weekdayMultiplier,
+            weekendMultiplier,
+            minNotice,
+            prepBuffer,
+            manualApproval,
+            checkInTime: editForm.checkInTime,
+            checkOutTime: editForm.checkOutTime,
+          },
         }),
       });
       if (res.ok) {
@@ -698,14 +723,127 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
             <label className="text-xs font-medium text-muted-foreground">Nearby Highlight</label>
             <Input value={editForm.nearbyHighlight} onChange={e => setEditForm({...editForm, nearbyHighlight: e.target.value})} className="h-9 text-sm" />
           </div>
-          <div className="flex gap-4">
+          {/* Check-in / Check-out times */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Check-in Time</label>
+              <Input type="time" value={editForm.checkInTime} onChange={e => setEditForm({...editForm, checkInTime: e.target.value})} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Check-out Time</label>
+              <Input type="time" value={editForm.checkOutTime} onChange={e => setEditForm({...editForm, checkOutTime: e.target.value})} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Cancellation Policy</label>
+              <select className="w-full rounded-md border p-2 text-xs h-9 bg-background" value={editForm.cancellationPolicy} onChange={e => setEditForm({...editForm, cancellationPolicy: e.target.value})}>
+                <option value="flexible">Flexible (24hr)</option>
+                <option value="moderate">Moderate (5 days)</option>
+                <option value="strict">Strict (7 days)</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Min Notice</label>
+              <select className="w-full rounded-md border p-2 text-xs h-9 bg-background" value={editForm.minNotice} onChange={e => setEditForm({...editForm, minNotice: parseInt(e.target.value)})}>
+                <option value={0}>Same day</option>
+                <option value={1}>1 day</option>
+                <option value={2}>2 days</option>
+                <option value={3}>3 days</option>
+                <option value={7}>1 week</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Gap Night Pricing */}
+          <div className="bg-muted/30 rounded-lg p-3 space-y-3">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gap Night Pricing</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  Gap Night Discount: <span className="text-primary font-bold">{editForm.gapNightDiscount}%</span>
+                  {parseFloat(editForm.baseNightlyRate) > 0 && (
+                    <span className="ml-1 text-muted-foreground">
+                      = ${(parseFloat(editForm.baseNightlyRate) * (1 - editForm.gapNightDiscount / 100)).toFixed(0)}/night
+                    </span>
+                  )}
+                </label>
+                <input type="range" min="10" max="60" step="5" value={editForm.gapNightDiscount}
+                  onChange={e => setEditForm({...editForm, gapNightDiscount: parseInt(e.target.value)})}
+                  className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary" />
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                  <span>10%</span><span>60%</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Weekday Multiplier</label>
+                <select className="w-full rounded-md border p-2 text-xs h-9 bg-background" value={editForm.weekdayMultiplier} onChange={e => setEditForm({...editForm, weekdayMultiplier: e.target.value})}>
+                  <option value="0.8">0.8x (cheaper)</option>
+                  <option value="0.9">0.9x</option>
+                  <option value="1.0">1.0x (standard)</option>
+                  <option value="1.1">1.1x</option>
+                  <option value="1.2">1.2x (premium)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Weekend Multiplier</label>
+                <select className="w-full rounded-md border p-2 text-xs h-9 bg-background" value={editForm.weekendMultiplier} onChange={e => setEditForm({...editForm, weekendMultiplier: e.target.value})}>
+                  <option value="0.8">0.8x (cheaper)</option>
+                  <option value="0.9">0.9x</option>
+                  <option value="1.0">1.0x (standard)</option>
+                  <option value="1.1">1.1x</option>
+                  <option value="1.2">1.2x</option>
+                  <option value="1.3">1.3x</option>
+                  <option value="1.5">1.5x (premium)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Amenities */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Amenities</label>
+            <div className="flex flex-wrap gap-1.5">
+              {["WiFi", "Kitchen", "Pool", "Parking", "Air Conditioning", "TV", "Washer", "Dryer", "Gym", "Hot Tub", "BBQ", "Garden", "Balcony", "Fireplace", "Beach Access", "Ski Access", "EV Charger", "Workspace"].map(a => (
+                <button key={a} type="button"
+                  onClick={() => {
+                    const current = editForm.amenities || [];
+                    setEditForm({...editForm, amenities: current.includes(a) ? current.filter((x: string) => x !== a) : [...current, a]});
+                  }}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                    (editForm.amenities || []).includes(a)
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}>
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Toggles */}
+          <div className="flex flex-wrap gap-4">
             <label className="flex items-center gap-2 text-xs">
-              <input type="checkbox" checked={editForm.selfCheckIn} onChange={e => setEditForm({...editForm, selfCheckIn: e.target.checked})} />
+              <input type="checkbox" checked={editForm.selfCheckIn} onChange={e => setEditForm({...editForm, selfCheckIn: e.target.checked})} className="w-4 h-4 rounded" />
               Self check-in
             </label>
             <label className="flex items-center gap-2 text-xs">
-              <input type="checkbox" checked={editForm.petFriendly} onChange={e => setEditForm({...editForm, petFriendly: e.target.checked})} />
+              <input type="checkbox" checked={editForm.petFriendly} onChange={e => setEditForm({...editForm, petFriendly: e.target.checked})} className="w-4 h-4 rounded" />
               Pet friendly
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={editForm.smokingAllowed} onChange={e => setEditForm({...editForm, smokingAllowed: e.target.checked})} className="w-4 h-4 rounded" />
+              Smoking allowed
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={editForm.instantBook} onChange={e => setEditForm({...editForm, instantBook: e.target.checked})} className="w-4 h-4 rounded" />
+              Instant book
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={editForm.prepBuffer} onChange={e => setEditForm({...editForm, prepBuffer: e.target.checked})} className="w-4 h-4 rounded" />
+              Block day after booking
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={editForm.manualApproval} onChange={e => setEditForm({...editForm, manualApproval: e.target.checked})} className="w-4 h-4 rounded" />
+              Manual approval required
             </label>
           </div>
           <div className="flex gap-2 pt-1">

@@ -553,7 +553,20 @@ router.get("/api/host/properties", requireHostAuth, async (req: HostRequest, res
       .where(eq(properties.hostId, req.hostId!))
       .orderBy(desc(properties.createdAt));
 
-    res.json({ properties: hostProperties });
+    // Fetch gap night rules for all properties
+    const rules = await db
+      .select()
+      .from(gapNightRules)
+      .where(eq(gapNightRules.hostId, req.hostId!));
+
+    const rulesMap = new Map(rules.map(r => [r.propertyId, r]));
+
+    const enriched = hostProperties.map(p => ({
+      ...p,
+      gapNightRule: rulesMap.get(p.id) || null,
+    }));
+
+    res.json({ properties: enriched });
   } catch (error) {
     console.error("Get properties error:", error);
     res.status(500).json({ error: "Failed to fetch properties" });
@@ -765,6 +778,33 @@ router.put("/api/host/properties/:propertyId", requireHostAuth, async (req: Host
       .set(allowedFields)
       .where(eq(properties.id, propertyId))
       .returning();
+
+    // Also update gap night rules if provided
+    if (req.body.gapNightRule) {
+      const gnr = req.body.gapNightRule;
+      const gnrFields: Record<string, any> = {};
+      const gnrAllowed = ["checkInTime", "checkOutTime", "minNotice", "prepBuffer", "gapNightDiscount", "weekdayMultiplier", "weekendMultiplier", "manualApproval", "autoPublish"];
+      for (const f of gnrAllowed) {
+        if (gnr[f] !== undefined) gnrFields[f] = gnr[f];
+      }
+      if (Object.keys(gnrFields).length > 0) {
+        gnrFields.updatedAt = new Date();
+        const [existingRule] = await db.select().from(gapNightRules)
+          .where(and(eq(gapNightRules.hostId, req.hostId!), eq(gapNightRules.propertyId, propertyId)))
+          .limit(1);
+        if (existingRule) {
+          await db.update(gapNightRules).set(gnrFields)
+            .where(eq(gapNightRules.id, existingRule.id));
+        } else {
+          await db.insert(gapNightRules).values({
+            id: uuidv4(),
+            hostId: req.hostId!,
+            propertyId,
+            ...gnrFields,
+          });
+        }
+      }
+    }
 
     res.json({ property: updated });
   } catch (error) {
