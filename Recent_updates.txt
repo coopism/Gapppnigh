@@ -1,13 +1,18 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
-## Remove Category Chips + Fix Map Hover - Feb 18, 2026
+## Remove Category Chips + Major Performance Optimization - Feb 18, 2026
 
-149. **Removed category chip buttons** (All Deals, Last Minute, Trending, Beach, City, Luxury, Boutique)
-150. **Fixed map marker hover** — reduced scale from 1.08 to 1.02, preserved translate so markers don't jump
+149. **Fully removed category chips** — deleted CATEGORIES constant, activeCategory state, and category param from API calls
+150. **Major /api/properties performance fix** — replaced N+1 queries (3 DB queries per property = 60+ queries for 20 properties) with batch helper (3 total queries regardless of count)
+151. **Pushed all filters to DB level** — city, type, guests, price range now filtered in SQL instead of post-fetch
+152. **Added query caching** — 2min staleTime + 5min gcTime on both deals and properties queries to avoid redundant fetches
+153. **Increased default limit** from 20 to 50 properties per page
 
 **Files Modified:**
-- `client/src/pages/Home.tsx` — Removed category chips section
+- `client/src/pages/Home.tsx` — Removed all category code, added query caching
+- `client/src/hooks/use-deals.ts` — Added staleTime/gcTime
+- `server/property-routes.ts` — Rewired to use batchGetPropertyDetails, DB-level filters
 - `client/src/components/DealsMap.tsx` — Toned down hover effect
 
 ---

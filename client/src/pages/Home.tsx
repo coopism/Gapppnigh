@@ -24,7 +24,6 @@ import { CollapsedSearchBar } from "@/components/CollapsedSearchBar";
 import { SearchBottomSheet } from "@/components/SearchBottomSheet";
 import { format, addMonths, addDays, startOfMonth, endOfMonth } from "date-fns";
 
-const CATEGORIES = ["All Deals", "Last Minute", "Trending", "Beach", "City", "Luxury", "Boutique"];
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "best", label: "Deal Score" },
@@ -83,7 +82,6 @@ export default function Home() {
   
   const [searchInput, setSearchInput] = useState(urlSearch);
   const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
-  const [activeCategory, setActiveCategory] = useState("All Deals");
   const [sortBy, setSortBy] = useState<SortOption>("best");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -195,7 +193,6 @@ export default function Home() {
 
   const { data: deals, isLoading: dealsLoading, error } = useDeals({
     search: debouncedSearch || undefined,
-    category: activeCategory,
     sort: sortBy,
     startDate: dateFilters.startDate,
     endDate: dateFilters.endDate,
@@ -215,6 +212,8 @@ export default function Home() {
       const data = await res.json();
       return data.properties || [];
     },
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const isLoading = dealsLoading || propsLoading;
@@ -1010,7 +1009,6 @@ export default function Home() {
               onClick={() => {
                 setSearchInput("");
                 setDebouncedSearch("");
-                setActiveCategory("All Deals");
               }}
               data-testid="button-clear-filters"
             >

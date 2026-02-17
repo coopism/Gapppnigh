@@ -37,6 +37,8 @@ export function useDeals({ search, category, sort, startDate, endDate, nights, m
       if (!res.ok) throw new Error("Failed to fetch deals");
       return api.deals.list.responses[200].parse(await res.json());
     },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

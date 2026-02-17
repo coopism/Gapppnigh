@@ -149,110 +149,66 @@ interface QuestionRequestBody {
 // Get all approved properties with gap nights
 router.get("/api/properties", async (req: Request, res: Response) => {
   try {
-    const { city, type, minPrice, maxPrice, guests, page = "1", limit = "20" } = req.query;
-    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const { city, type, minPrice, maxPrice, guests, page = "1", limit = "50" } = req.query;
+    const parsedLimit = Math.min(parseInt(limit as string) || 50, 100);
+    const offset = (parseInt(page as string) - 1) * parsedLimit;
 
-    // Get approved active properties
-    let allProperties = await db
-      .select()
-      .from(properties)
-      .where(and(
-        eq(properties.status, "approved"),
-        eq(properties.isActive, true)
-      ))
-      .orderBy(desc(properties.createdAt))
-      .limit(parseInt(limit as string))
-      .offset(offset);
-
-    // Filter by city
+    // Build WHERE conditions at the DB level for speed
+    const conditions = [
+      eq(properties.status, "approved"),
+      eq(properties.isActive, true),
+    ];
     if (city) {
-      allProperties = allProperties.filter(p => 
-        p.city.toLowerCase().includes((city as string).toLowerCase())
-      );
+      conditions.push(sql`LOWER(${properties.city}) LIKE ${'%' + (city as string).toLowerCase() + '%'}`);
     }
-
-    // Filter by property type
     if (type) {
-      allProperties = allProperties.filter(p => p.propertyType === type);
+      conditions.push(eq(properties.propertyType, type as string));
     }
-
-    // Filter by guest count
     if (guests) {
-      allProperties = allProperties.filter(p => p.maxGuests >= parseInt(guests as string));
+      conditions.push(gte(properties.maxGuests, parseInt(guests as string)));
     }
-
-    // Enrich with host info and availability
-    const enriched = await Promise.all(
-      allProperties.map(async (prop) => {
-        const [host] = await db
-          .select({
-            name: airbnbHosts.name,
-            profilePhoto: airbnbHosts.profilePhoto,
-            averageResponseTime: airbnbHosts.averageResponseTime,
-            responseRate: airbnbHosts.responseRate,
-          })
-          .from(airbnbHosts)
-          .where(eq(airbnbHosts.id, prop.hostId))
-          .limit(1);
-
-        // Get gap night availability (future dates only)
-        const today = new Date().toISOString().split("T")[0];
-        const gapNights = await db
-          .select()
-          .from(propertyAvailability)
-          .where(and(
-            eq(propertyAvailability.propertyId, prop.id),
-            eq(propertyAvailability.isAvailable, true),
-            eq(propertyAvailability.isGapNight, true),
-            gte(propertyAvailability.date, today)
-          ))
-          .orderBy(asc(propertyAvailability.date))
-          .limit(30);
-
-        // Get review count
-        const [reviewStats] = await db
-          .select({ 
-            count: count(),
-            avgRating: sql<number>`COALESCE(AVG(${propertyReviews.rating}), 0)`,
-          })
-          .from(propertyReviews)
-          .where(eq(propertyReviews.propertyId, prop.id));
-
-        return {
-          ...prop,
-          host: host || null,
-          gapNights: gapNights.map(gn => ({
-            date: gn.date,
-            nightlyRate: gn.nightlyRate,
-            gapNightDiscount: gn.gapNightDiscount,
-            discountedRate: Math.round(gn.nightlyRate * (1 - (gn.gapNightDiscount || 0) / 100)),
-          })),
-          gapNightCount: gapNights.length,
-          reviewCount: reviewStats?.count || 0,
-          averageRating: Number(reviewStats?.avgRating || 0).toFixed(1),
-        };
-      })
-    );
-
-    // Post-filter by price if needed
-    let filtered = enriched;
     if (minPrice) {
-      filtered = filtered.filter(p => p.baseNightlyRate >= parseInt(minPrice as string) * 100);
+      conditions.push(gte(properties.baseNightlyRate, parseInt(minPrice as string) * 100));
     }
     if (maxPrice) {
-      filtered = filtered.filter(p => p.baseNightlyRate <= parseInt(maxPrice as string) * 100);
+      conditions.push(lte(properties.baseNightlyRate, parseInt(maxPrice as string) * 100));
     }
+
+    // Single query with all filters pushed to DB
+    const allProperties = await db
+      .select()
+      .from(properties)
+      .where(and(...conditions))
+      .orderBy(desc(properties.createdAt))
+      .limit(parsedLimit)
+      .offset(offset);
+
+    // Batch enrich — 3 queries total instead of 3 per property
+    const propertyIds = allProperties.map(p => p.id);
+    const detailsMap = await batchGetPropertyDetails(propertyIds);
+
+    const enriched = allProperties.map(prop => {
+      const details = detailsMap.get(prop.id);
+      return {
+        ...prop,
+        host: details?.host || null,
+        gapNights: details?.gapNights || [],
+        gapNightCount: details?.gapNights.length || 0,
+        reviewCount: details?.reviewStats.count || 0,
+        averageRating: Number(details?.reviewStats.avgRating || 0).toFixed(1),
+      };
+    });
 
     const [totalCount] = await db
       .select({ count: count() })
       .from(properties)
-      .where(and(eq(properties.status, "approved"), eq(properties.isActive, true)));
+      .where(and(...conditions));
 
     res.json({
-      properties: filtered,
+      properties: enriched,
       total: totalCount.count,
       page: parseInt(page as string),
-      limit: parseInt(limit as string),
+      limit: parsedLimit,
     });
   } catch (error) {
     console.error("Get properties error:", error);
