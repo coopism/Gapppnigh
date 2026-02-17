@@ -1632,6 +1632,15 @@ router.post("/api/host/bookings/:bookingId/cancel", requireHostAuth, async (req:
       console.error("Failed to re-open availability:", availError);
     }
 
+    // Send cancellation email to guest
+    try {
+      const [property] = await db.select().from(properties).where(eq(properties.id, booking.propertyId)).limit(1);
+      const { sendBookingCancelledByHostEmail } = await import("./email");
+      await sendBookingCancelledByHostEmail(updated, property, reason);
+    } catch (emailError) {
+      console.error("Failed to send cancellation email:", emailError);
+    }
+
     res.json({ booking: updated, message: "Booking cancelled — guest will receive a full refund" });
   } catch (error) {
     console.error("Host cancel booking error:", error);
@@ -1993,8 +2002,145 @@ router.get("/api/host/stats", requireHostAuth, async (req: HostRequest, res: Res
 });
 
 // ========================================
-// RESPOND TO REVIEWS
+// HOST EARNINGS BREAKDOWN
 // ========================================
+
+router.get("/api/host/earnings", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    // Monthly revenue for last 12 months
+    const monthlyRevenue = await db.execute(sql`
+      SELECT
+        TO_CHAR(created_at, 'YYYY-MM') as month,
+        COUNT(*) as bookings,
+        COALESCE(SUM(total_price), 0) as gross_revenue,
+        COALESCE(SUM(service_fee), 0) as platform_fees,
+        COALESCE(SUM(total_price - service_fee), 0) as net_earnings
+      FROM property_bookings
+      WHERE host_id = ${req.hostId!}
+        AND status IN ('CONFIRMED', 'COMPLETED')
+      GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+      ORDER BY month DESC
+      LIMIT 12
+    `);
+
+    // Per-property revenue
+    const propertyRevenue = await db.execute(sql`
+      SELECT
+        p.id, p.title, p.cover_image,
+        COUNT(pb.id) as bookings,
+        COALESCE(SUM(pb.total_price), 0) as gross_revenue,
+        COALESCE(SUM(pb.service_fee), 0) as platform_fees
+      FROM properties p
+      LEFT JOIN property_bookings pb ON pb.property_id = p.id
+        AND pb.status IN ('CONFIRMED', 'COMPLETED')
+      WHERE p.host_id = ${req.hostId!} AND p.is_active = true
+      GROUP BY p.id, p.title, p.cover_image
+      ORDER BY gross_revenue DESC
+    `);
+
+    // Totals
+    const totalsResult = await db.execute(sql`
+      SELECT
+        COALESCE(SUM(total_price), 0) as total_gross,
+        COALESCE(SUM(service_fee), 0) as total_fees,
+        COALESCE(SUM(total_price - service_fee), 0) as total_net,
+        COUNT(*) as total_bookings
+      FROM property_bookings
+      WHERE host_id = ${req.hostId!}
+        AND status IN ('CONFIRMED', 'COMPLETED')
+    `);
+    const totals = (totalsResult.rows || [])[0] as any;
+
+    // This month
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const thisMonthResult = await db.execute(sql`
+      SELECT
+        COALESCE(SUM(total_price), 0) as gross,
+        COALESCE(SUM(service_fee), 0) as fees,
+        COUNT(*) as bookings
+      FROM property_bookings
+      WHERE host_id = ${req.hostId!}
+        AND status IN ('CONFIRMED', 'COMPLETED')
+        AND TO_CHAR(created_at, 'YYYY-MM') = ${thisMonth}
+    `);
+    const thisMonthData = (thisMonthResult.rows || [])[0] as any;
+
+    res.json({
+      monthly: monthlyRevenue.rows || [],
+      byProperty: (propertyRevenue.rows || []).map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        coverImage: r.cover_image,
+        bookings: Number(r.bookings),
+        grossRevenue: Number(r.gross_revenue) / 100,
+        platformFees: Number(r.platform_fees) / 100,
+        netEarnings: (Number(r.gross_revenue) - Number(r.platform_fees)) / 100,
+      })),
+      totals: {
+        grossRevenue: Number((totals as any)?.total_gross || 0) / 100,
+        platformFees: Number((totals as any)?.total_fees || 0) / 100,
+        netEarnings: Number((totals as any)?.total_net || 0) / 100,
+        totalBookings: Number((totals as any)?.total_bookings || 0),
+      },
+      thisMonth: {
+        gross: Number((thisMonthData as any)?.gross || 0) / 100,
+        fees: Number((thisMonthData as any)?.fees || 0) / 100,
+        bookings: Number((thisMonthData as any)?.bookings || 0),
+      },
+    });
+  } catch (error) {
+    console.error("Host earnings error:", error);
+    res.status(500).json({ error: "Failed to fetch earnings" });
+  }
+});
+
+// ========================================
+// HOST REVIEWS
+// ========================================
+
+router.get("/api/host/reviews", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const hostProperties = await db
+      .select({ id: properties.id, title: properties.title })
+      .from(properties)
+      .where(eq(properties.hostId, req.hostId!));
+
+    if (hostProperties.length === 0) {
+      return res.json({ reviews: [] });
+    }
+
+    const propIds = hostProperties.map(p => p.id);
+    const propMap = new Map(hostProperties.map(p => [p.id, p.title]));
+
+    const reviews = await db
+      .select()
+      .from(propertyReviews)
+      .where(inArray(propertyReviews.propertyId, propIds))
+      .orderBy(desc(propertyReviews.createdAt));
+
+    const enriched = await Promise.all(
+      reviews.map(async (r) => {
+        const [user] = await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, r.userId))
+          .limit(1);
+        return {
+          ...r,
+          guestName: user?.name || "Guest",
+          propertyTitle: propMap.get(r.propertyId) || "Property",
+        };
+      })
+    );
+
+    res.json({ reviews: enriched });
+  } catch (error) {
+    console.error("Get host reviews error:", error);
+    res.status(500).json({ error: "Failed to fetch reviews" });
+  }
+});
+
+// RESPOND TO REVIEWS
 
 router.post("/api/host/reviews/:reviewId/respond", requireHostAuth, async (req: HostRequest, res: Response) => {
   try {

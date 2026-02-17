@@ -12,7 +12,7 @@ import { Footer } from "@/components/Footer";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import {
   Home, CalendarDays, Calendar, MessageSquare, UserCircle, ChevronLeft, ChevronRight,
-  BookOpen, TrendingUp, Clock, CheckCircle2, HelpCircle, DollarSign, LogOut, ShieldCheck, AlertTriangle, Mail, Send, ArrowLeft
+  BookOpen, TrendingUp, Clock, CheckCircle2, HelpCircle, DollarSign, LogOut, ShieldCheck, AlertTriangle, Mail, Send, ArrowLeft, Star
 } from "lucide-react";
 
 export default function HostDashboard() {
@@ -146,8 +146,10 @@ export default function HostDashboard() {
             <TabsTrigger value="overview" className="gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> Overview</TabsTrigger>
             <TabsTrigger value="properties" className="gap-1.5"><Home className="w-3.5 h-3.5" /> Properties</TabsTrigger>
             <TabsTrigger value="bookings" className="gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Bookings</TabsTrigger>
+            <TabsTrigger value="earnings" className="gap-1.5"><DollarSign className="w-3.5 h-3.5" /> Earnings</TabsTrigger>
             <TabsTrigger value="availability" className="gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Calendar</TabsTrigger>
             <TabsTrigger value="messages" className="gap-1.5"><Mail className="w-3.5 h-3.5" /> Messages</TabsTrigger>
+            <TabsTrigger value="reviews" className="gap-1.5"><Star className="w-3.5 h-3.5" /> Reviews</TabsTrigger>
             <TabsTrigger value="qa" className="gap-1.5"><HelpCircle className="w-3.5 h-3.5" /> FAQ</TabsTrigger>
             <TabsTrigger value="profile" className="gap-1.5"><UserCircle className="w-3.5 h-3.5" /> Profile</TabsTrigger>
           </TabsList>
@@ -155,8 +157,10 @@ export default function HostDashboard() {
           <TabsContent value="overview"><OverviewTab /></TabsContent>
           <TabsContent value="properties"><PropertiesTab /></TabsContent>
           <TabsContent value="bookings"><BookingsTab /></TabsContent>
+          <TabsContent value="earnings"><EarningsTab /></TabsContent>
           <TabsContent value="availability"><AvailabilityTab /></TabsContent>
           <TabsContent value="messages"><HostMessagesTab /></TabsContent>
+          <TabsContent value="reviews"><HostReviewsTab /></TabsContent>
           <TabsContent value="qa"><QATab /></TabsContent>
           <TabsContent value="profile"><ProfileTab host={host} onUpdate={checkAuth} /></TabsContent>
         </Tabs>
@@ -1940,6 +1944,268 @@ function ProfileTab({ host, onUpdate }: { host: any; onUpdate: () => void }) {
           {isSaving ? "Saving..." : "Save Profile"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function HostReviewsTab() {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const [responseText, setResponseText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => { fetchReviews(); }, []);
+
+  const fetchReviews = async () => {
+    try {
+      const res = await fetch("/api/host/reviews", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setReviews(data.reviews || []);
+      }
+    } catch {} finally { setLoading(false); }
+  };
+
+  const submitResponse = async (reviewId: string) => {
+    if (!responseText.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/host/reviews/${reviewId}/respond`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ response: responseText.trim() }),
+      });
+      if (res.ok) {
+        toast({ title: "Response posted!" });
+        setRespondingTo(null);
+        setResponseText("");
+        fetchReviews();
+      } else {
+        const data = await res.json();
+        toast({ title: "Error", description: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Failed to post response", variant: "destructive" });
+    } finally { setSubmitting(false); }
+  };
+
+  if (loading) return <div className="flex justify-center py-16"><GapNightLogoLoader size={40} /></div>;
+
+  if (reviews.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <Star className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="font-semibold mb-2">No reviews yet</h3>
+        <p className="text-muted-foreground text-sm">Reviews from guests will appear here after their stay.</p>
+      </div>
+    );
+  }
+
+  const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : "0";
+  const needsResponse = reviews.filter(r => !r.hostResponse).length;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-card rounded-xl border border-border/50 p-4 text-center">
+          <p className="text-3xl font-bold text-foreground">{avgRating}</p>
+          <div className="flex justify-center gap-0.5 my-1">
+            {[1,2,3,4,5].map(i => (
+              <Star key={i} className={`w-4 h-4 ${i <= Math.round(Number(avgRating)) ? "fill-amber-400 text-amber-400" : "text-muted"}`} />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">Average Rating</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border/50 p-4 text-center">
+          <p className="text-3xl font-bold text-foreground">{reviews.length}</p>
+          <p className="text-xs text-muted-foreground mt-2">Total Reviews</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border/50 p-4 text-center">
+          <p className={`text-3xl font-bold ${needsResponse > 0 ? "text-amber-500" : "text-primary"}`}>{needsResponse}</p>
+          <p className="text-xs text-muted-foreground mt-2">Needs Response</p>
+        </div>
+      </div>
+
+      {/* Review list */}
+      <div className="space-y-4">
+        {reviews.map(r => (
+          <div key={r.id} className="bg-card rounded-xl border border-border/50 p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                    {(r.guestName || "G").charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{r.guestName}</p>
+                    <p className="text-xs text-muted-foreground">{r.propertyTitle}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                {[1,2,3,4,5].map(i => (
+                  <Star key={i} className={`w-3.5 h-3.5 ${i <= r.rating ? "fill-amber-400 text-amber-400" : "text-muted"}`} />
+                ))}
+              </div>
+            </div>
+
+            <p className="text-sm text-foreground mb-2">{r.comment}</p>
+            <p className="text-[10px] text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</p>
+
+            {/* Host response */}
+            {r.hostResponse ? (
+              <div className="mt-3 bg-muted/30 rounded-lg p-3 border-l-2 border-primary">
+                <p className="text-xs font-semibold text-muted-foreground mb-1">Your response</p>
+                <p className="text-sm">{r.hostResponse}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{r.hostRespondedAt ? new Date(r.hostRespondedAt).toLocaleDateString() : ""}</p>
+              </div>
+            ) : (
+              <div className="mt-3">
+                {respondingTo === r.id ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="Write your response to this review..."
+                      value={responseText}
+                      onChange={e => setResponseText(e.target.value)}
+                      rows={3}
+                      className="text-sm"
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => submitResponse(r.id)} disabled={submitting || !responseText.trim()}>
+                        {submitting ? "Posting..." : "Post Response"}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => { setRespondingTo(null); setResponseText(""); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => { setRespondingTo(r.id); setResponseText(""); }}>
+                    Respond to Review
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EarningsTab() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/host/earnings", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setData(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-16"><GapNightLogoLoader size={40} /></div>;
+  if (!data) return <div className="text-center py-12 text-muted-foreground">Failed to load earnings</div>;
+
+  const { totals, thisMonth, monthly, byProperty } = data;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-card rounded-xl border border-border/50 p-4">
+          <p className="text-xs text-muted-foreground mb-1">Total Earnings</p>
+          <p className="text-2xl font-bold text-primary">${totals.netEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">{totals.totalBookings} bookings</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border/50 p-4">
+          <p className="text-xs text-muted-foreground mb-1">This Month</p>
+          <p className="text-2xl font-bold text-foreground">${(thisMonth.gross / 100 * 100 - thisMonth.fees / 100 * 100 > 0 ? ((thisMonth.gross - thisMonth.fees)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00")}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">{thisMonth.bookings} bookings</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border/50 p-4">
+          <p className="text-xs text-muted-foreground mb-1">Gross Revenue</p>
+          <p className="text-2xl font-bold text-foreground">${totals.grossRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border/50 p-4">
+          <p className="text-xs text-muted-foreground mb-1">Platform Fees</p>
+          <p className="text-2xl font-bold text-red-500">-${totals.platformFees.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">8% service fee</p>
+        </div>
+      </div>
+
+      {/* Monthly breakdown */}
+      {monthly.length > 0 && (
+        <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+          <div className="px-5 py-4 border-b border-border/50">
+            <h3 className="font-bold text-foreground">Monthly Breakdown</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50 text-muted-foreground text-xs">
+                  <th className="text-left px-5 py-3 font-medium">Month</th>
+                  <th className="text-right px-5 py-3 font-medium">Bookings</th>
+                  <th className="text-right px-5 py-3 font-medium">Gross</th>
+                  <th className="text-right px-5 py-3 font-medium">Fees</th>
+                  <th className="text-right px-5 py-3 font-medium">Net</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthly.map((m: any) => (
+                  <tr key={m.month} className="border-b border-border/30 hover:bg-muted/30">
+                    <td className="px-5 py-3 font-medium">{m.month}</td>
+                    <td className="px-5 py-3 text-right">{m.bookings}</td>
+                    <td className="px-5 py-3 text-right">${(Number(m.gross_revenue) / 100).toFixed(2)}</td>
+                    <td className="px-5 py-3 text-right text-red-500">-${(Number(m.platform_fees) / 100).toFixed(2)}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-primary">${(Number(m.net_earnings) / 100).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Per-property breakdown */}
+      {byProperty.length > 0 && (
+        <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+          <div className="px-5 py-4 border-b border-border/50">
+            <h3 className="font-bold text-foreground">Revenue by Property</h3>
+          </div>
+          <div className="divide-y divide-border/30">
+            {byProperty.map((p: any) => (
+              <div key={p.id} className="px-5 py-4 flex items-center gap-4">
+                {p.coverImage && (
+                  <img src={p.coverImage} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{p.title}</p>
+                  <p className="text-xs text-muted-foreground">{p.bookings} booking{p.bookings !== 1 ? "s" : ""}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-bold text-primary">${p.netEarnings.toFixed(2)}</p>
+                  <p className="text-[10px] text-muted-foreground">gross ${p.grossRevenue.toFixed(2)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {monthly.length === 0 && byProperty.length === 0 && (
+        <div className="text-center py-12">
+          <DollarSign className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="font-semibold mb-2">No earnings yet</h3>
+          <p className="text-muted-foreground text-sm">Your earnings will appear here once you have confirmed bookings.</p>
+        </div>
+      )}
     </div>
   );
 }

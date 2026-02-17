@@ -1,6 +1,90 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18
 
+## Major Bug Fix & Feature Release - Feb 18, 2026
+
+### Bug Fixes
+
+196. **Critical: Fixed host messaging authentication bug**
+    - `messaging-routes.ts` used wrong cookie name `gn_host_session` instead of `host_session`
+    - Host Messages tab was completely broken — all requests returned 401
+    - Fixed to use correct `host_session` cookie matching all other host routes
+
+### New Features
+
+197. **Booking Lifecycle Cron Job (auto-complete & auto-expire)**
+    - Runs every 15 minutes + once on startup
+    - Auto-completes CONFIRMED bookings where checkout date has passed → COMPLETED
+    - Auto-expires PENDING_APPROVAL bookings older than 48 hours → EXPIRED
+    - Refunds Stripe payments for expired bookings
+    - Re-opens availability dates for expired bookings
+
+198. **Guest Messaging Inbox (Account → Messages tab)**
+    - Full conversation list with unread badges
+    - Message thread view with chat bubbles (guest = primary, host = muted)
+    - Inline reply with send button
+    - Mobile-responsive: conversation list collapses on small screens
+
+199. **Host Earnings Dashboard (new tab)**
+    - Summary cards: Total Earnings, This Month, Gross Revenue, Platform Fees
+    - Monthly breakdown table (month, bookings, gross, fees, net)
+    - Per-property revenue breakdown with cover images
+    - Backend: `GET /api/host/earnings` with SQL aggregations
+
+200. **Advanced Property Search Filters (Stays page)**
+    - Collapsible filter panel with badge count
+    - Price range (min/max), bedrooms, property type selectors
+    - Amenity toggle chips (WiFi, Parking, Pool, Kitchen, TV, Gym, Garden)
+    - Clear all filters button
+    - Backend: added `bedrooms` and `amenities` array filter support
+
+201. **Cancellation Email to Guest**
+    - `sendBookingCancelledByHostEmail()` in email.ts
+    - Branded HTML email with booking details, reason, and refund confirmation
+    - Sent automatically when host cancels a booking
+
+202. **Property Share Button (PropertyDetail)**
+    - Uses Web Share API on mobile (native share sheet)
+    - Falls back to clipboard copy on desktop
+    - Shares property title + URL
+
+203. **Host Reviews Tab + Response UI**
+    - `GET /api/host/reviews` endpoint: fetches all reviews across host's properties
+    - Summary cards: average rating with stars, total reviews, needs response count
+    - Review cards with guest name, property, star rating, comment
+    - Inline response form: textarea + Post Response button
+    - Existing responses shown with border-left accent
+
+204. **Unread Message Badge in Navigation**
+    - Polls `/api/messages/unread` every 30 seconds for logged-in users
+    - Badge appears on Messages link in both desktop dropdown and mobile menu
+    - Links to `/account?tab=messages` which auto-opens Messages tab
+
+205. **Recently Viewed Properties**
+    - PropertyDetail saves to localStorage (last 10 viewed)
+    - Stays page shows horizontal scrollable "Recently Viewed" section
+    - Compact cards with cover image, title, city, price
+
+206. **Booking Receipt / Invoice**
+    - `GET /api/auth/property-bookings/:id/receipt` returns printable HTML receipt
+    - Professional layout: GapNight branding, property details, stay details, payment breakdown with GST
+    - Print button with @media print styles
+    - "View Receipt" button on confirmed/completed bookings in My Stays tab
+
+**Files Modified:**
+- `server/messaging-routes.ts` — Fixed cookie name bug
+- `server/routes.ts` — Added booking lifecycle cron job
+- `server/host-routes.ts` — Added earnings endpoint, GET reviews endpoint, cancellation email call
+- `server/property-routes.ts` — Added amenities/bedrooms filters, booking receipt endpoint
+- `server/email.ts` — Added sendBookingCancelledByHostEmail function
+- `client/src/pages/Account.tsx` — Messages tab, GuestInboxTab, View Receipt button, FileText import, tab query param
+- `client/src/pages/host/HostDashboard.tsx` — Earnings tab, Reviews tab, Star import
+- `client/src/pages/Stays.tsx` — Advanced filters UI, RecentlyViewedSection
+- `client/src/pages/PropertyDetail.tsx` — Share button, recently viewed tracking
+- `client/src/components/Navigation.tsx` — Unread message badge, Messages link
+
+---
+
 ## Expanded Property Editor with All CreateListing Fields - Feb 18, 2026
 
 194. **Property editor now matches CreateListing wizard fields**

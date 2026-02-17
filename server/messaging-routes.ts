@@ -215,7 +215,7 @@ router.get("/api/messages/unread", async (req: any, res: Response) => {
 // ========================================
 
 async function getHostFromCookie(req: Request): Promise<string | null> {
-  const sessionId = req.cookies?.gn_host_session;
+  const sessionId = req.cookies?.host_session;
   if (!sessionId) return null;
   const [session] = await db
     .select()

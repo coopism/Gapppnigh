@@ -151,7 +151,7 @@ interface QuestionRequestBody {
 // Get all approved properties with gap nights
 router.get("/api/properties", async (req: Request, res: Response) => {
   try {
-    const { city, type, minPrice, maxPrice, guests, page = "1", limit = "50" } = req.query;
+    const { city, type, minPrice, maxPrice, guests, bedrooms, amenities, sort, page = "1", limit = "50" } = req.query;
     const parsedLimit = Math.min(parseInt(limit as string) || 50, 100);
     const offset = (parseInt(page as string) - 1) * parsedLimit;
 
@@ -169,11 +169,20 @@ router.get("/api/properties", async (req: Request, res: Response) => {
     if (guests) {
       conditions.push(gte(properties.maxGuests, parseInt(guests as string)));
     }
+    if (bedrooms) {
+      conditions.push(gte(properties.bedrooms, parseInt(bedrooms as string)));
+    }
     if (minPrice) {
       conditions.push(gte(properties.baseNightlyRate, parseInt(minPrice as string) * 100));
     }
     if (maxPrice) {
       conditions.push(lte(properties.baseNightlyRate, parseInt(maxPrice as string) * 100));
+    }
+    if (amenities) {
+      const amenityList = (amenities as string).split(",").map(a => a.trim()).filter(Boolean);
+      for (const amenity of amenityList) {
+        conditions.push(sql`${properties.amenities} @> ARRAY[${amenity}]::text[]`);
+      }
     }
 
     // Single query with all filters pushed to DB
@@ -1105,6 +1114,126 @@ router.post("/api/auth/property-bookings/:bookingId/cancel", async (req: any, re
   } catch (error) {
     console.error("User cancel booking error:", error);
     res.status(500).json({ error: "Failed to cancel booking" });
+  }
+});
+
+// ========================================
+// BOOKING RECEIPT / INVOICE
+// ========================================
+router.get("/api/auth/property-bookings/:bookingId/receipt", async (req: any, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const bookingId = req.params.bookingId as string;
+
+    const [booking] = await db
+      .select()
+      .from(propertyBookings)
+      .where(and(
+        eq(propertyBookings.id, bookingId),
+        eq(propertyBookings.userId, req.user.id)
+      ))
+      .limit(1);
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(eq(properties.id, booking.propertyId))
+      .limit(1);
+
+    const [host] = await db
+      .select({ name: airbnbHosts.name, email: airbnbHosts.email })
+      .from(airbnbHosts)
+      .where(eq(airbnbHosts.id, booking.hostId))
+      .limit(1);
+
+    const nightlyTotal = booking.nightlyRate * booking.nights;
+    const gst = Math.round(booking.totalPrice / 11);
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Receipt - ${booking.id}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 700px; margin: 0 auto; padding: 40px 20px; color: #333; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 2px solid #10b981; padding-bottom: 20px; }
+  .logo { font-size: 28px; font-weight: 800; color: #10b981; }
+  .receipt-label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+  .receipt-id { font-size: 18px; font-weight: 700; color: #111; }
+  .section { margin-bottom: 30px; }
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 10px; font-weight: 600; }
+  .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .detail-label { color: #666; }
+  .detail-value { font-weight: 600; }
+  .total-row { display: flex; justify-content: space-between; padding: 12px 0; font-size: 18px; font-weight: 700; border-top: 2px solid #111; margin-top: 10px; }
+  .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .status-confirmed { background: #ecfdf5; color: #065f46; }
+  .status-completed { background: #eff6ff; color: #1e40af; }
+  .status-cancelled { background: #fef2f2; color: #991b1b; }
+  .status-pending { background: #fffbeb; color: #92400e; }
+  .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #999; font-size: 12px; }
+  @media print { body { padding: 0; } .no-print { display: none; } }
+</style></head><body>
+<div class="header">
+  <div>
+    <div class="logo">GapNight</div>
+    <p style="color:#666;font-size:13px;margin:4px 0 0">Booking Receipt</p>
+  </div>
+  <div style="text-align:right">
+    <div class="receipt-label">Receipt</div>
+    <div class="receipt-id">${booking.id}</div>
+    <div style="font-size:12px;color:#666;margin-top:4px">${new Date(booking.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Property</div>
+  <p style="font-size:16px;font-weight:600;margin:0 0 4px">${property?.title || "Property"}</p>
+  <p style="color:#666;margin:0">${property?.city || ""}${property?.state ? ", " + property.state : ""}</p>
+  <p style="color:#666;margin:4px 0 0;font-size:13px">Hosted by ${host?.name || "Host"}</p>
+</div>
+
+<div class="section">
+  <div class="section-title">Stay Details</div>
+  <div class="detail-row"><span class="detail-label">Check-in</span><span class="detail-value">${new Date(booking.checkInDate + "T00:00:00").toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span></div>
+  <div class="detail-row"><span class="detail-label">Check-out</span><span class="detail-value">${new Date(booking.checkOutDate + "T00:00:00").toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span></div>
+  <div class="detail-row"><span class="detail-label">Duration</span><span class="detail-value">${booking.nights} night${booking.nights > 1 ? "s" : ""}</span></div>
+  <div class="detail-row"><span class="detail-label">Guests</span><span class="detail-value">${booking.guests}</span></div>
+  <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="status ${booking.status === "CONFIRMED" ? "status-confirmed" : booking.status === "COMPLETED" ? "status-completed" : booking.status.includes("CANCEL") ? "status-cancelled" : "status-pending"}">${booking.status.replace(/_/g, " ")}</span></span></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Guest</div>
+  <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value">${booking.guestFirstName} ${booking.guestLastName}</span></div>
+  <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${booking.guestEmail}</span></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Payment Summary</div>
+  <div class="detail-row"><span class="detail-label">$${(booking.nightlyRate / 100).toFixed(2)} x ${booking.nights} night${booking.nights > 1 ? "s" : ""}</span><span class="detail-value">$${(nightlyTotal / 100).toFixed(2)}</span></div>
+  <div class="detail-row"><span class="detail-label">Cleaning fee</span><span class="detail-value">$${((booking.cleaningFee || 0) / 100).toFixed(2)}</span></div>
+  <div class="detail-row"><span class="detail-label">Service fee</span><span class="detail-value">$${((booking.serviceFee || 0) / 100).toFixed(2)}</span></div>
+  <div class="detail-row"><span class="detail-label">GST (included)</span><span class="detail-value">$${(gst / 100).toFixed(2)}</span></div>
+  <div class="total-row"><span>Total (${booking.currency})</span><span>$${(booking.totalPrice / 100).toFixed(2)}</span></div>
+</div>
+
+<div class="no-print" style="text-align:center;margin:30px 0"><button onclick="window.print()" style="background:#10b981;color:white;border:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Print Receipt</button></div>
+
+<div class="footer">
+  <p>GapNight Pty Ltd · ABN 00 000 000 000</p>
+  <p>This is your official booking receipt. For questions, contact support@gapnight.com</p>
+</div>
+</body></html>`;
+
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
+  } catch (error) {
+    console.error("Get booking receipt error:", error);
+    res.status(500).json({ error: "Failed to generate receipt" });
   }
 });
 

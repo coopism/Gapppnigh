@@ -40,6 +40,96 @@ setInterval(() => {
   cleanupExpiredHolds();
 }, 60 * 1000); // Run every minute
 
+// ========================================
+// BOOKING LIFECYCLE CRON (runs every 15 min)
+// ========================================
+import { propertyBookings, propertyAvailability } from "@shared/schema";
+import { eq, and, lt, lte, inArray } from "drizzle-orm";
+
+async function runBookingLifecycle() {
+  try {
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+
+    // 1) Auto-complete confirmed bookings where checkout date has passed
+    const pastBookings = await db
+      .select()
+      .from(propertyBookings)
+      .where(and(
+        eq(propertyBookings.status, "CONFIRMED"),
+        lt(propertyBookings.checkOutDate, today)
+      ));
+
+    for (const b of pastBookings) {
+      await db.update(propertyBookings)
+        .set({ status: "COMPLETED", updatedAt: now })
+        .where(eq(propertyBookings.id, b.id));
+    }
+    if (pastBookings.length > 0) {
+      console.log(`[Lifecycle] Auto-completed ${pastBookings.length} past bookings`);
+    }
+
+    // 2) Auto-expire pending bookings older than 48 hours (host didn't respond)
+    const expiryCutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const staleBookings = await db
+      .select()
+      .from(propertyBookings)
+      .where(and(
+        eq(propertyBookings.status, "PENDING_APPROVAL"),
+        lt(propertyBookings.createdAt, expiryCutoff)
+      ));
+
+    for (const b of staleBookings) {
+      // Cancel/refund Stripe payment
+      if (b.stripePaymentIntentId) {
+        try {
+          const { stripe } = await import("./stripe");
+          if (stripe) {
+            const pi = await stripe.paymentIntents.retrieve(b.stripePaymentIntentId);
+            if (pi.status === "requires_capture") {
+              await stripe.paymentIntents.cancel(b.stripePaymentIntentId);
+            } else if (pi.status === "succeeded") {
+              await stripe.refunds.create({ payment_intent: b.stripePaymentIntentId });
+            }
+          }
+        } catch (e) { console.error("Lifecycle stripe error:", e); }
+      }
+
+      await db.update(propertyBookings)
+        .set({ status: "EXPIRED", hostDeclineReason: "Host did not respond within 48 hours", updatedAt: now })
+        .where(eq(propertyBookings.id, b.id));
+
+      // Re-open availability
+      try {
+        const checkIn = new Date(b.checkInDate + "T00:00:00");
+        const checkOut = new Date(b.checkOutDate + "T00:00:00");
+        const dates: string[] = [];
+        for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
+          dates.push(d.toISOString().split("T")[0]);
+        }
+        if (dates.length > 0) {
+          await db.update(propertyAvailability)
+            .set({ isAvailable: true })
+            .where(and(
+              eq(propertyAvailability.propertyId, b.propertyId),
+              inArray(propertyAvailability.date, dates)
+            ));
+        }
+      } catch (e) { console.error("Lifecycle availability error:", e); }
+    }
+    if (staleBookings.length > 0) {
+      console.log(`[Lifecycle] Auto-expired ${staleBookings.length} stale pending bookings`);
+    }
+  } catch (error) {
+    console.error("[Lifecycle] Booking lifecycle error:", error);
+  }
+}
+
+// Run every 15 minutes
+setInterval(runBookingLifecycle, 15 * 60 * 1000);
+// Run once on startup after 30 seconds
+setTimeout(runBookingLifecycle, 30 * 1000);
+
 function cleanupExpiredHolds() {
   const now = new Date();
   dealHolds.forEach((hold, dealId) => {

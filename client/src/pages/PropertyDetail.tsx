@@ -238,6 +238,24 @@ export default function PropertyDetail() {
           setPhotos(data.photos || []);
           setQa(data.qa || []);
           setReviews(data.reviews || []);
+          // Track recently viewed
+          try {
+            const key = "gn_recently_viewed";
+            const existing = JSON.parse(localStorage.getItem(key) || "[]");
+            const entry = {
+              id: data.property.id,
+              title: data.property.title,
+              city: data.property.city,
+              state: data.property.state,
+              coverImage: data.property.coverImage,
+              baseNightlyRate: data.property.baseNightlyRate,
+              propertyType: data.property.propertyType,
+              viewedAt: Date.now(),
+            };
+            const filtered = existing.filter((e: any) => e.id !== entry.id);
+            filtered.unshift(entry);
+            localStorage.setItem(key, JSON.stringify(filtered.slice(0, 10)));
+          } catch {}
         })
         .catch(() => setProperty(null))
         .finally(() => setIsLoading(false));
@@ -337,7 +355,16 @@ export default function PropertyDetail() {
           </div>
           {/* Action buttons */}
           <div className="absolute top-4 right-4 flex gap-2">
-            <Button variant="secondary" size="icon" className="rounded-full bg-card/90 backdrop-blur shadow-lg" aria-label="Share">
+            <Button variant="secondary" size="icon" className="rounded-full bg-card/90 backdrop-blur shadow-lg" aria-label="Share"
+              onClick={async () => {
+                const url = window.location.href;
+                const title = property?.title || "Check out this property on GapNight";
+                if (navigator.share) {
+                  try { await navigator.share({ title, url }); } catch {}
+                } else {
+                  try { await navigator.clipboard.writeText(url); alert("Link copied to clipboard!"); } catch {}
+                }
+              }}>
               <Share2 className="w-4 h-4" />
             </Button>
             <Button variant="secondary" size="icon" className="rounded-full bg-card/90 backdrop-blur shadow-lg text-destructive" aria-label="Favorite">

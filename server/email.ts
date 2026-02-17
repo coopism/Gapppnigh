@@ -503,3 +503,62 @@ export async function sendPropertyBookingConfirmationEmail(booking: any, propert
     return false;
   }
 }
+
+export async function sendBookingCancelledByHostEmail(booking: any, property: any, reason?: string): Promise<boolean> {
+  try {
+    const { client, fromEmail } = getResendClient();
+    const checkInDate = format(parseISO(booking.checkInDate), "EEEE, MMMM d, yyyy");
+
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1 style="color: #1a1a1a; margin-bottom: 5px;">GapNight</h1>
+    <p style="color: #666; font-size: 14px;">Booking Update</p>
+  </div>
+
+  <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 25px;">
+    <h2 style="margin: 0 0 10px 0;">Booking Cancelled</h2>
+    <p style="margin: 0; font-size: 18px; font-weight: bold;">${booking.id}</p>
+    <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.9;">The host has cancelled this booking</p>
+  </div>
+
+  <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+    <h3 style="margin: 0 0 15px 0; color: #1a1a1a;">Booking Details</h3>
+    <p style="margin: 0 0 8px 0;"><strong>${property?.title || "Property"}</strong></p>
+    <p style="margin: 0 0 8px 0; color: #666;">Check-in: ${checkInDate}</p>
+    <p style="margin: 0 0 8px 0; color: #666;">${booking.nights} night${booking.nights > 1 ? 's' : ''} · ${booking.guests} guest${booking.guests > 1 ? 's' : ''}</p>
+    ${reason ? `<div style="border-top: 1px solid #e5e7eb; margin: 15px 0; padding-top: 15px;">
+      <p style="margin: 0; color: #666; font-size: 12px;">REASON</p>
+      <p style="margin: 5px 0 0 0;">${reason}</p>
+    </div>` : ''}
+  </div>
+
+  <div style="background: #ecfdf5; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+    <h3 style="margin: 0 0 10px 0; color: #065f46;">Full Refund</h3>
+    <p style="margin: 0; color: #047857;">A full refund of <strong>$${(booking.totalPrice / 100).toFixed(2)} AUD</strong> has been initiated. It may take 5-10 business days to appear on your statement.</p>
+  </div>
+
+  <div style="text-align: center; padding: 20px 0; border-top: 1px solid #e5e7eb;">
+    <p style="margin: 0; color: #666; font-size: 12px;">Need help? Contact us at support@gapnight.com</p>
+    <p style="margin: 5px 0 0 0; color: #999; font-size: 11px;">© ${new Date().getFullYear()} GapNight</p>
+  </div>
+</body>
+</html>`;
+
+    await client.emails.send({
+      from: fromEmail,
+      to: booking.guestEmail,
+      subject: `Booking Cancelled - ${property?.title || "Your booking"} | ${booking.id}`,
+      html: emailHtml,
+    });
+
+    console.log('Cancellation email sent to', booking.guestEmail);
+    return true;
+  } catch (error) {
+    console.error('Failed to send cancellation email:', error);
+    return false;
+  }
+}

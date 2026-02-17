@@ -1,5 +1,6 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Hotel, Menu, Home, UserPlus, User, LogOut, Heart } from "lucide-react";
+import { Hotel, Menu, Home, UserPlus, User, LogOut, Heart, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -21,6 +22,20 @@ import { useAuthStore, logout } from "@/hooks/useAuth";
 export function Navigation() {
   const [location, setLocation] = useLocation();
   const { user, isLoading } = useAuthStore();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchUnread = () => {
+      fetch("/api/messages/unread", { credentials: "include" })
+        .then(r => r.ok ? r.json() : { count: 0 })
+        .then(d => setUnreadCount(d.count || 0))
+        .catch(() => {});
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleLogout = async () => {
     await logout();
@@ -61,6 +76,12 @@ export function Navigation() {
                     <DropdownMenuItem asChild>
                       <Link href="/saved" className="cursor-pointer">
                         <Heart className="w-4 h-4 mr-2" /> Saved Listings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/account?tab=messages" className="cursor-pointer">
+                        <MessageSquare className="w-4 h-4 mr-2" /> Messages
+                        {unreadCount > 0 && <span className="ml-auto bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">{unreadCount}</span>}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -121,6 +142,12 @@ export function Navigation() {
                         <Link href="/saved">
                           <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
                             <Heart className="w-5 h-5 mr-3" /> Saved Listings
+                          </Button>
+                        </Link>
+                        <Link href="/account?tab=messages">
+                          <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12 relative">
+                            <MessageSquare className="w-5 h-5 mr-3" /> Messages
+                            {unreadCount > 0 && <span className="ml-2 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">{unreadCount}</span>}
                           </Button>
                         </Link>
                         <Link href="/account">
