@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import {
-  Home, Building2, DoorOpen, Sparkles, ChevronRight, ChevronLeft,
+  Home, Building2, DoorOpen, Sparkles, ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
   Camera, MapPin, DollarSign, CalendarCheck, Percent, Eye, Upload,
   X, Check, Loader2, Wifi, Car, Waves, Flame, Wind, Tv, TreePine,
   Dumbbell, ArrowUpDown, Bed, Bath, Users, Link2, Search, CalendarDays, ToggleRight,
@@ -55,6 +55,60 @@ const AMENITIES = [
 ];
 
 const TOTAL_STEPS = 10;
+
+const ONBOARDING_PLATFORM_HELP: { label: string; steps: string }[] = [
+  { label: "Airbnb", steps: "Airbnb → Calendar → Availability settings → Export calendar → Copy link" },
+  { label: "Stayz / HomeAway", steps: "Stayz → My Properties → select property → Calendar → Export → Copy iCal link" },
+  { label: "Booking.com", steps: "Booking.com Extranet → Calendar → Sync calendars → Export → Copy the .ics URL" },
+  { label: "VRBO", steps: "VRBO → Dashboard → Calendar → Import/Export → Export Calendar → Copy link" },
+  { label: "TripAdvisor / FlipKey", steps: "TripAdvisor Rentals → Manage listing → Calendar → Export calendar → Copy link" },
+  { label: "Google Calendar", steps: "Google Calendar → Settings → select calendar → Integrate calendar → Copy Secret address in iCal format" },
+];
+
+function OnboardingPlatformHelp() {
+  const [open, setOpen] = React.useState(false);
+  const [selected, setSelected] = React.useState("");
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
+      >
+        {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        Where do I find my calendar link?
+      </button>
+      {open && (
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {ONBOARDING_PLATFORM_HELP.map(p => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => setSelected(p.label)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all border ${
+                  selected === p.label
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background border-border/60 text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {selected ? (
+            <p className="text-[11px] text-foreground">
+              <strong>{selected}:</strong>{" "}
+              {ONBOARDING_PLATFORM_HELP.find(p => p.label === selected)?.steps}
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">Select your platform above to see instructions.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function hostEarnings(price: number): string {
   const earnings = price * (1 - SERVICE_FEE_PERCENT / 100);
@@ -635,31 +689,30 @@ export default function HostOnboarding() {
           </div>
         );
 
-      // STEP 7: Airbnb Calendar Sync + Auto-listing
+      // STEP 7: Calendar Sync + Auto-listing
       case 7:
         return (
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold font-display">Sync your Airbnb calendar</h1>
+              <h1 className="text-3xl font-bold font-display">Sync your calendar</h1>
               <p className="text-muted-foreground mt-2">
-                Connect your Airbnb calendar so we can automatically detect gap nights and list them for you. This step is optional — you can always add it later.
+                If you list on another platform, connect your calendar so GapNight can automatically detect gap nights and prevent double bookings. This step is optional — you can always add it later.
               </p>
             </div>
 
             <div className="bg-card border border-border/50 rounded-2xl p-5 space-y-4">
               <div className="flex items-center gap-2">
                 <CalendarDays className="w-5 h-5 text-primary" />
-                <p className="font-semibold">Airbnb iCal link</p>
+                <p className="font-semibold">Your calendar link (.ics)</p>
               </div>
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
-                <p className="text-xs text-muted-foreground">
-                  <strong className="text-foreground">How to find your iCal link:</strong> In Airbnb → Calendar → Availability settings → Export calendar → Copy the link
-                </p>
-              </div>
+
+              {/* Platform help accordion */}
+              <OnboardingPlatformHelp />
+
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Paste your Airbnb calendar URL (.ics)</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Paste your calendar URL (.ics)</label>
                 <Input
-                  placeholder="https://www.airbnb.com/calendar/ical/..."
+                  placeholder="https://example.com/calendar/ical/your-listing.ics"
                   value={icalUrl}
                   onChange={e => setIcalUrl(e.target.value)}
                   className="h-11 font-mono text-xs"
@@ -691,7 +744,7 @@ export default function HostOnboarding() {
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              Don't have an Airbnb listing yet? No worries — skip this step and add it later from your dashboard.
+              Not listed on another platform yet? No worries — skip this step and add it later from your dashboard.
             </p>
           </div>
         );

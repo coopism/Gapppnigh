@@ -1,6 +1,37 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18 (Session 3)
 
+## Calendar Sync UI + Platform-Agnostic iCal — Session 5d - Feb 18, 2026
+
+### Changes Implemented
+
+1. **`client/src/pages/host/HostPropertyPage.tsx` — Full Calendar Sync UI in Settings tab**
+   - Replaced the old "Airbnb iCal URL" single input with a full Calendar Sync card
+   - **Export section:** Shows the host's unique GapNight `.ics` export URL (auto-fetched on load)
+     with a one-click Copy button (shows "Copied" confirmation for 2s)
+   - **Import section:** Platform-agnostic label ("Import bookings from another platform")
+     with a collapsible "Where do I find my iCal link?" help accordion
+   - **Platform help accordion:** Pill buttons for Airbnb, Stayz/HomeAway, Booking.com, VRBO,
+     TripAdvisor/FlipKey, Google Calendar — clicking shows step-by-step instructions for that platform
+   - **Sync now button:** Calls `POST /api/host/properties/:id/ical-sync`, shows spinner,
+     then displays green success or red error result inline
+   - Auto-syncs every 3 hours in background; manual trigger for immediate sync
+   - New state: `exportUrl`, `exportCopied`, `isSyncing`, `syncResult`, `platformHelpOpen`, `selectedPlatform`
+   - New helpers: `loadExportUrl()`, `handleCopyExportUrl()`, `handleManualSync()`
+   - New icons imported: `Copy`, `Check`, `RefreshCw`, `ChevronDown`, `ChevronUp`, `AlertCircle`, `CheckCircle2`
+
+2. **`client/src/pages/host/HostOnboarding.tsx` — Platform-agnostic step 7**
+   - Changed heading from "Sync your Airbnb calendar" → "Sync your calendar"
+   - Changed body copy to be platform-neutral (no Airbnb mention)
+   - Replaced hardcoded Airbnb instructions with `OnboardingPlatformHelp` component
+   - `OnboardingPlatformHelp`: same pill-based accordion pattern, same 6 platforms
+   - Input placeholder changed from Airbnb URL to generic `.ics` URL
+   - Footer note changed from "Don't have an Airbnb listing" → "Not listed on another platform yet"
+   - Added `ChevronDown`/`ChevronUp` to lucide imports
+   - Added `ONBOARDING_PLATFORM_HELP` constant and `OnboardingPlatformHelp` function component
+
+---
+
 ## iCal Two-Way Calendar Sync — Session 5c - Feb 18, 2026
 
 ### Changes Implemented
