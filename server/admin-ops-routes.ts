@@ -274,7 +274,6 @@ export function registerAdminOpsRoutes(app: Router) {
           name: airbnbHosts.name,
           email: airbnbHosts.email,
           phone: airbnbHosts.phone,
-          isSuperhost: airbnbHosts.isSuperhost,
           isActive: airbnbHosts.isActive,
           createdAt: airbnbHosts.createdAt,
         }).from(airbnbHosts).where(eq(airbnbHosts.id, property.hostId)).limit(1);

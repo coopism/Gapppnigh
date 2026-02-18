@@ -916,7 +916,7 @@ function PropertiesPage({ filterStatus }: { filterStatus?: string }) {
                         <p><span className="font-medium">Name:</span> {selectedHost.name}</p>
                         <p><span className="font-medium">Email:</span> {selectedHost.email}</p>
                         {selectedHost.phone && <p><span className="font-medium">Phone:</span> {selectedHost.phone}</p>}
-                        <p><span className="font-medium">Superhost:</span> {selectedHost.isSuperhost ? "Yes" : "No"} · <span className="font-medium">Active:</span> {selectedHost.isActive ? "Yes" : "No"}</p>
+                        <p><span className="font-medium">Active:</span> {selectedHost.isActive ? "Yes" : "No"}</p>
                         <p><span className="font-medium">Joined:</span> {selectedHost.createdAt ? new Date(selectedHost.createdAt).toLocaleDateString() : "N/A"}</p>
                       </div>
                     </div>
@@ -1466,7 +1466,7 @@ function HostsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead>
-                <TableHead>Superhost</TableHead><TableHead>Active</TableHead><TableHead>Joined</TableHead>
+                <TableHead>Active</TableHead><TableHead>Joined</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1475,7 +1475,6 @@ function HostsPage() {
                   <TableCell className="font-medium">{h.name}</TableCell>
                   <TableCell>{h.email}</TableCell>
                   <TableCell>{h.phone || "—"}</TableCell>
-                  <TableCell>{h.isSuperhost ? <Badge variant="default" className="text-xs">Yes</Badge> : <Badge variant="secondary" className="text-xs">No</Badge>}</TableCell>
                   <TableCell>{h.isActive ? <Badge variant="default" className="text-xs">Active</Badge> : <Badge variant="destructive" className="text-xs">Inactive</Badge>}</TableCell>
                   <TableCell className="text-xs">{new Date(h.createdAt).toLocaleDateString()}</TableCell>
                 </TableRow>
