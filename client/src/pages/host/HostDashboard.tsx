@@ -150,7 +150,6 @@ export default function HostDashboard() {
             <TabsTrigger value="availability" className="gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Calendar</TabsTrigger>
             <TabsTrigger value="messages" className="gap-1.5"><Mail className="w-3.5 h-3.5" /> Messages</TabsTrigger>
             <TabsTrigger value="reviews" className="gap-1.5"><Star className="w-3.5 h-3.5" /> Reviews</TabsTrigger>
-            <TabsTrigger value="qa" className="gap-1.5"><HelpCircle className="w-3.5 h-3.5" /> FAQ</TabsTrigger>
             <TabsTrigger value="profile" className="gap-1.5"><UserCircle className="w-3.5 h-3.5" /> Profile</TabsTrigger>
           </TabsList>
 
@@ -161,7 +160,6 @@ export default function HostDashboard() {
           <TabsContent value="availability"><AvailabilityTab /></TabsContent>
           <TabsContent value="messages"><HostMessagesTab /></TabsContent>
           <TabsContent value="reviews"><HostReviewsTab /></TabsContent>
-          <TabsContent value="qa"><QATab /></TabsContent>
           <TabsContent value="profile"><ProfileTab host={host} onUpdate={checkAuth} /></TabsContent>
         </Tabs>
       </main>
@@ -616,6 +614,11 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
                 {property.status === "pending_approval" ? "Pending Review" : property.status}
               </Badge>
             </div>
+            {property.status === "rejected" && property.rejectionReason && (
+              <p className="text-xs text-destructive mb-1 flex items-start gap-1">
+                <span className="font-semibold shrink-0">Declined:</span> {property.rejectionReason}
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">{property.city}, {property.state} · {property.propertyType}</p>
             <p className="text-sm mt-1">
               ${((property.baseNightlyRate || 0) / 100).toFixed(0)}/night

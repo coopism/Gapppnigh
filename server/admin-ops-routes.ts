@@ -320,6 +320,20 @@ export function registerAdminOpsRoutes(app: Router) {
       await auditLog(admin.id, `property_${newStatus}`, "properties", "property", propertyId,
         { reason }, getIP(req), { status: before.status }, { status: newStatus });
 
+      // Send email notification to host on approve/reject
+      if (newStatus === "approved" || newStatus === "rejected") {
+        try {
+          const [host] = await db.select({ email: airbnbHosts.email, name: airbnbHosts.name })
+            .from(airbnbHosts).where(eq(airbnbHosts.id, before.hostId)).limit(1);
+          if (host) {
+            const { sendPropertyStatusEmail } = await import("./user-email");
+            await sendPropertyStatusEmail(host.email, host.name, before.title || "Your property", newStatus, reason || null);
+          }
+        } catch (emailErr) {
+          console.error("Failed to send property status email:", emailErr);
+        }
+      }
+
       res.json({ success: true, message: `Property ${newStatus}` });
     } catch (error) {
       console.error("Update property status error:", error);

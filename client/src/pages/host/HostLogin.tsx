@@ -6,19 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
-import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, Mail, User, Lock, Phone, Home, Calendar, TrendingUp, Shield, KeyRound } from "lucide-react";
 
 const AUS_PHONE_REGEX = /^(04\d{2}\s?\d{3}\s?\d{3}|\+614\d{8})$/;
 
 export default function HostLogin() {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
 
   // Register state
   const [regName, setRegName] = useState("");
@@ -27,6 +26,8 @@ export default function HostLogin() {
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [registerError, setRegisterError] = useState("");
+  const [resendMsg, setResendMsg] = useState("");
 
   // Email verification state
   const [showVerification, setShowVerification] = useState(false);
@@ -37,8 +38,8 @@ export default function HostLogin() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError("");
     setIsLoading(true);
-
     try {
       const res = await fetch("/api/host/login", {
         method: "POST",
@@ -46,18 +47,11 @@ export default function HostLogin() {
         credentials: "include",
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        toast({ title: "Login failed", description: data.error, variant: "destructive" });
-        return;
-      }
-
-      toast({ title: "Welcome back!", description: `Logged in as ${data.host.name}` });
+      if (!res.ok) { setLoginError(data.error || "Login failed"); return; }
       setLocation("/host/dashboard");
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to connect to server", variant: "destructive" });
+    } catch {
+      setLoginError("Failed to connect to server. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -65,48 +59,27 @@ export default function HostLogin() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (regPassword !== regConfirmPassword) {
-      toast({ title: "Error", description: "Passwords don't match", variant: "destructive" });
-      return;
-    }
-    if (regPassword.length < 8) {
-      toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
-      return;
-    }
-    // Australian phone validation
+    setRegisterError("");
+    if (regPassword !== regConfirmPassword) { setRegisterError("Passwords don't match"); return; }
+    if (regPassword.length < 8) { setRegisterError("Password must be at least 8 characters"); return; }
     if (regPhone && !AUS_PHONE_REGEX.test(regPhone.replace(/\s/g, ""))) {
       setPhoneError("Enter a valid Australian mobile number (04XX XXX XXX)");
       return;
     }
     setPhoneError("");
     setIsLoading(true);
-
     try {
       const res = await fetch("/api/host/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          name: regName,
-          email: regEmail,
-          phone: regPhone || undefined,
-          password: regPassword,
-        }),
+        body: JSON.stringify({ name: regName, email: regEmail, phone: regPhone || undefined, password: regPassword }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        toast({ title: "Registration failed", description: data.error, variant: "destructive" });
-        return;
-      }
-
-      // Show email verification step
+      if (!res.ok) { setRegisterError(data.error || "Registration failed"); return; }
       setShowVerification(true);
-      toast({ title: "Account created!", description: "Check your email for a verification code." });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to connect to server", variant: "destructive" });
+    } catch {
+      setRegisterError("Failed to connect to server. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -128,7 +101,6 @@ export default function HostLogin() {
         setVerifyError(data.error || "Invalid code");
         return;
       }
-      toast({ title: "Email verified!", description: "Let's set up your first property." });
       setLocation("/host/onboarding");
     } catch {
       setVerifyError("Failed to verify. Please try again.");
@@ -139,11 +111,12 @@ export default function HostLogin() {
 
   const handleResendCode = async () => {
     setResendLoading(true);
+    setResendMsg("");
     try {
-      await fetch("/api/host/resend-verification", { method: "POST", credentials: "include" });
-      toast({ title: "Code resent!", description: "Check your email for a new code." });
+      const res = await fetch("/api/host/resend-verification", { method: "POST", credentials: "include" });
+      setResendMsg(res.ok ? "New code sent — check your email." : "Failed to resend. Please try again.");
     } catch {
-      toast({ title: "Failed to resend", variant: "destructive" });
+      setResendMsg("Failed to resend. Please try again.");
     } finally {
       setResendLoading(false);
     }
@@ -226,6 +199,7 @@ export default function HostLogin() {
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleLogin} className="space-y-4">
+                      {loginError && <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">{loginError}</p>}
                       <div>
                         <label className="text-sm font-medium">Email</label>
                         <div className="relative">
@@ -296,6 +270,7 @@ export default function HostLogin() {
                             <button type="button" onClick={handleResendCode} disabled={resendLoading} className="text-xs text-primary hover:underline">
                               {resendLoading ? "Sending..." : "Didn't receive a code? Resend"}
                             </button>
+                            {resendMsg && <p className="text-xs text-muted-foreground mt-1">{resendMsg}</p>}
                           </div>
                         </form>
                       </CardContent>
@@ -308,6 +283,7 @@ export default function HostLogin() {
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleRegister} className="space-y-4">
+                      {registerError && <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">{registerError}</p>}
                       <div>
                         <label className="text-sm font-medium">Full Name</label>
                         <div className="relative">

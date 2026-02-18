@@ -110,6 +110,59 @@ export async function sendVerificationEmail(
   }
 }
 
+export async function sendPropertyStatusEmail(
+  email: string,
+  hostName: string | null,
+  propertyTitle: string,
+  status: "approved" | "rejected",
+  reason?: string | null
+): Promise<boolean> {
+  console.log(`[EMAIL] Property ${status} email for ${email} — ${propertyTitle}`);
+  const { client, fromEmail } = getResendClient();
+  if (!client) { console.log('[EMAIL] Resend not configured, skipping'); return true; }
+
+  const isApproved = status === "approved";
+  const subject = isApproved
+    ? `🎉 Your listing "${propertyTitle}" has been approved!`
+    : `Update on your listing "${propertyTitle}"`;
+
+  const bodyHtml = isApproved
+    ? `<p style="color:#4b5563;font-size:16px;line-height:1.6;">Great news! Your property <strong>${propertyTitle}</strong> has been reviewed and <strong style="color:#16a34a;">approved</strong>. It is now live on GapNight and visible to guests.</p>
+       <div style="text-align:center;margin:30px 0;">
+         <a href="${BASE_URL}/host/dashboard" style="display:inline-block;background:#0ea5e9;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">Go to Host Dashboard</a>
+       </div>`
+    : `<p style="color:#4b5563;font-size:16px;line-height:1.6;">Unfortunately, your property <strong>${propertyTitle}</strong> was not approved at this time.</p>
+       ${reason ? `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:20px 0;"><p style="color:#991b1b;font-size:14px;margin:0;"><strong>Reason:</strong> ${reason}</p></div>` : ""}
+       <p style="color:#4b5563;font-size:14px;line-height:1.6;">Please review the feedback above, make the necessary changes, and resubmit your listing. If you have questions, contact our support team.</p>
+       <div style="text-align:center;margin:30px 0;">
+         <a href="${BASE_URL}/host/dashboard" style="display:inline-block;background:#0ea5e9;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">Go to Host Dashboard</a>
+       </div>`;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:20px;max-width:600px;margin:0 auto;background:#f9fafb;">
+  <div style="background:white;border-radius:12px;padding:40px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+    <h1 style="color:#1a1a1a;margin:0 0 20px 0;font-size:24px;">${isApproved ? "Your listing is live! 🎉" : "Listing update"}</h1>
+    <p style="color:#4b5563;font-size:16px;line-height:1.6;">Hi${hostName ? ` ${hostName}` : ""},</p>
+    ${bodyHtml}
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:30px 0;">
+    <p style="color:#9ca3af;font-size:12px;margin:0;">GapNight &mdash; Accommodation you'll love, for less</p>
+  </div>
+</body></html>`;
+
+  try {
+    await client.emails.send({ from: fromEmail, to: email, subject, html,
+      text: isApproved
+        ? `Hi${hostName ? ` ${hostName}` : ""}, your property "${propertyTitle}" has been approved and is now live on GapNight. Visit ${BASE_URL}/host/dashboard to manage it.`
+        : `Hi${hostName ? ` ${hostName}` : ""}, your property "${propertyTitle}" was not approved.${reason ? ` Reason: ${reason}` : ""} Please visit ${BASE_URL}/host/dashboard for more details.`
+    });
+    console.log('[EMAIL] Property status email sent');
+    return true;
+  } catch (error) {
+    console.error('[EMAIL] Failed to send property status email:', error);
+    return false;
+  }
+}
+
 export async function sendPasswordResetEmail(
   email: string, 
   token: string, 

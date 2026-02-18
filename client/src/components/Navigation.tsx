@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Hotel, Menu, Home, UserPlus, User, LogOut, Heart, MessageSquare } from "lucide-react";
+import { Hotel, Menu, Home, UserPlus, User, LogOut, Heart, MessageSquare, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -60,8 +60,8 @@ export function Navigation() {
             <Link href="/deals" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/deals") ? "text-primary" : "text-muted-foreground"}`}>
               Browse Deals
             </Link>
-            <Link href="/host/login" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/host/login") || isActive("/host/dashboard") ? "text-primary" : "text-muted-foreground"}`}>
-              Become a Host
+            <Link href="/host/dashboard" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/host/login") || location.startsWith("/host") ? "text-primary" : "text-muted-foreground"}`}>
+              Host Dashboard
             </Link>
             {!isLoading && (
               user ? (
@@ -131,9 +131,9 @@ export function Navigation() {
                       <Home className="w-5 h-5 mr-3" /> Browse Deals
                     </Button>
                   </Link>
-                  <Link href="/host/login">
+                  <Link href="/host/dashboard">
                     <Button variant="ghost" className="w-full justify-start text-lg font-medium h-12">
-                      <Home className="w-5 h-5 mr-3" /> Become a Host
+                      <LayoutDashboard className="w-5 h-5 mr-3" /> Host Dashboard
                     </Button>
                   </Link>
                   {!isLoading && (

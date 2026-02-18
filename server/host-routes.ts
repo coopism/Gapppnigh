@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
+import crypto from "crypto";
 import { db } from "./db";
 import { isValidUUID, validateUUIDParam } from "./validation";
 import { authRateLimit, bookingRateLimit, uploadRateLimit } from "./rate-limit";
@@ -183,13 +184,16 @@ router.post("/api/host/register", authRateLimit, async (req: Request, res: Respo
     // Send verification email
     try {
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpHash = crypto.createHash('sha256').update(otpCode).digest('hex');
       const { sendVerificationEmail } = await import("./user-email");
       await sendVerificationEmail(host.email, otpCode, host.name);
-      // Store OTP in a temporary token record for verification
+      // Invalidate old tokens then store hashed OTP
       await db.execute(
-        sql`INSERT INTO email_tokens (id, user_id, token, type, expires_at, created_at)
-            VALUES (${uuidv4()}, ${'host:' + host.id}, ${otpCode}, ${'host_verify_email'}, ${new Date(Date.now() + 24 * 60 * 60 * 1000)}, NOW())
-            ON CONFLICT DO NOTHING`
+        sql`UPDATE email_tokens SET used_at = NOW() WHERE user_id = ${'host:' + host.id} AND type = ${'host_verify_email'} AND used_at IS NULL`
+      );
+      await db.execute(
+        sql`INSERT INTO email_tokens (id, user_id, token_hash, type, expires_at, created_at)
+            VALUES (${uuidv4()}, ${'host:' + host.id}, ${otpHash}, ${'host_verify_email'}, ${new Date(Date.now() + 24 * 60 * 60 * 1000)}, NOW())`
       );
     } catch (emailErr) {
       console.error("Host verification email failed:", emailErr);
@@ -236,8 +240,9 @@ router.post("/api/host/verify-email", requireHostAuth, async (req: HostRequest, 
     const { code } = req.body;
     if (!code) return res.status(400).json({ error: "Verification code required" });
 
+    const codeHash = crypto.createHash('sha256').update(String(code).trim()).digest('hex');
     const result = await db.execute(
-      sql`SELECT * FROM email_tokens WHERE user_id = ${'host:' + req.hostId} AND token = ${code} AND type = ${'host_verify_email'} AND used_at IS NULL AND expires_at > NOW() LIMIT 1`
+      sql`SELECT * FROM email_tokens WHERE user_id = ${'host:' + req.hostId} AND token_hash = ${codeHash} AND type = ${'host_verify_email'} AND used_at IS NULL AND expires_at > NOW() LIMIT 1`
     );
     const rows = (result as any).rows || [];
     if (!rows.length) {
@@ -249,7 +254,7 @@ router.post("/api/host/verify-email", requireHostAuth, async (req: HostRequest, 
       .where(eq(airbnbHosts.id, req.hostId!));
 
     await db.execute(
-      sql`UPDATE email_tokens SET used_at = NOW() WHERE user_id = ${'host:' + req.hostId} AND type = ${'host_verify_email'}`
+      sql`UPDATE email_tokens SET used_at = NOW() WHERE user_id = ${'host:' + req.hostId} AND type = ${'host_verify_email'} AND used_at IS NULL`
     );
 
     res.json({ success: true, message: "Email verified successfully" });
@@ -267,12 +272,15 @@ router.post("/api/host/resend-verification", requireHostAuth, async (req: HostRe
     if (host.emailVerifiedAt) return res.status(400).json({ error: "Email already verified" });
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = crypto.createHash('sha256').update(otpCode).digest('hex');
     const { sendVerificationEmail } = await import("./user-email");
     await sendVerificationEmail(host.email, otpCode, host.name);
     await db.execute(
-      sql`INSERT INTO email_tokens (id, user_id, token, type, expires_at, created_at)
-          VALUES (${uuidv4()}, ${'host:' + host.id}, ${otpCode}, ${'host_verify_email'}, ${new Date(Date.now() + 24 * 60 * 60 * 1000)}, NOW())
-          ON CONFLICT DO NOTHING`
+      sql`UPDATE email_tokens SET used_at = NOW() WHERE user_id = ${'host:' + host.id} AND type = ${'host_verify_email'} AND used_at IS NULL`
+    );
+    await db.execute(
+      sql`INSERT INTO email_tokens (id, user_id, token_hash, type, expires_at, created_at)
+          VALUES (${uuidv4()}, ${'host:' + host.id}, ${otpHash}, ${'host_verify_email'}, ${new Date(Date.now() + 24 * 60 * 60 * 1000)}, NOW())`
     );
 
     res.json({ success: true, message: "Verification code sent" });
