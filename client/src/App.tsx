@@ -41,6 +41,7 @@ import HostLogin from "@/pages/host/HostLogin";
 import HostDashboard from "@/pages/host/HostDashboard";
 import CreateListing from "@/pages/host/CreateListing";
 import HostOnboarding from "@/pages/host/HostOnboarding";
+import HostPropertyPage from "@/pages/host/HostPropertyPage";
 import Stays from "@/pages/Stays";
 import PropertyDetail from "@/pages/PropertyDetail";
 import HostProfile from "@/pages/HostProfile";
@@ -79,6 +80,7 @@ function MainRouter() {
       <Route path="/host/create-listing" component={CreateListing} />
       <Route path="/host/create-listing/:draftId" component={CreateListing} />
       <Route path="/host/onboarding" component={HostOnboarding} />
+      <Route path="/host/property/:id" component={HostPropertyPage} />
       <Route path="/stays" component={Stays} />
       <Route path="/stays/:id" component={PropertyDetail} />
       <Route path="/host-profile/:id" component={HostProfile} />
@@ -111,6 +113,7 @@ function PublicRouter({ onPartnerAccess }: { onPartnerAccess: () => void }) {
       <Route path="/host/create-listing" component={CreateListing} />
       <Route path="/host/create-listing/:draftId" component={CreateListing} />
       <Route path="/host/onboarding" component={HostOnboarding} />
+      <Route path="/host/property/:id" component={HostPropertyPage} />
       <Route path="/stays" component={Stays} />
       <Route path="/stays/:id" component={PropertyDetail} />
       <Route path="/host-profile/:id" component={HostProfile} />

@@ -626,14 +626,11 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
               {" · "}{property.maxGuests} guest{property.maxGuests !== 1 ? "s" : ""}
             </p>
             <div className="flex gap-2 mt-2">
-              <Button variant="ghost" size="sm" className="text-xs px-2 h-7 text-primary"
-                onClick={() => { setShowEdit(!showEdit); if (!showEdit) setShowPhotos(false); }}>
-                {showEdit ? "Cancel Edit" : "Edit Property"}
-              </Button>
-              <Button variant="ghost" size="sm" className="text-xs px-2 h-7 text-primary"
-                onClick={() => { setShowPhotos(!showPhotos); if (!showPhotos) setShowEdit(false); }}>
-                {showPhotos ? "Hide Photos" : "Photos"}
-              </Button>
+              <Link href={`/host/property/${property.id}`}>
+                <Button variant="ghost" size="sm" className="text-xs px-2 h-7 text-primary">
+                  Manage Property
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
