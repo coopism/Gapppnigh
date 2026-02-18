@@ -236,9 +236,11 @@ router.post("/api/host/register", authRateLimit, async (req: Request, res: Respo
       },
       csrfToken,
     });
-  } catch (error) {
-    console.error("Host register error:", error);
-    res.status(500).json({ error: "Registration failed" });
+  } catch (error: any) {
+    console.error("Host register error:", error?.message || error);
+    console.error("Host register stack:", error?.stack);
+    console.error("Host register detail:", JSON.stringify({ code: error?.code, detail: error?.detail, constraint: error?.constraint }));
+    res.status(500).json({ error: "Registration failed", detail: error?.message });
   }
 });
 

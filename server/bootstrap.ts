@@ -623,6 +623,16 @@ async function createTables() {
     END $$;
   `);
 
+  // Migration: add host_id to ical_connections (for existing DBs created before this column was added)
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='ical_connections' AND column_name='host_id') THEN
+        ALTER TABLE "ical_connections" ADD COLUMN "host_id" text REFERENCES "airbnb_hosts"("id");
+      END IF;
+    END $$;
+  `);
+
   // ========================================
   // ADMIN PANEL REVAMP — TABLES + MIGRATIONS
   // ========================================
@@ -962,8 +972,16 @@ async function createTables() {
   await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_listings_user_property ON "saved_listings"("user_id", "property_id") WHERE "property_id" IS NOT NULL`);
   await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_listings_user_deal ON "saved_listings"("user_id", "deal_id") WHERE "deal_id" IS NOT NULL`);
 
-  // iCal connections indexes
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ical_connections_host_id ON "ical_connections"("host_id")`);
+  // iCal connections indexes — wrapped safely in case columns don't exist on older DBs
+  await db.execute(sql`
+    DO $$ BEGIN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='ical_connections' AND column_name='host_id') THEN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename='ical_connections' AND indexname='idx_ical_connections_host_id') THEN
+          CREATE INDEX idx_ical_connections_host_id ON "ical_connections"("host_id");
+        END IF;
+      END IF;
+    END $$;
+  `);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ical_connections_draft_id ON "ical_connections"("draft_id")`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ical_connections_property_id ON "ical_connections"("property_id")`);
 
