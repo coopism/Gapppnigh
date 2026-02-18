@@ -116,6 +116,12 @@ const AMENITY_OPTIONS = [
   { name: "BBQ", icon: Flame },
   { name: "Elevator", icon: ArrowUpDown },
   { name: "Balcony", icon: Home },
+  { name: "EV Charger", icon: Dumbbell },
+  { name: "Workspace", icon: Home },
+  { name: "Hot Tub", icon: Waves },
+  { name: "Fireplace", icon: Flame },
+  { name: "Pets Allowed", icon: Home },
+  { name: "Ski Access", icon: Wind },
 ];
 
 // ========================================
@@ -291,6 +297,13 @@ export default function CreateListing() {
     prepBuffer: false,
     baseNightlyRate: 0,
     cleaningFee: 0,
+    weekdayPrice: 150,
+    weekendPrice: 180,
+    holidayPrice: 220,
+    gap3: 35,
+    gap7: 30,
+    gap31: 25,
+    gapOver31: 20,
     gapNightDiscount: 30,
     weekdayMultiplier: "1.0",
     weekendMultiplier: "1.0",
@@ -322,6 +335,7 @@ export default function CreateListing() {
   const [uploading, setUploading] = useState(false);
 
   // Address search
+  const [unitNumber, setUnitNumber] = useState("");
   const [addressQuery, setAddressQuery] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
@@ -336,8 +350,15 @@ export default function CreateListing() {
   const autosaveData = {
     ...form,
     currentStep: step,
-    baseNightlyRate: form.baseNightlyRate ? Math.round(form.baseNightlyRate * 100) : null,
+    baseNightlyRate: form.weekdayPrice ? Math.round(form.weekdayPrice * 100) : (form.baseNightlyRate ? Math.round(form.baseNightlyRate * 100) : null),
     cleaningFee: form.cleaningFee ? Math.round(form.cleaningFee * 100) : 0,
+    weekdayPrice: form.weekdayPrice,
+    weekendPrice: form.weekendPrice,
+    holidayPrice: form.holidayPrice,
+    gap3: form.gap3,
+    gap7: form.gap7,
+    gap31: form.gap31,
+    gapOver31: form.gapOver31,
   };
   const { saveStatus, lastSaved } = useAutosave(draftId, autosaveData, step > 0);
 
@@ -438,13 +459,15 @@ export default function CreateListing() {
   const selectAddress = (s: any) => {
     const addr = s.address || {};
     const road = [addr.house_number, addr.road].filter(Boolean).join(" ");
+    const streetAddr = road || s.display_name.split(",")[0];
+    const fullAddr = unitNumber.trim() ? `${unitNumber.trim()}/${streetAddr}` : streetAddr;
     updateForm({
-      address: road || s.display_name.split(",")[0],
+      address: fullAddr,
       city: addr.city || addr.town || addr.suburb || addr.village || "",
       state: addr.state || "",
       postcode: addr.postcode || "",
     });
-    setAddressQuery(s.display_name);
+    setAddressQuery(fullAddr);
     setShowAddressSuggestions(false);
   };
 
@@ -572,7 +595,7 @@ export default function CreateListing() {
     if (step === 1) return true; // Optional step — skip allowed
     if (step === 2) return !!(form.title && form.description && form.address && form.city && form.nearbyHighlight);
     if (step === 3) return true; // Calendar is optional but manual dates or iCal encouraged
-    if (step === 4) return form.baseNightlyRate > 0;
+    if (step === 4) return form.weekdayPrice > 0;
     return true;
   };
 
@@ -854,8 +877,17 @@ export default function CreateListing() {
             {/* Address */}
             <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" /> Location</h3>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Unit / Apartment number <span className="text-muted-foreground/70">(optional)</span></label>
+                <Input
+                  placeholder="e.g. 4, Unit 2, Apt 3B"
+                  value={unitNumber}
+                  onChange={e => setUnitNumber(e.target.value)}
+                  className="h-11"
+                />
+              </div>
               <div className="relative" ref={addressWrapperRef}>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Search address</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Search street address</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -1004,7 +1036,7 @@ export default function CreateListing() {
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".jpg,.jpeg,.png,.webp"
+                accept="image/*,.avif,.heic,.heif"
                 className="hidden"
                 onChange={e => {
                   const files = e.target.files;
@@ -1327,78 +1359,79 @@ export default function CreateListing() {
               </div>
             </div>
 
-            {/* Pricing */}
+            {/* Set your price — image 3 style */}
             <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2"><DollarSign className="w-4 h-4 text-primary" /> Pricing</h3>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Base nightly price (AUD) *</label>
-                <div className="relative max-w-xs">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
-                  <Input
-                    type="number"
-                    step="1"
-                    min="1"
-                    placeholder="189"
-                    value={form.baseNightlyRate || ""}
-                    onChange={e => updateForm({ baseNightlyRate: parseFloat(e.target.value) || 0 })}
-                    className="h-14 pl-8 text-xl font-bold"
-                  />
+              <h3 className="text-sm font-semibold flex items-center gap-2"><DollarSign className="w-4 h-4 text-primary" /> Set your price</h3>
+              <p className="text-xs text-muted-foreground">You can adjust these anytime. We recommend competitive pricing to attract your first guests.</p>
+              {([
+                { label: "Weekday price", sublabel: "Mon – Thu", key: "weekdayPrice" as const },
+                { label: "Weekend price", sublabel: "Fri – Sun", key: "weekendPrice" as const },
+                { label: "Public holiday price", sublabel: "Auto-detected", key: "holidayPrice" as const },
+              ] as const).map(p => (
+                <div key={p.key} className="bg-muted/30 border border-border/50 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="font-semibold">{p.label}</p>
+                      <p className="text-xs text-muted-foreground">{p.sublabel}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-lg font-bold text-muted-foreground">$</span>
+                      <Input
+                        type="number"
+                        value={form[p.key] || ""}
+                        onChange={e => updateForm({ [p.key]: Math.max(0, Number(e.target.value)), baseNightlyRate: p.key === "weekdayPrice" ? Math.max(0, Number(e.target.value)) : form.baseNightlyRate })}
+                        className="w-28 text-right text-2xl font-bold h-12"
+                        min={0}
+                      />
+                      <span className="text-sm text-muted-foreground">/night</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Guest pays <strong>${Number(form[p.key]).toFixed(0)}</strong> · You earn <strong>${(Number(form[p.key]) * 0.93).toFixed(0)}</strong>
+                    <span className="text-muted-foreground/60"> (7% GapNight service fee)</span>
+                  </p>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">
-                  Gap night discount: <span className="text-primary font-bold">{form.gapNightDiscount}%</span>
-                  {form.baseNightlyRate > 0 && (
-                    <span className="ml-2 text-muted-foreground">
-                      = ${(form.baseNightlyRate * (1 - form.gapNightDiscount / 100)).toFixed(0)}/night
-                    </span>
-                  )}
-                </label>
-                <input
-                  type="range"
-                  min="10"
-                  max="60"
-                  step="5"
-                  value={form.gapNightDiscount}
-                  onChange={e => updateForm({ gapNightDiscount: parseInt(e.target.value) })}
-                  className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
-                  style={{ minHeight: "44px" }}
-                />
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                  <span>10%</span>
-                  <span>60%</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              ))}
+              <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Cleaning fee</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Cleaning fee (optional)</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                    <Input
-                      type="number"
-                      step="1"
-                      placeholder="85"
-                      value={form.cleaningFee || ""}
-                      onChange={e => updateForm({ cleaningFee: parseFloat(e.target.value) || 0 })}
-                      className="h-11 pl-8"
-                    />
+                    <Input type="number" step="1" placeholder="0" value={form.cleaningFee || ""} onChange={e => updateForm({ cleaningFee: parseFloat(e.target.value) || 0 })} className="h-11 pl-8" />
                   </div>
                 </div>
               </div>
+            </div>
 
-              {form.baseNightlyRate > 0 && (
-                <div className="bg-muted/30 rounded-xl p-3 text-sm">
-                  <p className="text-muted-foreground">
-                    Guests will see <span className="font-bold text-foreground">${form.baseNightlyRate}/night</span>
-                    {form.cleaningFee > 0 && <> + <span className="font-bold text-foreground">${form.cleaningFee}</span> cleaning fee</>}
-                  </p>
+            {/* Gap night discounts — image 4 style */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2"><DollarSign className="w-4 h-4 text-primary" /> Set gap night discounts</h3>
+              <p className="text-xs text-muted-foreground">Gap nights are empty nights between bookings. Offering a discount helps fill them and earn extra income. We auto-adjust the discount based on how soon the gap night is.</p>
+              {([
+                { label: "Gap nights in 3 days or less", sublabel: "Last-minute — highest discount", key: "gap3" as const, color: "text-red-500" },
+                { label: "Gap nights within 7 days", sublabel: "Short notice", key: "gap7" as const, color: "text-orange-500" },
+                { label: "Gap nights within 31 days", sublabel: "Some planning time", key: "gap31" as const, color: "text-amber-500" },
+                { label: "Gap nights after 31 days", sublabel: "Plenty of notice", key: "gapOver31" as const, color: "text-green-500" },
+              ] as const).map(d => (
+                <div key={d.key} className="bg-muted/30 border border-border/50 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="font-semibold text-sm">{d.label}</p>
+                      <p className="text-xs text-muted-foreground">{d.sublabel}</p>
+                    </div>
+                    <span className={`text-2xl font-bold ${d.color}`}>{form[d.key]}%</span>
+                  </div>
+                  <input
+                    type="range" min={5} max={60} step={5}
+                    value={form[d.key]}
+                    onChange={e => updateForm({ [d.key]: parseInt(e.target.value) })}
+                    className="w-full accent-primary"
+                  />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Gap night price: <span className="font-bold text-primary">${(form.baseNightlyRate * (1 - form.gapNightDiscount / 100)).toFixed(0)}/night</span>
+                    ${form.weekdayPrice} night → Guest pays <strong>${Math.round(form.weekdayPrice * (1 - form[d.key] / 100))}</strong> · You earn <strong>${Math.round(form.weekdayPrice * (1 - form[d.key] / 100) * 0.93)}</strong>
                   </p>
                 </div>
-              )}
+              ))}
             </div>
 
             {/* Approval toggle */}

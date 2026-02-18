@@ -76,12 +76,13 @@ const photoUpload = multer({
   storage: photoStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = [".jpg", ".jpeg", ".png", ".webp"];
+    const allowed = [".jpg", ".jpeg", ".png", ".webp", ".avif", ".gif", ".tiff", ".tif", ".bmp", ".heic", ".heif"];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) {
+    const allowedMime = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif", "image/tiff", "image/bmp", "image/heic", "image/heif"];
+    if (allowed.includes(ext) || allowedMime.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only .jpg, .jpeg, .png, .webp files are allowed"));
+      cb(new Error("Only image files are allowed (JPG, PNG, WebP, AVIF, GIF, TIFF, HEIC)"));
     }
   },
 });

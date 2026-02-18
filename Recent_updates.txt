@@ -1,5 +1,66 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-19
+# Last Updated: 2026-02-18 (Session 2)
+
+## Host Platform Improvements — Session 2 - Feb 18, 2026
+
+### Changes Implemented
+
+1. **Host email verification on signup**
+   - After registration, host is shown a 6-digit OTP verification screen instead of being redirected immediately
+   - Backend sends verification email via existing `sendVerificationEmail` from `user-email.ts`
+   - New endpoints: `POST /api/host/verify-email`, `POST /api/host/resend-verification`
+   - Files: `server/host-routes.ts`, `client/src/pages/host/HostLogin.tsx`
+
+2. **Australian phone number validation**
+   - Backend: Added `AUS_PHONE_REGEX` to `hostSignupSchema` — validates `04XX XXX XXX` or `+614XXXXXXXX`
+   - Frontend: Client-side validation with inline error message before submit
+   - Phone field label updated to clarify Australian format requirement
+   - Files: `server/host-routes.ts`, `client/src/pages/host/HostLogin.tsx`
+
+3. **Allow all image types for photo uploads**
+   - Multer `fileFilter` updated in both `host-routes.ts` and `listing-routes.ts` to accept `.avif`, `.gif`, `.tiff`, `.bmp`, `.heic`, `.heif` in addition to existing types
+   - Frontend file inputs updated to `accept="image/*"` in HostDashboard, HostOnboarding, CreateListing
+   - Drag-and-drop filter updated to `f.type.startsWith("image/")`
+   - Files: `server/host-routes.ts`, `server/listing-routes.ts`, `client/src/pages/host/HostDashboard.tsx`, `client/src/pages/host/HostOnboarding.tsx`, `client/src/pages/host/CreateListing.tsx`
+
+4. **More amenities added**
+   - Added: EV Charger, Workspace, Hot Tub, Fireplace, Pets Allowed, Ski Access
+   - Applied to both HostOnboarding and CreateListing AMENITY_OPTIONS arrays
+   - Files: `client/src/pages/host/HostOnboarding.tsx`, `client/src/pages/host/CreateListing.tsx`
+
+5. **Address lookup: unit number support**
+   - Added "Unit / Apartment number" optional field above street address search
+   - When a suggestion is selected, unit number is prepended as `{unit}/{street}` (e.g. `4/562 Pascoe Vale Road`)
+   - Applied to both HostOnboarding and CreateListing
+   - Files: `client/src/pages/host/HostOnboarding.tsx`, `client/src/pages/host/CreateListing.tsx`
+
+6. **Cancellation policy locked to 24 hours**
+   - Removed cancellation policy dropdown from manage properties edit form
+   - Replaced with a locked amber info banner: "Flexible — 24 hours (non-negotiable for all GapNight hosts)"
+   - Backend always saves `cancellationPolicy: "flexible"` on property update
+   - Files: `client/src/pages/host/HostDashboard.tsx`, `server/host-routes.ts`
+
+7. **Manage properties: weekday/weekend/holiday price inputs (image 3 style)**
+   - Replaced weekday/weekend multiplier dropdowns with direct dollar-amount inputs
+   - Shows "Guest pays $X · You earn $Y (7% GapNight fee)" below each price
+   - Files: `client/src/pages/host/HostDashboard.tsx`
+
+8. **Manage properties: per-tier gap night discount sliders (image 4 style)**
+   - Replaced single `gapNightDiscount` slider with 4 tiers: ≤3 days (red), ≤7 days (orange), ≤31 days (amber), >31 days (green)
+   - Each slider shows example: "$X night → Guest pays $Y · You earn $Z"
+   - Applied to both HostDashboard (manage) and CreateListing (new listing)
+   - Files: `client/src/pages/host/HostDashboard.tsx`, `client/src/pages/host/CreateListing.tsx`
+
+9. **iCal link editable in manage properties**
+   - Added Airbnb iCal URL input field to the property edit form in HostDashboard
+   - Saved to backend on property update
+   - Files: `client/src/pages/host/HostDashboard.tsx`
+
+10. **CreateListing matches HostOnboarding**
+    - Same amenities list, same unit number field, same weekday/weekend/holiday price inputs, same per-tier gap discount sliders
+    - `canProceed` for step 4 now checks `weekdayPrice > 0` instead of `baseNightlyRate > 0`
+    - Autosave data includes all new pricing/discount fields
+    - Files: `client/src/pages/host/CreateListing.tsx`
 
 ## Production Bug Fixes — 14 Issues Resolved - Feb 19, 2026
 

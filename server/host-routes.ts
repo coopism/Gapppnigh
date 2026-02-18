@@ -47,12 +47,13 @@ const photoUpload = multer({
   storage: photoStorage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (_req, file, cb) => {
-    const allowed = [".jpg", ".jpeg", ".png", ".webp"];
+    const allowed = [".jpg", ".jpeg", ".png", ".webp", ".avif", ".gif", ".tiff", ".tif", ".bmp", ".heic", ".heif"];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) {
+    const allowedMime = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif", "image/tiff", "image/bmp", "image/heic", "image/heif"];
+    if (allowed.includes(ext) || allowedMime.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only .jpg, .jpeg, .png, .webp files are allowed"));
+      cb(new Error("Only image files are allowed (JPG, PNG, WebP, AVIF, GIF, TIFF, HEIC)"));
     }
   },
 });
@@ -127,11 +128,15 @@ async function requireVerifiedHost(req: HostRequest, res: Response, next: NextFu
 // HOST AUTHENTICATION
 // ========================================
 
+const AUS_PHONE_REGEX = /^(04\d{2}\s?\d{3}\s?\d{3}|\+614\d{8})$/;
+
 const hostSignupSchema = z.object({
   email: z.string().email().transform(e => e.trim().toLowerCase()),
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(1, "Name is required"),
-  phone: z.string().optional(),
+  phone: z.string().optional().refine(v => !v || AUS_PHONE_REGEX.test(v.replace(/\s/g, "")), {
+    message: "Phone must be a valid Australian mobile number (04XX XXX XXX)",
+  }),
 });
 
 const hostLoginSchema = z.object({
@@ -175,6 +180,21 @@ router.post("/api/host/register", authRateLimit, async (req: Request, res: Respo
       })
       .returning();
 
+    // Send verification email
+    try {
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const { sendVerificationEmail } = await import("./user-email");
+      await sendVerificationEmail(host.email, otpCode, host.name);
+      // Store OTP in a temporary token record for verification
+      await db.execute(
+        sql`INSERT INTO email_tokens (id, user_id, token, type, expires_at, created_at)
+            VALUES (${uuidv4()}, ${'host:' + host.id}, ${otpCode}, ${'host_verify_email'}, ${new Date(Date.now() + 24 * 60 * 60 * 1000)}, NOW())
+            ON CONFLICT DO NOTHING`
+      );
+    } catch (emailErr) {
+      console.error("Host verification email failed:", emailErr);
+    }
+
     // Create session
     const sessionId = uuidv4();
     const expiresAt = new Date(Date.now() + SESSION_DURATION_HOURS * 60 * 60 * 1000);
@@ -200,11 +220,65 @@ router.post("/api/host/register", authRateLimit, async (req: Request, res: Respo
         id: host.id,
         email: host.email,
         name: host.name,
+        emailVerified: false,
+        requiresEmailVerification: true,
       },
     });
   } catch (error) {
     console.error("Host register error:", error);
     res.status(500).json({ error: "Registration failed" });
+  }
+});
+
+// Host email verification endpoint
+router.post("/api/host/verify-email", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: "Verification code required" });
+
+    const result = await db.execute(
+      sql`SELECT * FROM email_tokens WHERE user_id = ${'host:' + req.hostId} AND token = ${code} AND type = ${'host_verify_email'} AND used_at IS NULL AND expires_at > NOW() LIMIT 1`
+    );
+    const rows = (result as any).rows || [];
+    if (!rows.length) {
+      return res.status(400).json({ error: "Invalid or expired verification code" });
+    }
+
+    await db.update(airbnbHosts)
+      .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
+      .where(eq(airbnbHosts.id, req.hostId!));
+
+    await db.execute(
+      sql`UPDATE email_tokens SET used_at = NOW() WHERE user_id = ${'host:' + req.hostId} AND type = ${'host_verify_email'}`
+    );
+
+    res.json({ success: true, message: "Email verified successfully" });
+  } catch (error) {
+    console.error("Host email verification error:", error);
+    res.status(500).json({ error: "Verification failed" });
+  }
+});
+
+// Resend host verification email
+router.post("/api/host/resend-verification", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const [host] = await db.select().from(airbnbHosts).where(eq(airbnbHosts.id, req.hostId!)).limit(1);
+    if (!host) return res.status(404).json({ error: "Host not found" });
+    if (host.emailVerifiedAt) return res.status(400).json({ error: "Email already verified" });
+
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const { sendVerificationEmail } = await import("./user-email");
+    await sendVerificationEmail(host.email, otpCode, host.name);
+    await db.execute(
+      sql`INSERT INTO email_tokens (id, user_id, token, type, expires_at, created_at)
+          VALUES (${uuidv4()}, ${'host:' + host.id}, ${otpCode}, ${'host_verify_email'}, ${new Date(Date.now() + 24 * 60 * 60 * 1000)}, NOW())
+          ON CONFLICT DO NOTHING`
+    );
+
+    res.json({ success: true, message: "Verification code sent" });
+  } catch (error) {
+    console.error("Resend host verification error:", error);
+    res.status(500).json({ error: "Failed to resend" });
   }
 });
 

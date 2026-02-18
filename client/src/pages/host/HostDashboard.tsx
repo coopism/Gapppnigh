@@ -441,15 +441,21 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
     instantBook: property.instantBook || false,
     checkInTime: property.checkInTime || "15:00",
     checkOutTime: property.checkOutTime || "10:00",
-    cancellationPolicy: property.cancellationPolicy || "moderate",
     amenities: property.amenities || [],
-    // Gap night rule fields
-    gapNightDiscount: gnr?.gapNightDiscount ?? 30,
-    weekdayMultiplier: gnr?.weekdayMultiplier || "1.0",
-    weekendMultiplier: gnr?.weekendMultiplier || "1.0",
+    // Pricing (in dollars)
+    weekdayPrice: ((gnr?.weekdayPrice ?? property.baseNightlyRate ?? 0) / 100),
+    weekendPrice: ((gnr?.weekendPrice ?? Math.round((property.baseNightlyRate ?? 0) * 1.2)) / 100),
+    holidayPrice: ((gnr?.holidayPrice ?? Math.round((property.baseNightlyRate ?? 0) * 1.4)) / 100),
+    // Gap night rule fields — per-tier discounts
+    gap3: gnr?.gap3 ?? 35,
+    gap7: gnr?.gap7 ?? 30,
+    gap31: gnr?.gap31 ?? 25,
+    gapOver31: gnr?.gapOver31 ?? 20,
     minNotice: gnr?.minNotice ?? 1,
     prepBuffer: gnr?.prepBuffer || false,
     manualApproval: gnr?.manualApproval ?? true,
+    // iCal
+    icalUrl: property.icalUrl || "",
   });
 
   const loadPhotos = async () => {
@@ -503,9 +509,7 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const files = Array.from(e.dataTransfer.files).filter(f =>
-      ["image/jpeg", "image/png", "image/webp"].includes(f.type)
-    );
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/"));
     if (files.length > 0) uploadFiles(files);
   };
 
@@ -547,19 +551,23 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
   const handleSaveEdit = async () => {
     setIsSaving(true);
     try {
-      const { gapNightDiscount, weekdayMultiplier, weekendMultiplier, minNotice, prepBuffer, manualApproval, ...propertyFields } = editForm;
+      const { gap3, gap7, gap31, gapOver31, weekdayPrice, weekendPrice, holidayPrice, minNotice, prepBuffer, manualApproval, icalUrl, ...propertyFields } = editForm;
+      const weekdayPriceCents = Math.round(Number(weekdayPrice) * 100);
       const res = await fetch(`/api/host/properties/${property.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           ...propertyFields,
-          baseNightlyRate: Math.round(parseFloat(editForm.baseNightlyRate) * 100),
+          baseNightlyRate: weekdayPriceCents,
+          cancellationPolicy: "flexible",
           cleaningFee: editForm.cleaningFee ? Math.round(parseFloat(editForm.cleaningFee) * 100) : 0,
+          icalUrl: icalUrl || null,
           gapNightRule: {
-            gapNightDiscount,
-            weekdayMultiplier,
-            weekendMultiplier,
+            gap3, gap7, gap31, gapOver31,
+            weekdayPrice: weekdayPriceCents,
+            weekendPrice: Math.round(Number(weekendPrice) * 100),
+            holidayPrice: Math.round(Number(holidayPrice) * 100),
             minNotice,
             prepBuffer,
             manualApproval,
@@ -727,8 +735,8 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
             <label className="text-xs font-medium text-muted-foreground">Nearby Highlight</label>
             <Input value={editForm.nearbyHighlight} onChange={e => setEditForm({...editForm, nearbyHighlight: e.target.value})} className="h-9 text-sm" />
           </div>
-          {/* Check-in / Check-out times */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* Check-in / Check-out times + Min Notice */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Check-in Time</label>
               <Input type="time" value={editForm.checkInTime} onChange={e => setEditForm({...editForm, checkInTime: e.target.value})} className="h-9 text-sm" />
@@ -736,14 +744,6 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
             <div>
               <label className="text-xs font-medium text-muted-foreground">Check-out Time</label>
               <Input type="time" value={editForm.checkOutTime} onChange={e => setEditForm({...editForm, checkOutTime: e.target.value})} className="h-9 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Cancellation Policy</label>
-              <select className="w-full rounded-md border p-2 text-xs h-9 bg-background" value={editForm.cancellationPolicy} onChange={e => setEditForm({...editForm, cancellationPolicy: e.target.value})}>
-                <option value="flexible">Flexible (24hr)</option>
-                <option value="moderate">Moderate (5 days)</option>
-                <option value="strict">Strict (7 days)</option>
-              </select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Min Notice</label>
@@ -757,49 +757,88 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
             </div>
           </div>
 
-          {/* Gap Night Pricing */}
-          <div className="bg-muted/30 rounded-lg p-3 space-y-3">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gap Night Pricing</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                  Gap Night Discount: <span className="text-primary font-bold">{editForm.gapNightDiscount}%</span>
-                  {parseFloat(editForm.baseNightlyRate) > 0 && (
-                    <span className="ml-1 text-muted-foreground">
-                      = ${(parseFloat(editForm.baseNightlyRate) * (1 - editForm.gapNightDiscount / 100)).toFixed(0)}/night
-                    </span>
-                  )}
-                </label>
-                <input type="range" min="10" max="60" step="5" value={editForm.gapNightDiscount}
-                  onChange={e => setEditForm({...editForm, gapNightDiscount: parseInt(e.target.value)})}
-                  className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary" />
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-                  <span>10%</span><span>60%</span>
+          {/* Cancellation Policy — locked to 24hr */}
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-center gap-2">
+            <span className="text-amber-600 dark:text-amber-400 text-xs font-semibold">Cancellation policy:</span>
+            <span className="text-xs text-foreground font-medium">Flexible — 24 hours (non-negotiable for all GapNight hosts)</span>
+          </div>
+
+          {/* Set your price — image 3 style */}
+          <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+            <h4 className="text-sm font-bold">Set your price</h4>
+            <p className="text-xs text-muted-foreground">You can adjust these anytime. We recommend competitive pricing to attract guests.</p>
+            {([
+              { label: "Weekday price", sublabel: "Mon – Thu", key: "weekdayPrice" as const },
+              { label: "Weekend price", sublabel: "Fri – Sun", key: "weekendPrice" as const },
+              { label: "Public holiday price", sublabel: "Auto-detected", key: "holidayPrice" as const },
+            ] as const).map(p => (
+              <div key={p.key} className="bg-card border border-border/50 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <div>
+                    <p className="font-semibold text-sm">{p.label}</p>
+                    <p className="text-xs text-muted-foreground">{p.sublabel}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-bold text-muted-foreground">$</span>
+                    <Input
+                      type="number"
+                      value={editForm[p.key] || ""}
+                      onChange={e => setEditForm({...editForm, [p.key]: Math.max(0, Number(e.target.value))})}
+                      className="w-24 text-right text-xl font-bold h-10"
+                      min={0}
+                    />
+                    <span className="text-xs text-muted-foreground">/night</span>
+                  </div>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Guest pays <strong>${Number(editForm[p.key]).toFixed(0)}</strong> · You earn <strong>${(Number(editForm[p.key]) * 0.93).toFixed(0)}</strong>
+                  <span className="text-muted-foreground/60"> (7% GapNight fee)</span>
+                </p>
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Weekday Multiplier</label>
-                <select className="w-full rounded-md border p-2 text-xs h-9 bg-background" value={editForm.weekdayMultiplier} onChange={e => setEditForm({...editForm, weekdayMultiplier: e.target.value})}>
-                  <option value="0.8">0.8x (cheaper)</option>
-                  <option value="0.9">0.9x</option>
-                  <option value="1.0">1.0x (standard)</option>
-                  <option value="1.1">1.1x</option>
-                  <option value="1.2">1.2x (premium)</option>
-                </select>
+            ))}
+          </div>
+
+          {/* Gap Night Discounts — image 4 style, per-tier */}
+          <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+            <h4 className="text-sm font-bold">Set gap night discounts</h4>
+            <p className="text-xs text-muted-foreground">Gap nights are empty nights between bookings. We auto-adjust the discount based on how soon the gap night is.</p>
+            {([
+              { label: "Gap nights in 3 days or less", sublabel: "Last-minute — highest discount", key: "gap3" as const, color: "text-red-500" },
+              { label: "Gap nights within 7 days", sublabel: "Short notice", key: "gap7" as const, color: "text-orange-500" },
+              { label: "Gap nights within 31 days", sublabel: "Some planning time", key: "gap31" as const, color: "text-amber-500" },
+              { label: "Gap nights after 31 days", sublabel: "Plenty of notice", key: "gapOver31" as const, color: "text-green-500" },
+            ] as const).map(d => (
+              <div key={d.key} className="bg-card border border-border/50 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-sm">{d.label}</p>
+                    <p className="text-xs text-muted-foreground">{d.sublabel}</p>
+                  </div>
+                  <span className={`text-2xl font-bold ${d.color}`}>{editForm[d.key]}%</span>
+                </div>
+                <input
+                  type="range" min={5} max={60} step={5}
+                  value={editForm[d.key]}
+                  onChange={e => setEditForm({...editForm, [d.key]: parseInt(e.target.value)})}
+                  className="w-full accent-primary"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  ${Number(editForm.weekdayPrice).toFixed(0)} night → Guest pays <strong>${Math.round(Number(editForm.weekdayPrice) * (1 - editForm[d.key] / 100))}</strong> · You earn <strong>${Math.round(Number(editForm.weekdayPrice) * (1 - editForm[d.key] / 100) * 0.93)}</strong>
+                </p>
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Weekend Multiplier</label>
-                <select className="w-full rounded-md border p-2 text-xs h-9 bg-background" value={editForm.weekendMultiplier} onChange={e => setEditForm({...editForm, weekendMultiplier: e.target.value})}>
-                  <option value="0.8">0.8x (cheaper)</option>
-                  <option value="0.9">0.9x</option>
-                  <option value="1.0">1.0x (standard)</option>
-                  <option value="1.1">1.1x</option>
-                  <option value="1.2">1.2x</option>
-                  <option value="1.3">1.3x</option>
-                  <option value="1.5">1.5x (premium)</option>
-                </select>
-              </div>
-            </div>
+            ))}
+          </div>
+
+          {/* iCal URL — T9 */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Airbnb iCal URL</label>
+            <Input
+              value={editForm.icalUrl}
+              onChange={e => setEditForm({...editForm, icalUrl: e.target.value})}
+              placeholder="https://www.airbnb.com/calendar/ical/..."
+              className="h-9 text-xs font-mono"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">Airbnb → Calendar → Availability settings → Export calendar → Copy link</p>
           </div>
 
           {/* Amenities */}
@@ -869,7 +908,7 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".jpg,.jpeg,.png,.webp"
+                accept="image/*"
                 className="hidden"
                 onChange={handleUpload}
               />
@@ -892,7 +931,7 @@ function PropertyCard({ property, onUpdate }: { property: any; onUpdate: () => v
             <p className="text-xs text-muted-foreground">
               {uploading ? "Uploading..." : dragOver ? "Drop photos here!" : "Drag & drop photos here, or click to browse"}
             </p>
-            <p className="text-[10px] text-muted-foreground/60 mt-1">JPG, PNG, WebP · Max 10MB each</p>
+            <p className="text-[10px] text-muted-foreground/60 mt-1">JPG, PNG, WebP, AVIF, HEIC and more · Max 10MB each</p>
           </div>
 
           {photos.length > 0 && (

@@ -46,6 +46,12 @@ const AMENITIES = [
   { name: "BBQ", icon: Flame },
   { name: "Elevator", icon: ArrowUpDown },
   { name: "Balcony", icon: Home },
+  { name: "EV Charger", icon: Dumbbell },
+  { name: "Workspace", icon: Home },
+  { name: "Hot Tub", icon: Waves },
+  { name: "Fireplace", icon: Flame },
+  { name: "Pets Allowed", icon: Home },
+  { name: "Ski Access", icon: Wind },
 ];
 
 const TOTAL_STEPS = 10;
@@ -97,6 +103,7 @@ export default function HostOnboarding() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Address
+  const [unitNumber, setUnitNumber] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [stateName, setStateName] = useState("");
@@ -169,8 +176,10 @@ export default function HostOnboarding() {
   const selectAddress = (item: any) => {
     const addr = item.address || {};
     const road = [addr.house_number, addr.road].filter(Boolean).join(" ");
-    setAddress(road || item.display_name.split(",")[0]);
-    setAddressQuery(road || item.display_name.split(",")[0]);
+    const streetAddr = road || item.display_name.split(",")[0];
+    const fullAddr = unitNumber.trim() ? `${unitNumber.trim()}/${streetAddr}` : streetAddr;
+    setAddress(fullAddr);
+    setAddressQuery(fullAddr);
     setCity(addr.city || addr.town || addr.suburb || addr.village || "");
     setStateName(addr.state || "");
     setPostcode(addr.postcode || "");
@@ -183,7 +192,7 @@ export default function HostOnboarding() {
       case 1: return title.trim().length >= 5;
       case 2: return description.trim().length >= 20;
       case 3: return photos.length >= 1;
-      case 4: return address.trim().length > 0 && city.trim().length > 0;
+      case 4: return address.trim().length > 0 && city.trim().length > 0 && postcode.trim().length > 0;
       case 5: return weekdayPrice > 0;
       case 6: return true;
       case 7: return true; // iCal is optional
@@ -387,7 +396,7 @@ export default function HostOnboarding() {
               <h1 className="text-3xl font-bold font-display">Add some photos</h1>
               <p className="text-muted-foreground mt-2">You'll need at least 1 photo to get started. You can add more later.</p>
             </div>
-            <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
+            <input ref={fileRef} type="file" accept="image/*,.avif,.heic,.heif" multiple className="hidden" onChange={handlePhotoUpload} />
             {photos.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {photos.map((url, i) => (
@@ -430,6 +439,15 @@ export default function HostOnboarding() {
               <p className="text-muted-foreground mt-2">Your address is only shared with guests after they book.</p>
             </div>
             <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium">Unit / Apartment number <span className="text-muted-foreground text-xs">(optional)</span></label>
+                <Input
+                  value={unitNumber}
+                  onChange={e => setUnitNumber(e.target.value)}
+                  placeholder="e.g. 4, Unit 2, Apt 3B"
+                  className="h-10"
+                />
+              </div>
               <div className="relative">
                 <label className="text-sm font-medium">Street address</label>
                 <div className="relative">

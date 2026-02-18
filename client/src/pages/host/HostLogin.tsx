@@ -7,7 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Mail, User, Lock, Phone, Home, Calendar, TrendingUp, Shield } from "lucide-react";
+import { CheckCircle, Mail, User, Lock, Phone, Home, Calendar, TrendingUp, Shield, KeyRound } from "lucide-react";
+
+const AUS_PHONE_REGEX = /^(04\d{2}\s?\d{3}\s?\d{3}|\+614\d{8})$/;
 
 export default function HostLogin() {
   const [, setLocation] = useLocation();
@@ -24,6 +26,14 @@ export default function HostLogin() {
   const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+
+  // Email verification state
+  const [showVerification, setShowVerification] = useState(false);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifyError, setVerifyError] = useState("");
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,12 +70,16 @@ export default function HostLogin() {
       toast({ title: "Error", description: "Passwords don't match", variant: "destructive" });
       return;
     }
-
     if (regPassword.length < 8) {
       toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
       return;
     }
-
+    // Australian phone validation
+    if (regPhone && !AUS_PHONE_REGEX.test(regPhone.replace(/\s/g, ""))) {
+      setPhoneError("Enter a valid Australian mobile number (04XX XXX XXX)");
+      return;
+    }
+    setPhoneError("");
     setIsLoading(true);
 
     try {
@@ -88,12 +102,50 @@ export default function HostLogin() {
         return;
       }
 
-      toast({ title: "Account created!", description: "Let's set up your first property" });
-      setLocation("/host/onboarding");
+      // Show email verification step
+      setShowVerification(true);
+      toast({ title: "Account created!", description: "Check your email for a verification code." });
     } catch (error) {
       toast({ title: "Error", description: "Failed to connect to server", variant: "destructive" });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerifyLoading(true);
+    setVerifyError("");
+    try {
+      const res = await fetch("/api/host/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code: verifyCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setVerifyError(data.error || "Invalid code");
+        return;
+      }
+      toast({ title: "Email verified!", description: "Let's set up your first property." });
+      setLocation("/host/onboarding");
+    } catch {
+      setVerifyError("Failed to verify. Please try again.");
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setResendLoading(true);
+    try {
+      await fetch("/api/host/resend-verification", { method: "POST", credentials: "include" });
+      toast({ title: "Code resent!", description: "Check your email for a new code." });
+    } catch {
+      toast({ title: "Failed to resend", variant: "destructive" });
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -210,6 +262,46 @@ export default function HostLogin() {
                 </TabsContent>
 
                 <TabsContent value="register">
+                  {showVerification ? (
+                    <>
+                      <CardHeader>
+                        <CardTitle className="font-display text-2xl">Verify your email</CardTitle>
+                        <CardDescription>
+                          We sent a 6-digit code to <strong>{regEmail}</strong>. Enter it below to activate your account.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <form onSubmit={handleVerifyEmail} className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium">Verification code</label>
+                            <div className="relative">
+                              <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                placeholder="123456"
+                                className="pl-9 bg-background text-center text-2xl font-mono tracking-widest h-14"
+                                value={verifyCode}
+                                onChange={e => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                                maxLength={6}
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                                required
+                              />
+                            </div>
+                            {verifyError && <p className="text-xs text-destructive mt-1">{verifyError}</p>}
+                          </div>
+                          <Button type="submit" className="w-full h-12 font-bold" disabled={verifyLoading || verifyCode.length !== 6}>
+                            {verifyLoading ? "Verifying..." : "Verify Email"}
+                          </Button>
+                          <div className="text-center">
+                            <button type="button" onClick={handleResendCode} disabled={resendLoading} className="text-xs text-primary hover:underline">
+                              {resendLoading ? "Sending..." : "Didn't receive a code? Resend"}
+                            </button>
+                          </div>
+                        </form>
+                      </CardContent>
+                    </>
+                  ) : (
+                  <>
                   <CardHeader>
                     <CardTitle className="font-display text-2xl">Become a Host</CardTitle>
                     <CardDescription>Create your account and start listing your property on GapNight.</CardDescription>
@@ -244,17 +336,19 @@ export default function HostLogin() {
                         </div>
                       </div>
                       <div>
-                        <label className="text-sm font-medium">Phone (optional)</label>
+                        <label className="text-sm font-medium">Mobile number <span className="text-muted-foreground text-xs">(Australian, 04XX XXX XXX)</span></label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
                             type="tel"
-                            placeholder="+61 4XX XXX XXX"
-                            className="pl-9 bg-background"
+                            placeholder="0412 345 678"
+                            className={`pl-9 bg-background ${phoneError ? "border-destructive" : ""}`}
                             value={regPhone}
-                            onChange={(e) => setRegPhone(e.target.value)}
+                            inputMode="tel"
+                            onChange={(e) => { setRegPhone(e.target.value); setPhoneError(""); }}
                           />
                         </div>
+                        {phoneError && <p className="text-xs text-destructive mt-1">{phoneError}</p>}
                       </div>
                       <div>
                         <label className="text-sm font-medium">Password</label>
@@ -290,6 +384,8 @@ export default function HostLogin() {
                       </Button>
                     </form>
                   </CardContent>
+                  </>
+                  )}
                 </TabsContent>
               </Tabs>
             </Card>
