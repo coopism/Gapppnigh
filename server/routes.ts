@@ -21,6 +21,7 @@ import hostRoutes from "./host-routes";
 import listingRoutes from "./listing-routes";
 import propertyRoutes from "./property-routes";
 import messagingRoutes from "./messaging-routes";
+import icalExportRouter from "./ical-export";
 
 // ========================================
 // IN-MEMORY DEAL HOLDS (5 minute reservation)
@@ -1646,6 +1647,9 @@ export async function registerRoutes(
 
   // Register messaging routes (guest + host private messaging)
   app.use(optionalUserAuthMiddleware, messagingRoutes);
+
+  // Register iCal export routes (public, token-secured via URL — no session cookie needed)
+  app.use(icalExportRouter);
 
   return httpServer;
 }

@@ -4,6 +4,7 @@ import * as rewards from "./rewards";
 import { db } from "./db";
 import { bookings, deals } from "@shared/schema";
 import { eq, and, lt, gte, lte, sql } from "drizzle-orm";
+import { syncAllICalConnections } from "./ical-sync";
 
 // Award points for completed bookings (runs daily at 2 AM)
 export function startPointsAwardJob() {
@@ -182,10 +183,29 @@ export function startAutoListingJob() {
   console.log("[CRON] Auto-listing job scheduled (daily at 3:00 AM)");
 }
 
+// iCal sync job (runs every 3 hours)
+export function startICalSyncJob() {
+  // Runs at minute 0 of every 3rd hour: 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00
+  cron.schedule("0 */3 * * *", async () => {
+    console.log("[CRON] Starting iCal sync job...");
+    try {
+      const summary = await syncAllICalConnections();
+      console.log(
+        `[CRON] iCal sync complete: ${summary.succeeded}/${summary.total} succeeded, ` +
+        `${summary.failed} failed`
+      );
+    } catch (err) {
+      console.error("[CRON] iCal sync job error:", err);
+    }
+  });
+  console.log("[CRON] iCal sync job scheduled (every 3 hours)");
+}
+
 // Start all cron jobs
 export function startAllCronJobs() {
   console.log("[CRON] Starting all scheduled jobs...");
   startPointsAwardJob();
   startAutoListingJob();
+  startICalSyncJob();
   console.log("[CRON] All scheduled jobs started successfully");
 }

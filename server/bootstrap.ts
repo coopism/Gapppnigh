@@ -613,6 +613,16 @@ async function createTables() {
     END $$;
   `);
 
+  // Migration: add ical_export_token to properties (for iCal export feed)
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='properties' AND column_name='ical_export_token') THEN
+        ALTER TABLE "properties" ADD COLUMN "ical_export_token" text;
+      END IF;
+    END $$;
+  `);
+
   // ========================================
   // ADMIN PANEL REVAMP — TABLES + MIGRATIONS
   // ========================================

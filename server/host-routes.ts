@@ -2322,4 +2322,111 @@ router.get("/api/address-search", async (req: Request, res: Response) => {
   }
 });
 
+// ========================================
+// iCAL EXPORT TOKEN + MANUAL SYNC
+// ========================================
+
+// GET /api/host/properties/:id/ical-export
+// Returns the export URL for the property's .ics feed.
+// Auto-generates a token if one doesn't exist yet.
+router.get("/api/host/properties/:id/ical-export", requireHostAuth, async (req: HostRequest, res: Response) => {
+  const propertyId = req.params.id as string;
+  if (!propertyId) return res.status(400).json({ error: "Property ID required" });
+
+  try {
+    const [property] = await db
+      .select({ id: properties.id, hostId: properties.hostId, icalExportToken: properties.icalExportToken, title: properties.title })
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.hostId, req.hostId!)))
+      .limit(1);
+
+    if (!property) return res.status(404).json({ error: "Property not found" });
+
+    let token = property.icalExportToken;
+
+    // Auto-generate token if missing
+    if (!token) {
+      const { randomBytes } = await import("crypto");
+      token = randomBytes(32).toString("hex"); // 64-char hex
+      await db
+        .update(properties)
+        .set({ icalExportToken: token, updatedAt: new Date() })
+        .where(eq(properties.id, propertyId));
+    }
+
+    const baseUrl = process.env.BASE_URL || "https://gapnight.com.au";
+    const exportUrl = `${baseUrl}/api/calendar/${propertyId}/${token}/calendar.ics`;
+
+    res.json({ exportUrl, token });
+  } catch (err) {
+    console.error("iCal export token error:", err);
+    res.status(500).json({ error: "Failed to get export URL" });
+  }
+});
+
+// POST /api/host/properties/:id/ical-export/regenerate
+// Regenerates the export token (invalidates the old URL).
+router.post("/api/host/properties/:id/ical-export/regenerate", requireHostAuth, async (req: HostRequest, res: Response) => {
+  const propertyId = req.params.id as string;
+  if (!propertyId) return res.status(400).json({ error: "Property ID required" });
+
+  try {
+    const [property] = await db
+      .select({ id: properties.id, hostId: properties.hostId })
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.hostId, req.hostId!)))
+      .limit(1);
+
+    if (!property) return res.status(404).json({ error: "Property not found" });
+
+    const { randomBytes } = await import("crypto");
+    const token = randomBytes(32).toString("hex");
+
+    await db
+      .update(properties)
+      .set({ icalExportToken: token, updatedAt: new Date() })
+      .where(eq(properties.id, propertyId));
+
+    const baseUrl = process.env.BASE_URL || "https://gapnight.com.au";
+    const exportUrl = `${baseUrl}/api/calendar/${propertyId}/${token}/calendar.ics`;
+
+    res.json({ exportUrl, token, message: "Export URL regenerated. Update this link in Airbnb/Stayz." });
+  } catch (err) {
+    console.error("iCal regenerate token error:", err);
+    res.status(500).json({ error: "Failed to regenerate export URL" });
+  }
+});
+
+// POST /api/host/properties/:id/ical-sync
+// Manually triggers an iCal import sync for all connected calendars on this property.
+router.post("/api/host/properties/:id/ical-sync", requireHostAuth, async (req: HostRequest, res: Response) => {
+  const propertyId = req.params.id as string;
+  if (!propertyId) return res.status(400).json({ error: "Property ID required" });
+
+  try {
+    // Verify ownership
+    const [property] = await db
+      .select({ id: properties.id, hostId: properties.hostId })
+      .from(properties)
+      .where(and(eq(properties.id, propertyId), eq(properties.hostId, req.hostId!)))
+      .limit(1);
+
+    if (!property) return res.status(404).json({ error: "Property not found" });
+
+    const { syncPropertyICalConnections } = await import("./ical-sync");
+    const summary = await syncPropertyICalConnections(propertyId);
+
+    res.json({
+      message: summary.total === 0
+        ? "No calendar connections found for this property."
+        : `Sync complete: ${summary.succeeded}/${summary.total} calendar(s) synced successfully.`,
+      ...summary,
+    });
+  } catch (err) {
+    console.error("iCal manual sync error:", err);
+    res.status(500).json({ error: "Failed to sync calendars" });
+  }
+});
+
 export default router;
+

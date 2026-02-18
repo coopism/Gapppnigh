@@ -444,6 +444,7 @@ export const properties = pgTable("properties", {
   images: text("images").array(), // URLs
   coverImage: text("cover_image"), // Primary image URL
   isActive: boolean("is_active").notNull().default(true),
+  icalExportToken: text("ical_export_token"), // secret token for .ics export URL
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

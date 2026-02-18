@@ -1,6 +1,57 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18 (Session 3)
 
+## iCal Two-Way Calendar Sync — Session 5c - Feb 18, 2026
+
+### Changes Implemented
+
+1. **Schema: `ical_export_token` column on `properties` (`shared/schema.ts`)**
+   - New nullable `text` column — a 64-char hex secret token per property
+   - Used to authenticate the public `.ics` export URL without requiring a session cookie
+   - Bootstrap migration added (`server/bootstrap.ts`) — safe `IF NOT EXISTS` ALTER TABLE
+
+2. **New file: `server/ical-export.ts` — iCal Export Feed**
+   - Route: `GET /api/calendar/:propertyId/:token/calendar.ics`
+   - Public endpoint (no auth cookie) — secured by unguessable 64-char hex token in URL
+   - Constant-time token comparison (`crypto.timingSafeEqual`) to prevent timing attacks
+   - Serves all PENDING_APPROVAL, APPROVED, CONFIRMED, COMPLETED bookings as VEVENT blocks
+   - Fully RFC 5545 compliant: CRLF line endings, line folding at 75 octets, DATE-only DTSTART/DTEND
+   - DTEND is exclusive (day after checkout) — matches Airbnb/Stayz behaviour exactly
+   - No guest PII exposed in summary field (just "GapNight - Reserved")
+   - Cache-Control: no-cache headers so Airbnb always gets fresh data
+
+3. **New file: `server/ical-sync.ts` — iCal Import Polling Engine**
+   - `syncICalConnection()` — syncs a single connection: fetch → parse → upsert blocked dates
+   - `syncAllICalConnections()` — batch syncs all published property connections (for cron)
+   - `syncPropertyICalConnections()` — syncs all connections for one property (for manual trigger)
+   - Parser handles: DATE-only, DATETIME UTC, DATETIME with TZID, RFC 5545 line folding
+   - Date expansion: DTEND exclusive → individual YYYY-MM-DD dates
+   - Safety: only blocks dates today → +365 days, never deletes rows, upserts isAvailable=false
+   - Each connection fails independently — one bad URL doesn't abort others
+   - Updates `icalConnections.status`, `lastSyncAt`, `lastError` after every sync
+
+4. **`server/cron-jobs.ts` — iCal sync cron job**
+   - `startICalSyncJob()` runs every 3 hours (`0 */3 * * *`)
+   - Wired into `startAllCronJobs()` alongside existing jobs
+
+5. **`server/host-routes.ts` — 3 new host endpoints**
+   - `GET /api/host/properties/:id/ical-export` — returns export URL, auto-generates token if missing
+   - `POST /api/host/properties/:id/ical-export/regenerate` — rotates token (invalidates old URL)
+   - `POST /api/host/properties/:id/ical-sync` — manually triggers import sync for all connections
+
+6. **`server/routes.ts` — wired up iCal export router**
+   - `icalExportRouter` registered after messaging routes, before static catch-all
+
+### How it works end-to-end
+- **Export (GapNight → Airbnb/Stayz):** Host calls GET ical-export to get their unique `.ics` URL.
+  They paste it into Airbnb Calendar → Availability settings → Import calendar.
+  Airbnb polls it every few hours and blocks those dates automatically.
+- **Import (Airbnb/Stayz → GapNight):** Host pastes their Airbnb iCal URL into GapNight
+  (already stored in `icalConnections`). The cron job fetches it every 3 hours and marks
+  those dates unavailable in `propertyAvailability`, preventing double bookings.
+
+---
+
 ## Map Polish + Property Location Map — Session 5b - Feb 18, 2026
 
 ### Changes Implemented
