@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -18,6 +18,54 @@ import {
   WashingMachine, Mountain, TreePine, Home, Ban, Cigarette, PartyPopper,
   AlertTriangle, Info, CreditCard, ShieldCheck,
 } from "lucide-react";
+
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+function PropertyMap({ latitude, longitude, title }: { latitude: number; longitude: number; title: string }) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!mapContainer.current) return;
+
+    const map = L.map(mapContainer.current, {
+      attributionControl: false,
+      zoomControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+    }).setView([latitude, longitude], 14);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+      subdomains: "abcd",
+    }).addTo(map);
+
+    const icon = L.divIcon({
+      className: "gn-prop-marker-wrap",
+      html: `
+        <svg width="44" height="52" viewBox="0 0 44 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 4px 10px rgba(0,0,0,0.22));">
+          <path d="M22 0C10.954 0 2 8.954 2 20c0 14 20 32 20 32s20-18 20-32C42 8.954 33.046 0 22 0z" fill="#0ea5a5"/>
+          <circle cx="22" cy="20" r="8" fill="white"/>
+        </svg>
+      `,
+      iconSize: [44, 52],
+      iconAnchor: [22, 52],
+    });
+
+    L.marker([latitude, longitude], { icon }).addTo(map);
+
+    return () => { map.remove(); };
+  }, [latitude, longitude]);
+
+  return (
+    <div
+      ref={mapContainer}
+      className="w-full h-[280px] rounded-xl overflow-hidden border border-border/50"
+    />
+  );
+}
 
 function formatReadableDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00");
@@ -591,6 +639,25 @@ export default function PropertyDetail() {
                 </div>
               </div>
             </div>
+
+            {/* Location */}
+            {property.latitude && property.longitude && (
+              <>
+                <hr className="border-border/50" />
+                <div>
+                  <h2 className="text-xl font-bold text-foreground mb-1">Where you'll be</h2>
+                  <p className="text-sm text-muted-foreground mb-4 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 shrink-0" />
+                    {property.city}{property.state ? `, ${property.state}` : ""}
+                  </p>
+                  <PropertyMap
+                    latitude={parseFloat(property.latitude)}
+                    longitude={parseFloat(property.longitude)}
+                    title={property.title}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Right Sidebar - Sticky Booking Card */}

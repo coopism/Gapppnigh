@@ -91,6 +91,7 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
 
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
+      subdomains: "abcd",
     }).addTo(map.current);
 
     // Inject CSS for price pill markers
@@ -99,42 +100,54 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
       const style = document.createElement("style");
       style.id = styleId;
       style.textContent = `
-        .gn-price-marker {
-          background: #fff;
-          color: #222;
-          font-weight: 700;
-          font-size: 13px;
-          padding: 5px 10px;
-          border-radius: 20px;
-          box-shadow: 0 2px 6px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.04);
-          white-space: nowrap;
-          cursor: pointer;
-          transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-          line-height: 1;
-          text-align: center;
-          position: relative;
-        }
         .gn-marker-wrap {
           background: none !important;
           border: none !important;
+          box-shadow: none !important;
         }
-        .gn-price-marker:hover, .gn-price-marker.active {
-          background: #222;
+        .gn-price-marker {
+          background: #ffffff;
+          color: #111;
+          font-weight: 700;
+          font-size: 12.5px;
+          font-family: 'DM Sans', system-ui, sans-serif;
+          letter-spacing: -0.01em;
+          padding: 5px 11px;
+          border-radius: 999px;
+          box-shadow: 0 1px 4px rgba(0,0,0,.12), 0 0 0 1.5px rgba(0,0,0,.06);
+          white-space: nowrap;
+          cursor: pointer;
+          transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+          line-height: 1;
+          text-align: center;
+          position: relative;
+          transform-origin: center bottom;
+        }
+        .gn-price-marker:hover {
+          background: #111;
           color: #fff;
-          box-shadow: 0 2px 8px rgba(0,0,0,.25);
+          box-shadow: 0 4px 12px rgba(0,0,0,.22);
+          transform: scale(1.06);
           z-index: 1000 !important;
         }
+        .gn-price-marker.active {
+          background: #111;
+          color: #fff;
+          box-shadow: 0 4px 14px rgba(0,0,0,.28);
+          transform: scale(1.08);
+          z-index: 1001 !important;
+        }
         .gn-popup .leaflet-popup-content-wrapper {
-          border-radius: 16px;
+          border-radius: 14px;
           padding: 0;
           overflow: hidden;
-          box-shadow: 0 6px 24px rgba(0,0,0,.18);
+          box-shadow: 0 8px 32px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.05);
           background: #fff;
           border: none;
         }
         .gn-popup .leaflet-popup-content {
           margin: 0;
-          width: 260px !important;
+          width: 268px !important;
           line-height: 1.4;
         }
         .gn-popup .leaflet-popup-tip-container {
@@ -142,7 +155,7 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
         }
         .gn-popup .leaflet-popup-tip {
           background: #fff;
-          box-shadow: 0 2px 6px rgba(0,0,0,.08);
+          box-shadow: none;
           border: none;
         }
         .gn-popup .leaflet-popup-close-button {
@@ -164,12 +177,12 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
       });
 
       const popupHtml = `
-        <a href="${item.link}" style="text-decoration:none;color:inherit;display:block;background:#fff;border-radius:16px;overflow:hidden;">
-          ${item.image ? `<div style="width:100%;height:150px;overflow:hidden;"><img src="${item.image}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.style.display='none'" /></div>` : ""}
-          <div style="padding:12px 14px 14px;">
-            <div style="font-weight:600;font-size:14px;color:#222;line-height:1.35;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.label}</div>
-            <div style="font-size:12px;color:#717171;margin-bottom:8px;">${item.subtitle}</div>
-            <div><span style="font-weight:700;font-size:16px;color:#222;">${priceText}</span><span style="font-weight:400;font-size:13px;color:#717171;"> / night</span></div>
+        <a href="${item.link}" style="text-decoration:none;color:inherit;display:block;background:#fff;border-radius:14px;overflow:hidden;">
+          ${item.image ? `<div style="width:100%;height:156px;overflow:hidden;position:relative;"><img src="${item.image}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.2s;" onerror="this.parentElement.style.display='none'" /></div>` : ""}
+          <div style="padding:13px 15px 15px;">
+            <div style="font-weight:600;font-size:13.5px;color:#111;line-height:1.3;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'DM Sans',system-ui,sans-serif;">${item.label}</div>
+            <div style="font-size:11.5px;color:#888;margin-bottom:10px;font-family:'DM Sans',system-ui,sans-serif;">${item.subtitle}</div>
+            <div style="display:flex;align-items:baseline;gap:4px;"><span style="font-weight:700;font-size:15px;color:#111;font-family:'DM Sans',system-ui,sans-serif;">${priceText}</span><span style="font-weight:400;font-size:12px;color:#999;font-family:'DM Sans',system-ui,sans-serif;">/ night</span></div>
           </div>
         </a>
       `;

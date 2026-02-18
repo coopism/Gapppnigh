@@ -43,20 +43,21 @@ function DealMap({ latitude, longitude, hotelName }: { latitude: number; longitu
       touchZoom: false,
     }).setView([latitude, longitude], 14);
     
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
+      subdomains: 'abcd',
     }).addTo(map);
     
     const icon = L.divIcon({
       className: 'custom-marker',
       html: `
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="#0ea5a5" stroke="white" stroke-width="1.5" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-          <circle cx="12" cy="10" r="3" fill="white"></circle>
+        <svg width="44" height="52" viewBox="0 0 44 52" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 4px 10px rgba(0,0,0,0.22));">
+          <path d="M22 0C10.954 0 2 8.954 2 20c0 14 20 32 20 32s20-18 20-32C42 8.954 33.046 0 22 0z" fill="#0ea5a5"/>
+          <circle cx="22" cy="20" r="8" fill="white"/>
         </svg>
       `,
-      iconSize: [40, 40],
-      iconAnchor: [20, 40],
+      iconSize: [44, 52],
+      iconAnchor: [22, 52],
     });
     
     L.marker([latitude, longitude], { icon }).addTo(map);

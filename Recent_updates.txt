@@ -1,6 +1,26 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18 (Session 3)
 
+## Map Polish + Property Location Map — Session 5b - Feb 18, 2026
+
+### Changes Implemented
+
+1. **Polished `DealsMap.tsx` (browse/search map)**
+   - Switched tile layer to Carto Voyager with `subdomains: "abcd"` for better tile loading
+   - Refined price pill markers: tighter font, `letter-spacing`, `transform: scale()` on hover/active, cleaner shadow
+   - Improved popup card: better padding, font sizing, baseline-aligned price display
+
+2. **Polished `DealDetail.tsx` inline map**
+   - Switched from `light_all` to Voyager tile layer (consistent with DealsMap)
+   - Replaced old pin SVG with a cleaner teardrop pin with white circle centre and drop-shadow
+
+3. **Added map to `PropertyDetail.tsx` (property listing page)**
+   - New `PropertyMap` component (Leaflet, same tile + pin style as DealDetail)
+   - Injected as "Where you'll be" section after "Things to know"
+   - Shows city/state label below heading, only renders if `latitude`/`longitude` exist on the property
+
+---
+
 ## Landing Page Revamp — Session 5 - Feb 18, 2026
 
 ### Changes Implemented
