@@ -1,6 +1,44 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18 (Session 3)
 
+## Host Platform & UX Fixes — Session 3 - Feb 18, 2026
+
+### Changes Implemented
+
+1. **Fix OTP email verification for host signup (`server/host-routes.ts`)**
+   - Root cause: raw SQL was inserting OTP into a `token` column that doesn't exist (schema uses `token_hash`)
+   - Fix: now hashes OTP with SHA-256 before storing, and verifies against hash on submit
+   - Applies to registration, verify-email endpoint, and resend-verification endpoint
+
+2. **Dedicated property page at `/host/property/:id` (`client/src/pages/host/HostPropertyPage.tsx`)**
+   - Each property now opens on its own full page instead of expanding inline on the dashboard
+   - Tabbed layout: Details, Pricing, Photos, Settings
+   - Inline save feedback (no toasts) — success/error shown directly on the form
+   - Route added to both `MainRouter` and `PublicRouter` in `App.tsx`
+   - Property card in dashboard now shows "Manage Property" link instead of inline expand buttons
+
+3. **Nav: "Become a Host" replaced with "Host Dashboard" (`client/src/components/Navigation.tsx`)**
+   - Desktop and mobile nav both updated
+   - Links to `/host/dashboard` (redirects to login if not authenticated)
+
+4. **Remove FAQ tab from host dashboard (`client/src/pages/host/HostDashboard.tsx`)**
+   - FAQ tab and TabsContent removed — FAQs should be managed per-property
+
+5. **Show rejection reason on property card (`client/src/pages/host/HostDashboard.tsx`)**
+   - Rejected properties now show the admin's decline reason inline below the status badge
+   - Also shown on the dedicated property page header
+
+6. **Host email notification on approve/reject (`server/admin-ops-routes.ts`, `server/user-email.ts`)**
+   - New `sendPropertyStatusEmail()` function in `user-email.ts`
+   - Admin approve/reject action now sends email to the host with status and reason (if declined)
+
+7. **Drop toast popups in HostLogin — inline errors only (`client/src/pages/host/HostLogin.tsx`)**
+   - Removed `useToast` entirely from HostLogin
+   - Login errors, register errors, resend messages all shown inline on the form
+   - Matches the pattern requested: no floating popups anywhere on the auth flow
+
+---
+
 ## Host Platform Improvements — Session 2 - Feb 18, 2026
 
 ### Changes Implemented
