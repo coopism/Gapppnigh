@@ -113,7 +113,6 @@ export function DealsMap({ deals, properties, selectedId, onSelect, selectedDeal
           line-height: 1;
           text-align: center;
           position: relative;
-          transform: translate(-50%, -50%);
         }
         .gn-marker-wrap {
           background: none !important;

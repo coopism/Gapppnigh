@@ -82,14 +82,16 @@ export default function SavedListings() {
           const propMap = new Map<string, PropertyData>();
           const dealMap = new Map<string, DealData>();
 
-          // Fetch properties
+          // Fetch properties — API returns {property, host, ...}, extract .property
           await Promise.all(
             propertyIds.map(async (pid) => {
               try {
                 const pRes = await fetch(`/api/properties/${pid}`);
                 if (pRes.ok) {
                   const pData = await pRes.json();
-                  propMap.set(pid, pData);
+                  if (pData?.property) {
+                    propMap.set(pid, pData.property);
+                  }
                 }
               } catch {}
             })
@@ -196,8 +198,9 @@ export default function SavedListings() {
                     const maxDiscount = prop.gapNights?.length
                       ? Math.max(...prop.gapNights.map((gn: any) => gn.gapNightDiscount || 0))
                       : 0;
-                    const basePrice = prop.baseNightlyRate / 100;
-                    const dealPrice = lowestGapRate ? lowestGapRate / 100 : basePrice;
+                    const rawBase = prop.baseNightlyRate;
+                    const basePrice = typeof rawBase === "number" && !isNaN(rawBase) ? rawBase / 100 : 0;
+                    const dealPrice = lowestGapRate && !isNaN(lowestGapRate) ? lowestGapRate / 100 : basePrice;
 
                     return (
                       <div key={item.id} className="bg-card rounded-xl overflow-hidden border border-border/50 hover:shadow-lg transition-all group">
@@ -264,9 +267,9 @@ export default function SavedListings() {
                     const deal = deals.get(item.dealId!);
                     if (!deal) return null;
 
-                    const discountPercent = Math.round(
-                      ((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100
-                    );
+                    const safeNormal = typeof deal.normalPrice === "number" && !isNaN(deal.normalPrice) ? deal.normalPrice : 0;
+                    const safeDeal = typeof deal.dealPrice === "number" && !isNaN(deal.dealPrice) ? deal.dealPrice : 0;
+                    const discountPercent = safeNormal > 0 ? Math.round(((safeNormal - safeDeal) / safeNormal) * 100) : 0;
 
                     return (
                       <div key={item.id} className="bg-card rounded-xl overflow-hidden border border-border/50 hover:shadow-lg transition-all group">

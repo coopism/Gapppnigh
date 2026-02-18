@@ -151,7 +151,7 @@ interface QuestionRequestBody {
 // Get all approved properties with gap nights
 router.get("/api/properties", async (req: Request, res: Response) => {
   try {
-    const { city, type, minPrice, maxPrice, guests, bedrooms, amenities, sort, page = "1", limit = "50" } = req.query;
+    const { city, type, minPrice, maxPrice, guests, bedrooms, amenities, sort, page = "1", limit = "50", startDate, endDate } = req.query;
     const parsedLimit = Math.min(parseInt(limit as string) || 50, 100);
     const offset = (parseInt(page as string) - 1) * parsedLimit;
 
@@ -183,6 +183,19 @@ router.get("/api/properties", async (req: Request, res: Response) => {
       for (const amenity of amenityList) {
         conditions.push(sql`${properties.amenities} @> ARRAY[${amenity}]::text[]`);
       }
+    }
+
+    // Date range filter: only return properties with available dates in range
+    if (startDate && endDate) {
+      conditions.push(
+        sql`${properties.id} IN (
+          SELECT DISTINCT ${propertyAvailability.propertyId}
+          FROM ${propertyAvailability}
+          WHERE ${propertyAvailability.isAvailable} = true
+            AND ${propertyAvailability.date} >= ${startDate as string}
+            AND ${propertyAvailability.date} <= ${endDate as string}
+        )`
+      );
     }
 
     // Single query with all filters pushed to DB
@@ -702,6 +715,88 @@ router.get("/api/auth/verify-identity/status", async (req: any, res: Response) =
   } catch (error) {
     console.error("Check verification status error:", error);
     res.status(500).json({ error: "Failed to check verification status" });
+  }
+});
+
+// ========================================
+// PRICING QUOTE (server-authoritative)
+// ========================================
+router.get("/api/properties/:propertyId/price-quote", async (req: any, res: Response) => {
+  try {
+    const propertyId = req.params.propertyId as string;
+    const checkIn = req.query.checkIn as string;
+    const checkOut = req.query.checkOut as string;
+
+    if (!checkIn || !checkOut) {
+      return res.status(400).json({ error: "checkIn and checkOut required" });
+    }
+
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(eq(properties.id, propertyId))
+      .limit(1);
+
+    if (!property) {
+      return res.status(404).json({ error: "Property not found" });
+    }
+
+    const startDate = new Date(checkIn);
+    const endDate = new Date(checkOut);
+    const nights = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    const dateList: string[] = [];
+    for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
+      dateList.push(d.toISOString().split("T")[0]);
+    }
+
+    let totalNightlyRate = 0;
+    let isGapNight = false;
+    let baseTotal = 0;
+
+    for (const date of dateList) {
+      const [avail] = await db
+        .select()
+        .from(propertyAvailability)
+        .where(and(
+          eq(propertyAvailability.propertyId, propertyId),
+          eq(propertyAvailability.date, date)
+        ))
+        .limit(1);
+
+      const baseRate = avail?.nightlyRate || property.baseNightlyRate;
+      baseTotal += baseRate;
+
+      if (avail?.isGapNight && avail.gapNightDiscount) {
+        isGapNight = true;
+        totalNightlyRate += Math.round(baseRate * (1 - avail.gapNightDiscount / 100));
+      } else {
+        totalNightlyRate += baseRate;
+      }
+    }
+
+    const cleaningFee = property.cleaningFee || 0;
+    const serviceFee = Math.round(totalNightlyRate * 0.08);
+    const subtotal = totalNightlyRate + cleaningFee + serviceFee;
+    // Stripe processing fee: 1.75% + 30c
+    const stripeFee = subtotal > 0 ? Math.round(subtotal * 1.75 / 100) + 30 : 0;
+    const grandTotal = subtotal + stripeFee;
+
+    res.json({
+      nights,
+      baseNightlyTotal: baseTotal,
+      discountedNightlyTotal: totalNightlyRate,
+      avgNightlyRate: Math.round(totalNightlyRate / nights),
+      cleaningFee,
+      serviceFee,
+      stripeFee,
+      grandTotal,
+      isGapNight,
+      discountPercent: baseTotal > 0 ? Math.round((1 - totalNightlyRate / baseTotal) * 100) : 0,
+    });
+  } catch (error) {
+    console.error("Price quote error:", error);
+    res.status(500).json({ error: "Failed to calculate price" });
   }
 });
 

@@ -1,5 +1,101 @@
 # Gap Night - Recent Updates Log
-# Last Updated: 2026-02-18
+# Last Updated: 2026-02-19
+
+## Production Bug Fixes — 14 Issues Resolved - Feb 19, 2026
+
+### P0 Critical Fixes
+
+207. **#11: Discount not applied at checkout**
+    - Root cause: Frontend used `property.baseNightlyRate` (full price) ignoring gap night discounts
+    - Added `GET /api/properties/:id/price-quote` server-authoritative pricing endpoint
+    - Frontend now fetches real discounted rates from availability entries
+    - Price breakdown shows base price, gap night discount %, cleaning fee, service fee, processing fee
+    - Files: `server/property-routes.ts`, `client/src/pages/PropertyBooking.tsx`
+
+208. **#8: Booking policy checkbox not enforced**
+    - Root cause: `handlePaymentSuccess` bypassed `policyAgreed` check entirely
+    - Added policy check gate in `handlePaymentSuccess` — blocks booking API call if unchecked
+    - Added red error ring + inline error message on policy card when not agreed
+    - Clears error state when checkbox is checked
+    - Files: `client/src/pages/PropertyBooking.tsx`
+
+209. **#9: ID verification failure — auto-redirect to contact page**
+    - Root cause: Backend returned `supportUrl: "/contact"` and frontend auto-redirected after 3s
+    - Replaced auto-redirect with a modal dialog: "Verification Failed" with Try Again + Contact Support
+    - Added "Full name must match your government ID exactly" warning near name fields
+    - Files: `client/src/pages/PropertyBooking.tsx`
+
+210. **#1: Mobile Google login button missing**
+    - Root cause: Google SDK iframe fails to render on mobile Safari; fallback showed disabled "unavailable"
+    - Made fallback button clickable — triggers `google.accounts.id.prompt()` on click
+    - Applied same fix to both Login.tsx and Signup.tsx
+    - Files: `client/src/pages/Login.tsx`, `client/src/pages/Signup.tsx`
+
+211. **#2: "When" filter does nothing**
+    - Root cause: `propertiesData` query didn't pass date filter params to API
+    - Added `dateFilters.startDate`/`endDate` to properties query params and queryKey
+    - Added `startDate`/`endDate` filter support in backend properties endpoint (subquery on availability)
+    - Files: `client/src/pages/Home.tsx`, `server/property-routes.ts`
+
+### P1 Fixes
+
+212. **#4: Saved listings UI + $NaN bug**
+    - Root cause: `/api/properties/:id` returns `{property, host, ...}` but code stored whole response
+    - Fixed to extract `.property` from API response before storing in map
+    - Added NaN safeguards for `baseNightlyRate` and deal prices
+    - Files: `client/src/pages/SavedListings.tsx`
+
+213. **#5: Map marker location offset**
+    - Root cause: CSS `transform: translate(-50%, -50%)` double-offset with Leaflet's `iconAnchor`
+    - Removed the CSS transform; Leaflet's iconAnchor already handles centering
+    - Files: `client/src/components/DealsMap.tsx`
+
+214. **#3: Add filter button on mobile deals list**
+    - Added mobile-visible Filters pill button + Sort dropdown below collapsed search bar
+    - Shows active filter count badge when filters are applied
+    - Files: `client/src/pages/Home.tsx`
+
+215. **#7: Phone auto-fill on booking**
+    - Added `inputMode="tel"` attribute to phone input for proper mobile keyboard and auto-fill
+    - Files: `client/src/pages/PropertyBooking.tsx`
+
+216. **#13: Address lookup not working**
+    - Root cause: HostOnboarding called Nominatim API directly (CORS/rate-limit issues)
+    - Switched to use `/api/address-search` proxy endpoint (same as CreateListing)
+    - Files: `client/src/pages/host/HostOnboarding.tsx`
+
+217. **#14: Auto-list toggle broken**
+    - Root cause: Custom toggle button with manual CSS positioning didn't render on mobile
+    - Replaced with proper shadcn/ui `<Switch>` component
+    - Files: `client/src/pages/host/HostOnboarding.tsx`
+
+### P2 Fixes
+
+218. **#10: Add more amenities in filter tab**
+    - Added 6 new amenity filters: TV, Gym/Fitness, Garden/Yard, BBQ/Grill, Dryer, EV Charger
+    - Added state, activeFilterCount, clearAll, client-side filter logic, and UI buttons
+    - New icons: Tv, Dumbbell, TreePine, Flame, PlugZap
+    - Files: `client/src/pages/Home.tsx`
+
+219. **#6: Scroll indicator on mobile**
+    - Added animated bounce arrow + "Scroll for more" text below deals grid on mobile (md:hidden)
+    - Only shows when more than 3 items are displayed
+    - Files: `client/src/pages/Home.tsx`
+
+220. **#12: Force signup after booking if not logged in**
+    - Enhanced post-booking signup prompt: larger card, user icon, bullet list of benefits
+    - Pre-fills email in signup redirect URL
+    - Files: `client/src/pages/PropertyBooking.tsx`
+
+**Files Modified:**
+- `server/property-routes.ts` — Price-quote endpoint, date range filter for properties
+- `client/src/pages/PropertyBooking.tsx` — Server pricing, policy enforcement, verification modal, phone autofill, signup prompt
+- `client/src/pages/Login.tsx` — Google fallback button clickable
+- `client/src/pages/Signup.tsx` — Google fallback button clickable
+- `client/src/pages/Home.tsx` — When filter, mobile filter button, more amenities, scroll indicator
+- `client/src/pages/SavedListings.tsx` — Extract .property, NaN guards
+- `client/src/components/DealsMap.tsx` — Remove CSS transform offset
+- `client/src/pages/host/HostOnboarding.tsx` — Address proxy, Switch component for auto-list
 
 ## Major Bug Fix & Feature Release - Feb 18, 2026
 

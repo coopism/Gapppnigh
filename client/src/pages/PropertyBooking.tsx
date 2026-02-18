@@ -68,7 +68,13 @@ export default function PropertyBooking() {
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [guestDetailsValid, setGuestDetailsValid] = useState(false);
   const [policyAgreed, setPolicyAgreed] = useState(false);
+  const [policyError, setPolicyError] = useState(false);
   const [creditBalance, setCreditBalance] = useState(0); // in cents
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+
+  // Server-authoritative pricing (fix #11)
+  const [priceQuote, setPriceQuote] = useState<any>(null);
+  const [priceLoading, setPriceLoading] = useState(true);
 
   // ID Verification state
   const [idStatus, setIdStatus] = useState<"loading" | "unverified" | "pending" | "verified" | "failed">("loading");
@@ -81,7 +87,7 @@ export default function PropertyBooking() {
   const checkOutDate = urlParams.get("checkOut") || "";
   const nightsParam = parseInt(urlParams.get("nights") || "1");
 
-  // Fetch property
+  // Fetch property and server-authoritative price quote
   useEffect(() => {
     if (propertyId) {
       fetch(`/api/properties/${propertyId}`)
@@ -94,8 +100,20 @@ export default function PropertyBooking() {
         })
         .catch(() => {})
         .finally(() => setIsLoading(false));
+
+      // Fetch server-authoritative price quote
+      if (checkInDate && checkOutDate) {
+        setPriceLoading(true);
+        fetch(`/api/properties/${propertyId}/price-quote?checkIn=${checkInDate}&checkOut=${checkOutDate}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(data => { if (data) setPriceQuote(data); })
+          .catch(() => {})
+          .finally(() => setPriceLoading(false));
+      } else {
+        setPriceLoading(false);
+      }
     }
-  }, [propertyId]);
+  }, [propertyId, checkInDate, checkOutDate]);
 
   // Fetch user credit balance
   useEffect(() => {
@@ -210,20 +228,31 @@ export default function PropertyBooking() {
     setGuestDetailsValid(isValid);
   }, [watchedFields]);
 
-  // Calculate pricing — no fees shown to guest, we take our cut from the host payout
-  const nightlyRate = property?.baseNightlyRate || 0; // in cents
-  const totalNightly = nightlyRate * nightsParam; // in cents
-  const creditApplied = Math.min(creditBalance, totalNightly); // can't exceed total, in cents
-  const subtotal = totalNightly - creditApplied; // in cents
-  // Stripe processing fee: 1.75% + 30c for Australian cards (passed through transparently)
-  const STRIPE_PERCENT = 1.75;
-  const STRIPE_FIXED_CENTS = 30;
-  const stripeFee = subtotal > 0 ? Math.round(subtotal * STRIPE_PERCENT / 100) + STRIPE_FIXED_CENTS : 0;
-  const grandTotal = subtotal + stripeFee; // in cents, includes processing fee
+  // Server-authoritative pricing (fix #11 — discount now applied correctly)
+  const baseNightlyTotal = priceQuote?.baseNightlyTotal || (property?.baseNightlyRate || 0) * nightsParam;
+  const nightlyRate = priceQuote?.avgNightlyRate || property?.baseNightlyRate || 0;
+  const totalNightly = priceQuote?.discountedNightlyTotal || baseNightlyTotal;
+  const discountPercent = priceQuote?.discountPercent || 0;
+  const isGapNight = priceQuote?.isGapNight || false;
+  const cleaningFee = priceQuote?.cleaningFee || 0;
+  const serviceFee = priceQuote?.serviceFee || 0;
+  const creditApplied = Math.min(creditBalance, totalNightly);
+  const subtotal = totalNightly + cleaningFee + serviceFee - creditApplied;
+  const stripeFee = priceQuote?.stripeFee || (subtotal > 0 ? Math.round(subtotal * 1.75 / 100) + 30 : 0);
+  const grandTotal = priceQuote?.grandTotal || (subtotal + stripeFee);
 
   const handlePaymentSuccess = async (intentId: string) => {
     setPaymentIntentId(intentId);
     setPaymentComplete(true);
+
+    // Fix #8: Enforce policy checkbox before submitting booking
+    if (!policyAgreed) {
+      setPolicyError(true);
+      toast({ title: "Policy Required", description: "Please agree to the Booking & Liability Policy before submitting.", variant: "destructive" });
+      // Scroll to policy checkbox
+      document.getElementById("policy-agree")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
 
     const formData = form.getValues();
     if (property && formData.firstName && formData.lastName && formData.email && formData.phone) {
@@ -244,18 +273,15 @@ export default function PropertyBooking() {
             guestMessage: formData.guestMessage,
             specialRequests: formData.specialRequests,
             paymentIntentId: intentId,
+            policyAccepted: true,
           }),
         });
 
         const result = await response.json();
         if (!response.ok) {
-          if (result.supportUrl) {
-            toast({
-              title: "Booking Failed",
-              description: result.message,
-              variant: "destructive",
-            });
-            setTimeout(() => setLocation(result.supportUrl), 3000);
+          // Fix #9: Show modal instead of auto-redirecting to contact page
+          if (result.error === "Name mismatch") {
+            setShowVerificationModal(true);
             return;
           }
           throw new Error(result.message || result.error || "Failed to create booking");
@@ -313,13 +339,8 @@ export default function PropertyBooking() {
       });
       const result = await response.json();
       if (!response.ok) {
-        if (result.supportUrl) {
-          toast({
-            title: "Booking Failed",
-            description: result.message,
-            variant: "destructive",
-          });
-          setTimeout(() => setLocation(result.supportUrl), 3000);
+        if (result.error === "Name mismatch") {
+          setShowVerificationModal(true);
           return;
         }
         throw new Error(result.message || result.error || "Failed to create booking");
@@ -416,16 +437,29 @@ export default function PropertyBooking() {
               </div>
             </div>
 
-            {/* Prompt guest users to create an account */}
+            {/* Fix #12: Prominent post-booking signup prompt for guest users */}
             {!user && (
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 mb-6 text-left">
-                <h3 className="font-semibold text-foreground mb-1">Create an account to manage your booking</h3>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Sign up with <span className="font-medium text-foreground">{form.getValues("email")}</span> to track your booking status, message the host, and get deal alerts.
-                </p>
-                <Link href={`/signup?redirect=/account`}>
-                  <Button size="sm" className="font-semibold">Create Free Account</Button>
-                </Link>
+              <div className="bg-primary/10 border-2 border-primary/30 rounded-xl p-6 mb-6 text-left">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center shrink-0">
+                    <User className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-foreground mb-1">Create your account now</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Sign up with <span className="font-semibold text-foreground">{form.getValues("email")}</span> to:
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-1 mb-4">
+                      <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-primary shrink-0" /> Track your booking status in real time</li>
+                      <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-primary shrink-0" /> Message the host directly</li>
+                      <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-primary shrink-0" /> Get exclusive gap night deal alerts</li>
+                      <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-primary shrink-0" /> Download your booking receipt</li>
+                    </ul>
+                    <Link href={`/signup?email=${encodeURIComponent(form.getValues("email"))}&redirect=/account`}>
+                      <Button className="font-bold w-full sm:w-auto">Create Free Account</Button>
+                    </Link>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -506,9 +540,15 @@ export default function PropertyBooking() {
                     <User className="w-5 h-5 text-primary" />
                     Who's staying?
                   </h2>
-                  <p className="text-sm text-muted-foreground mb-6">
+                  <p className="text-sm text-muted-foreground mb-2">
                     Guest names must match valid ID for check-in.
                   </p>
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 mb-4">
+                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      Full name must match your government ID exactly.
+                    </p>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <FormField control={form.control} name="firstName" render={({ field }) => (
@@ -561,7 +601,7 @@ export default function PropertyBooking() {
                             </Select>
                             <div className="relative flex-1">
                               <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input type="tel" placeholder="Phone number" className="pl-9" autoComplete="tel-national" {...field} />
+                              <Input type="tel" inputMode="tel" placeholder="Phone number" className="pl-9" autoComplete="tel-national" {...field} />
                             </div>
                           </div>
                         </FormControl>
@@ -790,19 +830,24 @@ export default function PropertyBooking() {
                 </div>
 
                 {/* Booking Policy Agreement */}
-                <div className="bg-card rounded-xl p-5 border border-border/50">
+                <div className={`bg-card rounded-xl p-5 border transition-colors ${policyError && !policyAgreed ? "border-destructive ring-2 ring-destructive/20" : "border-border/50"}`}>
                   <div className="flex items-start gap-3">
                     <input
                       type="checkbox"
                       id="policy-agree"
                       checked={policyAgreed}
-                      onChange={e => setPolicyAgreed(e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-border accent-primary shrink-0"
+                      onChange={e => { setPolicyAgreed(e.target.checked); if (e.target.checked) setPolicyError(false); }}
+                      className={`mt-1 h-4 w-4 rounded border-border accent-primary shrink-0 ${policyError && !policyAgreed ? "ring-2 ring-destructive" : ""}`}
                     />
                     <label htmlFor="policy-agree" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
                       I have read and agree to the <Link href="/booking-policy" className="text-primary font-medium hover:underline">GapNight Booking & Liability Policy</Link>, including the guest responsibilities, damage liability, cancellation terms, and dispute resolution process. I understand that I am financially responsible for any damage caused to the property during my stay.
                     </label>
                   </div>
+                  {policyError && !policyAgreed && (
+                    <p className="text-xs text-destructive mt-2 ml-7 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> You must agree to the policy before booking
+                    </p>
+                  )}
                 </div>
 
                 {paymentComplete && (
@@ -895,13 +940,35 @@ export default function PropertyBooking() {
               <div className="p-4 border-b border-border/50">
                 <div className="flex justify-between items-center mb-3">
                   <span className="font-bold text-lg text-foreground">Total</span>
-                  <span className="font-bold text-2xl text-foreground">{formatPrice(grandTotal / 100, "AUD")}</span>
+                  <span className="font-bold text-2xl text-foreground">{priceLoading ? "..." : formatPrice(grandTotal / 100, "AUD")}</span>
                 </div>
                 <div className="space-y-1.5 text-sm">
+                  {/* Base price line */}
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">{nightsParam} night{nightsParam > 1 ? "s" : ""} × {formatPrice(nightlyRate / 100, "AUD")}</span>
-                    <span className="text-foreground">{formatPrice(totalNightly / 100, "AUD")}</span>
+                    <span className="text-muted-foreground">{nightsParam} night{nightsParam > 1 ? "s" : ""} × {formatPrice((property?.baseNightlyRate || nightlyRate) / 100, "AUD")}</span>
+                    <span className="text-foreground">{formatPrice(baseNightlyTotal / 100, "AUD")}</span>
                   </div>
+                  {/* Gap night discount */}
+                  {discountPercent > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Gap Night discount ({discountPercent}% off)</span>
+                      <span>−{formatPrice((baseNightlyTotal - totalNightly) / 100, "AUD")}</span>
+                    </div>
+                  )}
+                  {/* Cleaning fee */}
+                  {cleaningFee > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Cleaning fee</span>
+                      <span className="text-foreground">{formatPrice(cleaningFee / 100, "AUD")}</span>
+                    </div>
+                  )}
+                  {/* Service fee */}
+                  {serviceFee > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Service fee</span>
+                      <span className="text-foreground">{formatPrice(serviceFee / 100, "AUD")}</span>
+                    </div>
+                  )}
                   {creditApplied > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Credit applied</span>
@@ -930,6 +997,50 @@ export default function PropertyBooking() {
           </div>
         </div>
       </main>
+
+      {/* Fix #9: Verification Failure Modal */}
+      {showVerificationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-14 h-14 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+                <XCircle className="w-7 h-7 text-destructive" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground mb-2">Verification Failed</h2>
+              <p className="text-sm text-muted-foreground mb-1">
+                The name you entered doesn't match your verified government ID.
+              </p>
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 my-3 w-full">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  Your full name must match your government ID exactly.
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground mb-5">
+                Please correct your first and last name in the form above, or contact support if you believe this is an error.
+              </p>
+              <div className="flex gap-3 w-full">
+                <Button
+                  className="flex-1 font-semibold"
+                  onClick={() => {
+                    setShowVerificationModal(false);
+                    // Scroll to name fields
+                    document.getElementById("firstName")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                >
+                  Try Again
+                </Button>
+                <Link href="/contact" className="flex-1">
+                  <Button variant="outline" className="w-full font-semibold">
+                    Contact Support
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );

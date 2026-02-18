@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import {
@@ -155,10 +156,7 @@ export default function HostOnboarding() {
     addressDebounceRef.current = setTimeout(async () => {
       setAddressSearching(true);
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=au&format=json&addressdetails=1&limit=5`,
-          { headers: { "Accept-Language": "en" } }
-        );
+        const res = await fetch(`/api/address-search?q=${encodeURIComponent(query)}`);
         if (res.ok) {
           const data = await res.json();
           setAddressSuggestions(data);
@@ -666,12 +664,11 @@ export default function HostOnboarding() {
                     <p className="text-xs text-muted-foreground">Automatically publish gap nights as discounted deals when detected in your calendar.</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setAutoList(!autoList)}
-                  className={`relative w-12 h-7 rounded-full transition-colors ${autoList ? "bg-primary" : "bg-muted"}`}
-                >
-                  <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${autoList ? "translate-x-5" : "translate-x-0.5"}`} />
-                </button>
+                <Switch
+                  checked={autoList}
+                  onCheckedChange={setAutoList}
+                  className="shrink-0"
+                />
               </div>
             </div>
 

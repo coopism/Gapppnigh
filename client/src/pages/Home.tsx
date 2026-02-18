@@ -7,7 +7,7 @@ import { PropertyDealCard } from "@/components/PropertyDealCard";
 import { DealsMap } from "@/components/DealsMap";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
-import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map, X, Loader2, Zap, KeyRound, CookingPot, Bath, SlidersHorizontal, Home as HomeIcon, DoorOpen, Bed, Car, Wifi, Wind, Dog, Waves, ChevronUp } from "lucide-react";
+import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plus, Check, LayoutGrid, Map, X, Loader2, Zap, KeyRound, CookingPot, Bath, SlidersHorizontal, Home as HomeIcon, DoorOpen, Bed, Car, Wifi, Wind, Dog, Waves, ChevronUp, Tv, Dumbbell, TreePine, Flame, PlugZap } from "lucide-react";
 import { debounce } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
@@ -141,6 +141,12 @@ export default function Home() {
   const [filterAC, setFilterAC] = useState(false);
   const [filterWasher, setFilterWasher] = useState(false);
   const [filterPets, setFilterPets] = useState(false);
+  const [filterTV, setFilterTV] = useState(false);
+  const [filterGym, setFilterGym] = useState(false);
+  const [filterGarden, setFilterGarden] = useState(false);
+  const [filterBBQ, setFilterBBQ] = useState(false);
+  const [filterDryer, setFilterDryer] = useState(false);
+  const [filterEV, setFilterEV] = useState(false);
   const [showMoreAmenities, setShowMoreAmenities] = useState(false);
 
   const activeFilterCount = [
@@ -158,6 +164,12 @@ export default function Home() {
     filterAC,
     filterWasher,
     filterPets,
+    filterTV,
+    filterGym,
+    filterGarden,
+    filterBBQ,
+    filterDryer,
+    filterEV,
   ].filter(Boolean).length;
 
   const clearAllFilters = () => {
@@ -176,6 +188,12 @@ export default function Home() {
     setFilterAC(false);
     setFilterWasher(false);
     setFilterPets(false);
+    setFilterTV(false);
+    setFilterGym(false);
+    setFilterGarden(false);
+    setFilterBBQ(false);
+    setFilterDryer(false);
+    setFilterEV(false);
     setShowMoreAmenities(false);
   };
 
@@ -217,13 +235,15 @@ export default function Home() {
     minGuests: guests > 1 ? guests : undefined,
   });
 
-  // Fetch properties alongside deals
+  // Fetch properties alongside deals — pass date filters so "When" tab works
   const { data: propertiesData, isLoading: propsLoading } = useQuery({
-    queryKey: ["properties", debouncedSearch, guests],
+    queryKey: ["properties", debouncedSearch, guests, dateFilters.startDate, dateFilters.endDate],
     queryFn: async () => {
       const params = new URLSearchParams({ limit: "50" });
       if (debouncedSearch) params.set("city", debouncedSearch);
       if (guests > 1) params.set("guests", guests.toString());
+      if (dateFilters.startDate) params.set("startDate", dateFilters.startDate);
+      if (dateFilters.endDate) params.set("endDate", dateFilters.endDate);
       const res = await fetch(`/api/properties?${params}`);
       if (!res.ok) return [];
       const data = await res.json();
@@ -282,6 +302,12 @@ export default function Home() {
       if (filterWifi && !amenities.some((a: string) => a.includes("wifi") || a.includes("wi-fi"))) return false;
       if (filterAC && !amenities.some((a: string) => a.includes("air conditioning") || a.includes("ac"))) return false;
       if (filterWasher && !amenities.some((a: string) => a.includes("washer") || a.includes("washing"))) return false;
+      if (filterTV && !amenities.some((a: string) => a.includes("tv") || a.includes("television"))) return false;
+      if (filterGym && !amenities.some((a: string) => a.includes("gym") || a.includes("fitness"))) return false;
+      if (filterGarden && !amenities.some((a: string) => a.includes("garden") || a.includes("yard"))) return false;
+      if (filterBBQ && !amenities.some((a: string) => a.includes("bbq") || a.includes("barbecue") || a.includes("grill"))) return false;
+      if (filterDryer && !amenities.some((a: string) => a.includes("dryer"))) return false;
+      if (filterEV && !amenities.some((a: string) => a.includes("ev") || a.includes("charger") || a.includes("electric vehicle"))) return false;
 
       // Self check-in (property field)
       if (filterSelfCheckIn && item._type === "property" && !item.selfCheckIn) return false;
@@ -291,7 +317,7 @@ export default function Home() {
 
       return true;
     });
-  }, [deals, propertiesData, placeType, priceMin, priceMax, filterBedrooms, filterBeds, filterBathrooms, filterInstantBook, filterSelfCheckIn, filterKitchen, filterPool, filterParking, filterWifi, filterAC, filterWasher, filterPets]);
+  }, [deals, propertiesData, placeType, priceMin, priceMax, filterBedrooms, filterBeds, filterBathrooms, filterInstantBook, filterSelfCheckIn, filterKitchen, filterPool, filterParking, filterWifi, filterAC, filterWasher, filterPets, filterTV, filterGym, filterGarden, filterBBQ, filterDryer, filterEV]);
 
   const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label || "Deal Score";
 
@@ -435,6 +461,38 @@ export default function Home() {
             guests={guests}
             onClick={() => setShowMobileSearchSheet(true)}
           />
+          {/* Fix #3: Mobile filter button — always visible */}
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full border text-sm font-medium transition-all ${
+                activeFilterCount > 0
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-card text-foreground hover:border-foreground/30"
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 text-[10px] font-bold flex items-center justify-center">{activeFilterCount}</span>
+              )}
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-border bg-card text-sm font-medium">
+                  Sort: {currentSortLabel}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                {SORT_OPTIONS.map((opt) => (
+                  <DropdownMenuItem key={opt.value} onClick={() => setSortBy(opt.value)}>
+                    {opt.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {/* Desktop: Full Search Bar - 3 sections */}
@@ -868,6 +926,12 @@ export default function Home() {
                     ...(showMoreAmenities ? [
                       { key: "ac", label: "Air conditioning", icon: Wind, active: filterAC, toggle: () => setFilterAC(!filterAC) },
                       { key: "washer", label: "Washing machine", icon: Wind, active: filterWasher, toggle: () => setFilterWasher(!filterWasher) },
+                      { key: "tv", label: "TV", icon: Tv, active: filterTV, toggle: () => setFilterTV(!filterTV) },
+                      { key: "gym", label: "Gym / Fitness", icon: Dumbbell, active: filterGym, toggle: () => setFilterGym(!filterGym) },
+                      { key: "garden", label: "Garden / Yard", icon: TreePine, active: filterGarden, toggle: () => setFilterGarden(!filterGarden) },
+                      { key: "bbq", label: "BBQ / Grill", icon: Flame, active: filterBBQ, toggle: () => setFilterBBQ(!filterBBQ) },
+                      { key: "dryer", label: "Dryer", icon: Wind, active: filterDryer, toggle: () => setFilterDryer(!filterDryer) },
+                      { key: "ev", label: "EV Charger", icon: PlugZap, active: filterEV, toggle: () => setFilterEV(!filterEV) },
                     ] : []),
                   ].map(f => (
                     <button
@@ -1081,17 +1145,26 @@ export default function Home() {
             <DealsMap deals={combinedItems.filter((i: any) => i._type === "deal") || []} properties={combinedItems.filter((i: any) => i._type === "property") || []} />
           </div>
         ) : (
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" staggerDelay={0.06}>
-            {combinedItems.map((item, idx) => (
-              <StaggerItem key={item._key}>
-                {item._type === "deal" ? (
-                  <DealCard deal={item} />
-                ) : (
-                  <PropertyDealCard property={item} />
-                )}
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
+          <>
+            <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" staggerDelay={0.06}>
+              {combinedItems.map((item, idx) => (
+                <StaggerItem key={item._key}>
+                  {item._type === "deal" ? (
+                    <DealCard deal={item} />
+                  ) : (
+                    <PropertyDealCard property={item} />
+                  )}
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
+            {/* Fix #6: Mobile scroll indicator — shows when more than 3 items */}
+            {combinedItems.length > 3 && (
+              <div className="md:hidden flex flex-col items-center mt-4 mb-2 animate-bounce">
+                <ChevronDown className="w-5 h-5 text-muted-foreground/50" />
+                <span className="text-[10px] text-muted-foreground/50 font-medium">Scroll for more</span>
+              </div>
+            )}
+          </>
         )}
       </main>
 
