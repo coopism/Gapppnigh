@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useDeals } from "@/hooks/use-deals";
 import { Navigation } from "@/components/Navigation";
 import { PropertyDealCard } from "@/components/PropertyDealCard";
-import { Search, MapPin, ArrowRight, Sparkles, Star, Clock, Hotel, CheckCircle2, Building2, X } from "lucide-react";
+import { Search, MapPin, ArrowRight, Star, X, Home, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
@@ -25,25 +25,17 @@ const LOCATION_SUGGESTIONS = [
   { city: "Adelaide", state: "SA" },
 ];
 
-const HOW_IT_WORKS = [
-  {
-    step: "1",
-    icon: Search,
-    title: "Search a location",
-    description: "No dates needed — just enter where you want to stay.",
-  },
-  {
-    step: "2",
-    icon: Sparkles,
-    title: "Pick a gap night deal",
-    description: "Browse 1-night openings at clearance prices.",
-  },
-  {
-    step: "3",
-    icon: CheckCircle2,
-    title: "Book for less",
-    description: "Get hotel-approved discounts on real rooms.",
-  },
+const TICKER_ITEMS = [
+  { location: "Mornington Peninsula", label: "Tonight", price: "$89" },
+  { location: "St Kilda, Melbourne", label: "Tomorrow", price: "$112" },
+  { location: "Byron Bay", label: "Tonight", price: "$145" },
+  { location: "Daylesford", label: "This weekend", price: "$98" },
+  { location: "Noosa Heads", label: "Tonight", price: "$167" },
+  { location: "Barossa Valley", label: "Tomorrow", price: "$79" },
+  { location: "Fremantle, Perth", label: "Tonight", price: "$103" },
+  { location: "Hunter Valley", label: "This weekend", price: "$134" },
+  { location: "Lorne, Great Ocean Rd", label: "Tonight", price: "$119" },
+  { location: "Palm Beach, Sydney", label: "Tomorrow", price: "$188" },
 ];
 
 export default function Landing() {
@@ -348,126 +340,188 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section className="py-12 md:py-16 bg-background">
-        <div className="container mx-auto px-4">
-          <FadeIn direction="up" duration={0.5}>
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-              How it works
-            </h2>
-            <p className="text-muted-foreground mt-2">Three simple steps to your next great stay</p>
-          </div>
-          </FadeIn>
+      {/* ── TICKER STRIP ─────────────────────────────────────────────────── */}
+      {/* A departures-board feel: deals scrolling past, ambient urgency    */}
+      <section className="py-0 bg-background border-y border-border/40 overflow-hidden">
+        <div className="relative flex">
+          {/* Fade edges */}
+          <div className="absolute left-0 top-0 bottom-0 w-16 z-10 bg-gradient-to-r from-background to-transparent pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-16 z-10 bg-gradient-to-l from-background to-transparent pointer-events-none" />
 
-          <StaggerContainer className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto" staggerDelay={0.15}>
-            {HOW_IT_WORKS.map((item) => (
-              <StaggerItem key={item.step}>
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <item.icon className="w-8 h-8 text-primary" />
-                </div>
-                <div className="text-sm font-bold text-primary mb-2">Step {item.step}</div>
-                <h3 className="text-xl font-bold text-foreground mb-2">{item.title}</h3>
-                <p className="text-muted-foreground text-sm">{item.description}</p>
-              </div>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-        </div>
-      </section>
-
-      {/* For Hotels Section */}
-      <section className="py-12 md:py-16 bg-neutral-900 dark:bg-neutral-950 text-white">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-            <SlideIn from="left">
-            <div>
-              <Badge variant="secondary" className="mb-4">For Hotels</Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
-                Fill your gap nights without discounting your whole calendar
-              </h2>
-              <ul className="space-y-3 text-white/70 mb-8">
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                  <span>Only list nights you want to fill</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                  <span>Control price and inventory yourself</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                  <span>Reach new last-minute guests</span>
-                </li>
-              </ul>
-              <Button 
-                size="lg"
-                onClick={() => setLocation("/list-your-hotel")}
-                className="rounded-full"
-                data-testid="button-list-hotel"
+          {/* Scrolling track — duplicated for seamless loop */}
+          <div className="flex animate-ticker whitespace-nowrap py-3.5 gap-0">
+            {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-2.5 px-6 text-sm text-muted-foreground shrink-0"
               >
-                List Your Hotel
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </div>
-            </SlideIn>
-            <SlideIn from="right" delay={0.2}>
-            <div className="hidden md:block">
-              <div className="bg-white/10 rounded-2xl p-8 border border-white/20">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                    <Building2 className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-white">Hotel Partners</div>
-                    <div className="text-sm text-white/60">Join 50+ Australian hotels</div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="bg-white/5 rounded-lg p-3 flex justify-between items-center">
-                    <span className="text-sm text-white/80">Avg. gap night fill rate</span>
-                    <span className="font-bold text-primary text-lg">—</span>
-                  </div>
-                  <div className="bg-white/5 rounded-lg p-3 flex justify-between items-center">
-                    <span className="text-sm text-white/80">Revenue recovered</span>
-                    <span className="font-bold text-primary text-lg">—</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            </SlideIn>
+                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                <span className="font-medium text-foreground">{item.location}</span>
+                <span className="text-muted-foreground/60">·</span>
+                <span>{item.label}</span>
+                <span className="text-muted-foreground/60">·</span>
+                <span className="font-semibold text-primary">{item.price}</span>
+              </span>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-16 md:py-20 bg-primary">
-        <div className="container mx-auto px-4 text-center">
-          <FadeIn direction="up" duration={0.5}>
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Ready to find your gap night?
-          </h2>
-          <p className="text-lg text-white/80 mb-8 max-w-2xl mx-auto">
-            New deals are added daily. Start browsing to find your next great stay.
-          </p>
-          </FadeIn>
-          <FadeIn direction="up" delay={0.2}>
-          <Button 
-            size="lg" 
-            variant="secondary"
-            onClick={() => setLocation("/deals")}
-            className="px-8 rounded-full"
-            data-testid="button-browse-deals"
-          >
-            Browse All Deals
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
-          </FadeIn>
+      {/* ── HOST PITCH ───────────────────────────────────────────────────── */}
+      {/* Editorial layout. Not a feature list. Not a bullet grid.          */}
+      <section className="py-16 md:py-24 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+
+            {/* Eyebrow */}
+            <FadeIn direction="up" duration={0.5}>
+              <div className="flex items-center gap-3 mb-10 md:mb-14">
+                <div className="h-px flex-1 bg-border/60 max-w-[48px]" />
+                <span className="text-xs font-bold tracking-[0.18em] uppercase text-muted-foreground">For hosts</span>
+              </div>
+            </FadeIn>
+
+            <div className="grid md:grid-cols-[1fr_1.1fr] gap-12 md:gap-20 items-start">
+
+              {/* Left — the big statement */}
+              <SlideIn from="left">
+                <div>
+                  <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground leading-[1.1] mb-6">
+                    Your spare night is someone's{" "}
+                    <span className="text-primary italic">perfect</span>{" "}
+                    night.
+                  </h2>
+                  <p className="text-muted-foreground text-lg leading-relaxed mb-8">
+                    You've got a gap between bookings. It's sitting there, earning nothing. 
+                    List it on GapNight and it's gone by morning.
+                  </p>
+                  <Button
+                    size="lg"
+                    onClick={() => setLocation("/host/onboarding")}
+                    className="rounded-full px-7 group"
+                    data-testid="button-become-host"
+                  >
+                    <Home className="w-4 h-4 mr-2" />
+                    List your property
+                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
+                  </Button>
+                </div>
+              </SlideIn>
+
+              {/* Right — honest, human breakdown */}
+              <SlideIn from="right" delay={0.15}>
+                <div className="space-y-0 divide-y divide-border/50">
+
+                  <div className="py-6 first:pt-0">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Zap className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground mb-1">You set the price. We find the guest.</div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          Pick a discounted rate for the night you want to fill. Guests searching for last-minute stays see it immediately.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="py-6">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Star className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground mb-1">Approve every booking yourself.</div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          No auto-accepts. You review each request and decide. Your property, your call.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="py-6">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <MapPin className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground mb-1">Only the nights you choose.</div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          Gap Night doesn't touch your regular calendar. You list specific nights — nothing else changes.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="py-6 last:pb-0">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Search className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground mb-1">ID-verified guests only.</div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          Every guest who books has verified their identity. You know who's staying before you say yes.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </SlideIn>
+
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
+      {/* ── GUT-CHECK CTA ────────────────────────────────────────────────── */}
+      {/* Dark. Minimal. Confident. Not a template.                          */}
+      <section className="relative py-20 md:py-28 bg-neutral-950 overflow-hidden">
+        {/* Subtle texture */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(14,165,165,0.12),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_75%_20%,rgba(14,165,165,0.07),transparent_50%)]" />
+
+        <div className="container mx-auto px-4 relative">
+          <div className="max-w-2xl">
+            <FadeIn direction="up" duration={0.6}>
+              {/* The line that makes you feel something */}
+              <p className="text-xs font-bold tracking-[0.2em] uppercase text-primary/80 mb-5">Tonight</p>
+              <h2 className="text-5xl md:text-7xl font-display font-bold text-white leading-[1.0] mb-6">
+                Tonight's<br />looking good.
+              </h2>
+              <p className="text-white/50 text-lg mb-10 max-w-sm leading-relaxed">
+                Hosts have listed their spare nights. The prices drop as the clock ticks. Have a look.
+              </p>
+            </FadeIn>
+            <FadeIn direction="up" delay={0.2} duration={0.5}>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  size="lg"
+                  onClick={() => setLocation("/deals")}
+                  className="rounded-full px-8 bg-primary hover:bg-primary/90 text-white"
+                  data-testid="button-see-whats-available"
+                >
+                  See what's available
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => setLocation("/host/onboarding")}
+                  className="rounded-full px-8 border-white/20 text-white/80 hover:bg-white/10 hover:text-white bg-transparent"
+                  data-testid="button-cta-list-property"
+                >
+                  List a property
+                </Button>
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FOOTER ───────────────────────────────────────────────────────── */}
       <footer className="py-12 bg-neutral-900 dark:bg-neutral-950 text-white/60">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
@@ -475,17 +529,16 @@ export default function Landing() {
               <div className="text-2xl font-bold text-white mb-3">
                 Gap<span className="text-primary">Night</span>
               </div>
-              <p className="text-sm max-w-sm">
-                Australia's marketplace for hotel gap nights. Get luxury stays at clearance prices on unsold 1-night openings.
+              <p className="text-sm max-w-sm leading-relaxed">
+                Australia's marketplace for gap nights. Real properties, real hosts, real discounts on unsold 1-night openings.
               </p>
             </div>
             <div>
-              <div className="font-semibold text-white mb-3">Quick Links</div>
+              <div className="font-semibold text-white mb-3">Explore</div>
               <ul className="space-y-2 text-sm">
-                <li><a href="/deals" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-deals">Browse Deals</a></li>
-                <li><a href="/list-your-hotel" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-hotels">For Hotels</a></li>
-                <li><a href="/waitlist" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-waitlist">Join Waitlist</a></li>
-                <li><a href="/contact" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-contact">Contact Us</a></li>
+                <li><a href="/deals" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-deals">Browse stays</a></li>
+                <li><a href="/host/onboarding" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-host">Become a host</a></li>
+                <li><a href="/contact" className="transition-colors opacity-60 hover:opacity-100" data-testid="link-footer-contact">Contact us</a></li>
               </ul>
             </div>
             <div>

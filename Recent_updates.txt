@@ -1,6 +1,43 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18 (Session 3)
 
+## Landing Page Revamp — Session 5 - Feb 18, 2026
+
+### Changes Implemented
+
+1. **Removed "How It Works" section (`client/src/pages/Landing.tsx`)**
+   - Dropped the generic Step 1/2/3 template section entirely
+   - Removed unused `HOW_IT_WORKS` constant and associated icon imports
+
+2. **Removed "For Hotels" section**
+   - Replaced with host-focused content; GapNight is currently working with hosts, not hotels
+   - Removed fake stats panel showing "—" dashes
+
+3. **Added Ticker Strip (ambient urgency)**
+   - Seamlessly looping horizontal marquee of deal snippets (location · timing · price)
+   - Departures-board aesthetic — creates FOMO without being pushy
+   - Implemented via new `animate-ticker` keyframe in `tailwind.config.ts` (32s linear infinite)
+   - Fade-edge gradients on left/right for polish
+
+4. **Added Host Pitch section (editorial layout)**
+   - Asymmetric two-column layout — big typographic statement left, honest breakdown right
+   - Headline: "Your spare night is someone's perfect night."
+   - Right column: 4 divided rows (no bullet grid) covering: pricing, approval control, calendar isolation, ID verification
+   - CTA links to `/host/onboarding`
+
+5. **Added Gut-Check CTA section**
+   - Dark (`bg-neutral-950`) with radial teal glows
+   - Large editorial headline: "Tonight's looking good."
+   - Two CTAs: "See what's available" → /deals, "List a property" → /host/onboarding
+   - Replaces generic "Ready to find your gap night?" template
+
+6. **Updated Footer**
+   - Removed "For Hotels" / "list-your-hotel" links
+   - Updated description: "Real properties, real hosts" instead of hotel-focused copy
+   - Quick Links now: Browse stays, Become a host, Contact us
+
+---
+
 ## Security Hardening — Session 4 - Feb 18, 2026
 
 ### Changes Implemented
