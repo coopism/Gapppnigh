@@ -1,6 +1,37 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18 (Session 3)
 
+## Security Hardening — Session 4 - Feb 18, 2026
+
+### Changes Implemented
+
+1. **AES-256-GCM PII encryption utility (`server/crypto-utils.ts`)**
+   - New file with `encryptPII`, `decryptPII`, `encryptPIIOrNull`, `decryptPIIOrNull`
+   - Uses AES-256-GCM (authenticated encryption — detects tampering)
+   - Key loaded from `PII_ENCRYPTION_KEY` env var (64 hex chars = 32 bytes)
+   - **IMPORTANT**: Must set `PII_ENCRYPTION_KEY` in production env before deploying
+
+2. **Encrypt `verifiedDob` at rest (`server/property-routes.ts`)**
+   - DOB from Stripe ID verification is now encrypted before writing to `user_id_verifications.verified_dob`
+   - Decrypted at read in `property-routes.ts`, `admin-routes.ts`, `admin-ops-routes.ts`
+   - Protects against identity theft if DB is breached
+
+3. **Encrypt `guestEmail` and `guestPhone` at rest (`server/property-routes.ts`)**
+   - Both fields encrypted before writing to `property_bookings` table
+   - Decrypted at read in `host-routes.ts` (booking list + booking detail endpoints)
+   - Graceful fallback: if decryption fails (e.g. legacy plaintext row), original value returned
+
+4. **CSRF protection on all host routes (`server/host-routes.ts`)**
+   - `csrfMiddleware` from `user-auth.ts` now applied to the entire host router via `router.use()`
+   - CSRF token issued on login and register responses (same pattern as user auth)
+   - Prevents cross-site request forgery attacks on host state-changing endpoints
+
+5. **Host session `sameSite` changed from `"lax"` to `"strict"` (`server/host-routes.ts`)**
+   - Both register and login session cookies now use `sameSite: "strict"`
+   - Prevents session cookie from being sent on cross-site navigations
+
+---
+
 ## Host Platform & UX Fixes — Session 3 - Feb 18, 2026
 
 ### Changes Implemented

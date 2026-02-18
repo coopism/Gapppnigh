@@ -1,5 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import crypto from "crypto";
+import { decryptPIIOrNull } from "./crypto-utils";
+import { csrfMiddleware, generateCsrfToken, setCsrfCookie, CSRF_COOKIE } from "./user-auth";
 import { db } from "./db";
 import { isValidUUID, validateUUIDParam } from "./validation";
 import { authRateLimit, bookingRateLimit, uploadRateLimit } from "./rate-limit";
@@ -18,6 +20,8 @@ import path from "path";
 import fs from "fs";
 
 const router = Router();
+
+router.use(csrfMiddleware);
 
 // XSS sanitization helper - prevents script injection
 function sanitizeInput(input: string | undefined | null): string | null {
@@ -214,10 +218,13 @@ router.post("/api/host/register", authRateLimit, async (req: Request, res: Respo
     res.cookie(HOST_SESSION_COOKIE, sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       maxAge: SESSION_DURATION_HOURS * 60 * 60 * 1000,
       path: "/",
     });
+
+    const csrfToken = generateCsrfToken();
+    setCsrfCookie(res, csrfToken);
 
     res.json({
       host: {
@@ -227,6 +234,7 @@ router.post("/api/host/register", authRateLimit, async (req: Request, res: Respo
         emailVerified: false,
         requiresEmailVerification: true,
       },
+      csrfToken,
     });
   } catch (error) {
     console.error("Host register error:", error);
@@ -335,10 +343,13 @@ router.post("/api/host/login", authRateLimit, async (req: Request, res: Response
     res.cookie(HOST_SESSION_COOKIE, sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       maxAge: SESSION_DURATION_HOURS * 60 * 60 * 1000,
       path: "/",
     });
+
+    const csrfToken = generateCsrfToken();
+    setCsrfCookie(res, csrfToken);
 
     res.json({
       host: {
@@ -351,6 +362,7 @@ router.post("/api/host/login", authRateLimit, async (req: Request, res: Response
         averageResponseTime: host.averageResponseTime,
         responseRate: host.responseRate,
       },
+      csrfToken,
     });
   } catch (error) {
     console.error("Host login error:", error);
@@ -1399,10 +1411,12 @@ router.get("/api/host/bookings", requireHostAuth, async (req: HostRequest, res: 
 
         return {
           ...booking,
+          guestEmail: decryptPIIOrNull(booking.guestEmail) ?? booking.guestEmail,
+          guestPhone: decryptPIIOrNull(booking.guestPhone) ?? booking.guestPhone,
           propertyTitle: property?.title || "Unknown",
           propertyCoverImage: property?.coverImage || null,
           guestName: user?.name || `${booking.guestFirstName} ${booking.guestLastName}`,
-          guestAccountEmail: user?.email || booking.guestEmail,
+          guestAccountEmail: user?.email || (decryptPIIOrNull(booking.guestEmail) ?? booking.guestEmail),
           idVerified: verification?.status === "verified",
         };
       })
@@ -1467,14 +1481,18 @@ router.get("/api/host/bookings/:bookingId", requireHostAuth, async (req: HostReq
       ));
 
     res.json({
-      booking,
+      booking: {
+        ...booking,
+        guestEmail: decryptPIIOrNull(booking.guestEmail) ?? booking.guestEmail,
+        guestPhone: decryptPIIOrNull(booking.guestPhone) ?? booking.guestPhone,
+      },
       property,
       guest: {
         ...user,
         firstName: booking.guestFirstName,
         lastName: booking.guestLastName,
-        email: booking.guestEmail,
-        phone: booking.guestPhone,
+        email: decryptPIIOrNull(booking.guestEmail) ?? booking.guestEmail,
+        phone: decryptPIIOrNull(booking.guestPhone) ?? booking.guestPhone,
         idVerified: verification?.status === "verified",
         pastCompletedBookings: pastBookings?.count || 0,
         memberSince: user?.createdAt,

@@ -10,6 +10,7 @@ import {
   userIdVerifications, userRewards, rewardsTransactions
 } from "@shared/schema";
 import { eq, desc, sql, and, gte, lte, count, ilike, or, asc, inArray, ne } from "drizzle-orm";
+import { decryptPIIOrNull } from "./crypto-utils";
 import { LOG_RETENTION_DAYS } from "./config";
 
 const ADMIN_SESSION_COOKIE = "admin_session";
@@ -408,7 +409,7 @@ export function registerAdminRoutes(app: Router) {
           status: verification.status,
           verifiedFirstName: verification.verifiedFirstName,
           verifiedLastName: verification.verifiedLastName,
-          verifiedDob: verification.verifiedDob,
+          verifiedDob: decryptPIIOrNull(verification.verifiedDob),
           verifiedAt: verification.verifiedAt,
         } : null,
         bookings: userBookings,

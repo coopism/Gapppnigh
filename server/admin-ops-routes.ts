@@ -8,6 +8,7 @@ import {
   propertyReviews, userIdVerifications, hostPayouts
 } from "@shared/schema";
 import { eq, desc, sql, and, gte, lte, count, ilike, or, asc, ne, inArray } from "drizzle-orm";
+import { decryptPIIOrNull } from "./crypto-utils";
 
 const ADMIN_PREFIX = "/api/x9k2p7m4";
 
@@ -648,7 +649,7 @@ export function registerAdminOpsRoutes(app: Router) {
           verifiedAt: verification.verifiedAt,
           verifiedFirstName: verification.verifiedFirstName,
           verifiedLastName: verification.verifiedLastName,
-          verifiedDob: verification.verifiedDob,
+          verifiedDob: decryptPIIOrNull(verification.verifiedDob),
           failureReason: verification.failureReason,
           createdAt: verification.createdAt,
         } : null,
@@ -1500,7 +1501,7 @@ export function registerAdminOpsRoutes(app: Router) {
             status: v.status,
             verifiedFirstName: v.verifiedFirstName,
             verifiedLastName: v.verifiedLastName,
-            verifiedDob: v.verifiedDob,
+            verifiedDob: decryptPIIOrNull(v.verifiedDob),
             verifiedAt: v.verifiedAt,
             nameMatch: v.verifiedFirstName && v.verifiedLastName
               ? (v.verifiedFirstName.toLowerCase().trim() === (p.guestFirstName || "").toLowerCase().trim()

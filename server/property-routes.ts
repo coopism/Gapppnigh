@@ -7,6 +7,7 @@ import {
 import { eq, and, desc, gte, lte, count, sql, asc, or, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { stripe, createPaymentIntent } from "./stripe";
+import { encryptPIIOrNull, decryptPIIOrNull } from "./crypto-utils";
 
 const router = Router();
 
@@ -679,7 +680,7 @@ router.get("/api/auth/verify-identity/status", async (req: any, res: Response) =
               verifiedAt: new Date(),
               verifiedFirstName,
               verifiedLastName,
-              verifiedDob,
+              verifiedDob: encryptPIIOrNull(verifiedDob),
               updatedAt: new Date(),
             })
             .where(eq(userIdVerifications.userId, req.user?.id));
@@ -711,6 +712,7 @@ router.get("/api/auth/verify-identity/status", async (req: any, res: Response) =
       verifiedAt: verification.verifiedAt,
       verifiedFirstName: verification.status === "verified" ? verification.verifiedFirstName : undefined,
       verifiedLastName: verification.status === "verified" ? verification.verifiedLastName : undefined,
+      verifiedDob: verification.status === "verified" ? decryptPIIOrNull(verification.verifiedDob) : undefined,
     });
   } catch (error) {
     console.error("Check verification status error:", error);
@@ -976,8 +978,8 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
           stripePaymentIntentId: paymentIntentId,
           guestFirstName,
           guestLastName,
-          guestEmail,
-          guestPhone: guestPhone || null,
+          guestEmail: encryptPIIOrNull(guestEmail) ?? guestEmail,
+          guestPhone: encryptPIIOrNull(guestPhone) ?? null,
         })
         .returning();
 
