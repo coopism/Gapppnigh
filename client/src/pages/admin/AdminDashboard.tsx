@@ -1044,9 +1044,11 @@ function PropertyBookingsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
+                <TableHead>Property</TableHead>
+                <TableHead>Guest</TableHead>
                 <TableHead>Check-in</TableHead>
+                <TableHead>Check-out</TableHead>
                 <TableHead>Nights</TableHead>
-                <TableHead>Guests</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
@@ -1055,13 +1057,26 @@ function PropertyBookingsPage() {
             <TableBody>
               {items.slice(0, 50).map(b => (
                 <TableRow key={b.id}>
-                  <TableCell className="font-mono text-xs">{b.id?.substring(0, 10)}</TableCell>
-                  <TableCell>{b.checkInDate}</TableCell>
-                  <TableCell>{b.nights}</TableCell>
-                  <TableCell>{b.guests}</TableCell>
-                  <TableCell>${((b.totalPrice || 0) / 100).toFixed(2)}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{b.id?.substring(0, 10)}</TableCell>
                   <TableCell>
-                    <Badge variant={b.status === "confirmed" ? "default" : b.status === "cancelled" ? "destructive" : "secondary"} className="text-xs">
+                    <div className="max-w-[160px]">
+                      <p className="text-xs font-medium truncate">{b.propertyTitle || <span className="text-muted-foreground">Unknown</span>}</p>
+                      {b.propertyCity && <p className="text-[10px] text-muted-foreground">{b.propertyCity}</p>}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-w-[160px]">
+                      <p className="text-xs font-medium">{b.guestName || <span className="text-muted-foreground">—</span>}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{b.guestEmail || ""}</p>
+                      {b.guestPhone && <p className="text-[10px] text-muted-foreground">{b.guestPhone}</p>}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-xs">{b.checkInDate}</TableCell>
+                  <TableCell className="text-xs">{b.checkOutDate}</TableCell>
+                  <TableCell className="text-xs">{b.nights}</TableCell>
+                  <TableCell className="text-xs font-medium">${((b.totalPrice || 0) / 100).toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Badge variant={b.status === "CONFIRMED" || b.status === "confirmed" ? "default" : b.status === "CANCELLED" || b.status === "cancelled" ? "destructive" : "secondary"} className="text-xs">
                       {b.status}
                     </Badge>
                   </TableCell>

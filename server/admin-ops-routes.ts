@@ -428,7 +428,29 @@ export function registerAdminOpsRoutes(app: Router) {
       const conditions: any[] = [];
       if (status) conditions.push(eq(propertyBookings.status, status as string));
 
-      const allBookings = await db.select().from(propertyBookings)
+      const allBookings = await db.select({
+        id: propertyBookings.id,
+        propertyId: propertyBookings.propertyId,
+        hostId: propertyBookings.hostId,
+        userId: propertyBookings.userId,
+        checkInDate: propertyBookings.checkInDate,
+        checkOutDate: propertyBookings.checkOutDate,
+        nights: propertyBookings.nights,
+        guests: propertyBookings.guests,
+        totalPrice: propertyBookings.totalPrice,
+        status: propertyBookings.status,
+        specialRequests: propertyBookings.specialRequests,
+        createdAt: propertyBookings.createdAt,
+        // Guest info
+        guestName: users.name,
+        guestEmail: users.email,
+        guestPhone: users.phone,
+        // Property info
+        propertyTitle: properties.title,
+        propertyCity: properties.city,
+      }).from(propertyBookings)
+        .leftJoin(users, eq(propertyBookings.userId, users.id))
+        .leftJoin(properties, eq(propertyBookings.propertyId, properties.id))
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(propertyBookings.createdAt))
         .limit(validatedLimit).offset(offset);
