@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,9 +20,7 @@ export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const [googleLoaded, setGoogleLoaded] = useState(false);
-  const [googleFailed, setGoogleFailed] = useState(false);
-  const googleButtonRef = useRef<HTMLDivElement>(null);
+  const [googleReady, setGoogleReady] = useState(false);
   
   // OTP verification state
   const [showOtpStep, setShowOtpStep] = useState(false);
@@ -50,126 +48,61 @@ export default function Signup() {
     }
   }, [showOtpStep, resendTimer]);
 
-  // Initialize Google Sign-In when script loads
+  // Initialize Google Sign-In SDK (callback only — button is always rendered natively)
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    console.log('Google Client ID:', clientId);
-    if (!clientId) {
-      console.error('No Google Client ID found');
-      setGoogleFailed(true);
-      return;
-    }
+    if (!clientId) return;
 
     const initGoogle = () => {
-      console.log('Initializing Google Sign-In...');
       // @ts-ignore
-      if (window.google?.accounts?.id) {
-        console.log('Google accounts.id found, initializing...');
-        // @ts-ignore
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: async (response: any) => {
-            console.log('Google callback triggered', response);
-            setIsLoading(true);
-            setError(null);
-            try {
-              const params = new URLSearchParams(window.location.search);
-              const redirect = params.get("redirect") || "/account";
-              console.log('Sending credential to server...');
-              const res = await fetch("/api/auth/oauth/google", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ credential: response.credential, redirectUrl: redirect }),
-              });
-              console.log('Server response status:', res.status);
-              const data = await res.json();
-              console.log('Server response data:', data);
-              if (data.success) {
-                console.log('Redirecting to:', data.redirectUrl || "/account");
-                window.location.href = data.redirectUrl || "/account";
-              } else {
-                console.error('OAuth failed:', data.message);
-                setError(data.message || "Google sign-up failed");
-              }
-            } catch (err) {
-              console.error('OAuth error:', err);
-              setError("Google sign-up failed: " + (err instanceof Error ? err.message : String(err)));
-            }
-            setIsLoading(false);
-          },
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
-
-        // Render the Google button with retry logic
-        const renderButton = () => {
-          if (googleButtonRef.current) {
-            const width = googleButtonRef.current.offsetWidth || 280;
-            console.log('Rendering Google button with width:', width);
-            // @ts-ignore
-            window.google.accounts.id.renderButton(googleButtonRef.current, {
-              type: "standard",
-              theme: "outline",
-              size: "large",
-              width: Math.max(width, 200),
-              text: "signup_with",
-              shape: "rectangular",
-              logo_alignment: "left",
+      if (!window.google?.accounts?.id) return;
+      // @ts-ignore
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response: any) => {
+          setIsLoading(true);
+          setError(null);
+          try {
+            const params = new URLSearchParams(window.location.search);
+            const redirect = params.get("redirect") || "/account";
+            const res = await fetch("/api/auth/oauth/google", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ credential: response.credential, redirectUrl: redirect }),
             });
-            console.log('Google button rendered successfully');
-            setGoogleLoaded(true);
-            setGoogleFailed(false);
-          } else {
-            console.log('Google button ref not ready, retrying in 100ms...');
-            setTimeout(renderButton, 100);
+            const data = await res.json();
+            if (data.success) {
+              window.location.href = data.redirectUrl || "/account";
+            } else {
+              setError(data.message || "Google sign-up failed");
+            }
+          } catch {
+            setError("Google sign-up failed. Please try again.");
           }
-        };
-        
-        // Delay slightly to ensure DOM is ready
-        setTimeout(renderButton, 50);
-      }
+          setIsLoading(false);
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      setGoogleReady(true);
     };
 
-    // Wait for script to load with event listener
-    const handleGoogleLoad = () => {
-      // @ts-ignore
-      if (window.google?.accounts?.id) {
-        initGoogle();
-      }
-    };
-
-    // Check if already loaded
     // @ts-ignore
     if (window.google?.accounts?.id) {
       initGoogle();
     } else {
-      // Try multiple approaches
-      window.addEventListener('load', handleGoogleLoad);
-      
-      const checkGoogle = setInterval(() => {
+      const interval = setInterval(() => {
         // @ts-ignore
         if (window.google?.accounts?.id) {
-          clearInterval(checkGoogle);
-          window.removeEventListener('load', handleGoogleLoad);
+          clearInterval(interval);
           initGoogle();
         }
       }, 100);
-
-      // Timeout after 10 seconds
-      const timeout = setTimeout(() => {
-        clearInterval(checkGoogle);
-        window.removeEventListener('load', handleGoogleLoad);
-        setGoogleFailed(true);
-      }, 10000);
-      
-      return () => {
-        clearInterval(checkGoogle);
-        clearTimeout(timeout);
-        window.removeEventListener('load', handleGoogleLoad);
-      };
+      const timeout = setTimeout(() => clearInterval(interval), 10000);
+      return () => { clearInterval(interval); clearTimeout(timeout); };
     }
-  }, [setLocation]);
+  }, []);
 
   const passwordValidation = validatePassword(password);
   const passwordStrength = getPasswordStrength(password);
@@ -611,55 +544,36 @@ export default function Signup() {
 
             {/* OAuth Buttons */}
             <div className="space-y-3">
-              {/* Google Sign-In Button - rendered by Google */}
-              <div 
-                ref={googleButtonRef} 
-                className="w-full [&>div]:w-full [&>div>div]:w-full [&>div>div]:!h-11 [&>div>div]:!rounded-xl [&>div>div]:!border-input"
-              />
-              {!googleLoaded && !googleFailed && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-11 rounded-xl font-medium"
-                  disabled
-                >
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Loading Google Sign-In...
-                </Button>
-              )}
-              {googleFailed && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-11 rounded-xl font-medium"
-                  onClick={() => {
-                    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-                    if (clientId && (window as any).google?.accounts?.id) {
-                      (window as any).google.accounts.id.prompt();
-                    } else {
-                      setError("Google Sign-In is not available. Please use email signup.");
-                    }
-                  }}
-                >
-                  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  Continue with Google
-                </Button>
-              )}
+              {/* Google — always-visible native button, triggers One Tap prompt on click */}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-11 rounded-xl font-medium"
+                disabled={isLoading}
+                onClick={() => {
+                  if ((window as any).google?.accounts?.id) {
+                    (window as any).google.accounts.id.prompt();
+                  } else {
+                    setError("Google Sign-In is not available. Please use email signup.");
+                  }
+                }}
+              >
+                <svg className="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Continue with Google
+              </Button>
 
               <Button
                 type="button"
                 variant="outline"
                 className="w-full h-11 rounded-xl font-medium"
-                onClick={() => {
-                  setError("Apple Sign-In coming soon");
-                }}
+                onClick={() => setError("Apple Sign-In coming soon")}
               >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <svg className="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                 </svg>
                 Continue with Apple
