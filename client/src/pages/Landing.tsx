@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useDeals } from "@/hooks/use-deals";
 import { Navigation } from "@/components/Navigation";
 import { PropertyDealCard } from "@/components/PropertyDealCard";
-import { Search, MapPin, ArrowRight, Star, X, Home, Zap } from "lucide-react";
+import { Search, MapPin, ArrowRight, Star, X, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
@@ -408,115 +408,29 @@ export default function Landing() {
                 </div>
               </SlideIn>
 
-              {/* Right — honest, human breakdown */}
+              {/* Right — editorial numbered rows, no icons */}
               <SlideIn from="right" delay={0.15}>
-                <div className="space-y-0 divide-y divide-border/50">
+                <div className="divide-y divide-border/50">
 
-                  <div className="py-6 first:pt-0">
-                    <div className="flex items-start gap-4">
-                      <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Zap className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-foreground mb-1">You set the price. We find the guest.</div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          Pick a discounted rate for the night you want to fill. Guests searching for last-minute stays see it immediately.
-                        </p>
-                      </div>
+                  {([
+                    { n: "01", title: "You set the price. We find the guest.", body: "Pick a discounted rate for the night you want to fill. Guests searching for last-minute stays see it immediately." },
+                    { n: "02", title: "Approve every booking yourself.", body: "No auto-accepts. You review each request and decide. Your property, your call." },
+                    { n: "03", title: "Only the nights you choose.", body: "Gap Night doesn't touch your regular calendar. You list specific nights — nothing else changes." },
+                    { n: "04", title: "ID-verified guests only.", body: "Every guest who books has verified their identity. You know who's staying before you say yes." },
+                  ] as const).map(({ n, title, body }) => (
+                    <div key={n} className="relative py-6 first:pt-0 last:pb-0 pl-14 overflow-hidden">
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 text-6xl font-bold text-border/40 leading-none select-none tabular-nums">
+                        {n}
+                      </span>
+                      <div className="font-semibold text-foreground mb-1">{title}</div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
                     </div>
-                  </div>
-
-                  <div className="py-6">
-                    <div className="flex items-start gap-4">
-                      <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Star className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-foreground mb-1">Approve every booking yourself.</div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          No auto-accepts. You review each request and decide. Your property, your call.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="py-6">
-                    <div className="flex items-start gap-4">
-                      <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <MapPin className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-foreground mb-1">Only the nights you choose.</div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          Gap Night doesn't touch your regular calendar. You list specific nights — nothing else changes.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="py-6 last:pb-0">
-                    <div className="flex items-start gap-4">
-                      <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Search className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-foreground mb-1">ID-verified guests only.</div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          Every guest who books has verified their identity. You know who's staying before you say yes.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
 
                 </div>
               </SlideIn>
 
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── GUT-CHECK CTA ────────────────────────────────────────────────── */}
-      {/* Dark. Minimal. Confident. Not a template.                          */}
-      <section className="relative py-20 md:py-28 bg-neutral-950 overflow-hidden">
-        {/* Subtle texture */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(14,165,165,0.12),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_75%_20%,rgba(14,165,165,0.07),transparent_50%)]" />
-
-        <div className="container mx-auto px-4 relative">
-          <div className="max-w-2xl">
-            <FadeIn direction="up" duration={0.6}>
-              {/* The line that makes you feel something */}
-              <p className="text-xs font-bold tracking-[0.2em] uppercase text-primary/80 mb-5">Tonight</p>
-              <h2 className="text-5xl md:text-7xl font-display font-bold text-white leading-[1.0] mb-6">
-                Tonight's<br />looking good.
-              </h2>
-              <p className="text-white/50 text-lg mb-10 max-w-sm leading-relaxed">
-                Hosts have listed their spare nights. The prices drop as the clock ticks. Have a look.
-              </p>
-            </FadeIn>
-            <FadeIn direction="up" delay={0.2} duration={0.5}>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  size="lg"
-                  onClick={() => setLocation("/deals")}
-                  className="rounded-full px-8 bg-primary hover:bg-primary/90 text-white"
-                  data-testid="button-see-whats-available"
-                >
-                  See what's available
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={() => setLocation("/host/onboarding")}
-                  className="rounded-full px-8 border-white/20 text-white/80 hover:bg-white/10 hover:text-white bg-transparent"
-                  data-testid="button-cta-list-property"
-                >
-                  List a property
-                </Button>
-              </div>
-            </FadeIn>
           </div>
         </div>
       </section>
