@@ -3349,3 +3349,45 @@ Initial clay implementation used CSS blur blobs for clouds which looked flat and
 
 **`client/src/pages/host/HostDashboard.tsx`**
 - Replaced CSS blob divs with `<CloudBackground>` SVG wrapper
+
+---
+
+## Claymorphism UI v3 — Material System Overhaul (TARGET fidelity pass)
+
+### Diagnosis (3 root causes CURRENT ≠ TARGET)
+1. **Sky too pale** — old background started at `#b8c6ee` (washed lavender); clouds had zero contrast against it
+2. **No inset top-highlight** — cards/buttons lacked `inset 0 2px 0 rgba(255,255,255,1)` that creates the "inflated clay" physical look
+3. **Shadows/glows too weak** — btn shadow was `rgba(74,143,231,0.40)` alpha; TARGET pill CTA has visibly thick glow and depth
+
+### Changes
+
+**`client/src/index.css` — Full token overhaul**
+- Sky palette: `#4d6ec4 → #6282cc → #849ed8 → ... → #f4f0ff` (deep saturated blue at top)
+- New `--clay-shadow-hero`: `0 40px 100px rgba(55,75,155,0.36), 0 10px 36px rgba(55,75,155,0.22)`
+- New `--clay-inset-top`: `inset 0 2px 0 rgba(255,255,255,1), inset 0 1px 10px rgba(255,255,255,0.55)`
+- `--clay-shadow-btn`: `0 12px 40px rgba(74,143,231,0.65), 0 4px 16px rgba(74,143,231,0.38), inset 0 1.5px 0 rgba(255,255,255,0.32)`
+- `.clay-card`: radius 24px, uses `var(--clay-inset-top)` + `0 20px 60px` spread
+- `.clay-panel`: pure `#ffffff` bg, `var(--clay-shadow-hero)` + `var(--clay-inset-top)`, 28px radius
+- `.clay-btn`: gradient `#7aacf5 → #4a8fe7 → #3572d8` (light-on-top for 3D puff), `-hover` lifts 2px
+- `.clay-btn-ghost`: `inset 0 1.5px 0 rgba(255,255,255,1)` highlight
+- `.clay-chip`: `inset 0 1.5px 0 rgba(255,255,255,1)` highlight + `.active` uses gradient + glow
+
+**`client/src/components/ui/clay/index.tsx` — CloudBackground**
+- Background gradient: `#4a6abf → #6282cc → #849ed8 → #a8bee8 → #c2d2f4 → #d8e4ff → #f4f0ff`
+- Cloud gradients updated: `cg-a/b/c` all start `#ffffff stopOpacity="1"` at center (near-pure white tops)
+- New `cg-shad` gradient: bottom-lit `#7890c8 stopOpacity="0.26"` for underside depth
+- New `cg-hl` gradient: `#ffffff` pure white top highlights, tighter spread
+- All cloud groups boosted opacity: BG 0.55→0.70, Mid 0.80→0.92, FG 0.92→0.97
+- Every cloud group now has `cg-shad` ellipses positioned slightly below/larger than body ellipses
+- Every cloud group now has `cg-hl` pure-white highlight ellipses at top bulge peaks
+- CF-glow filter: `stdDeviation` increased from 12→14 for softer cloud halo
+
+**`client/src/components/ui/clay/index.tsx` — ClayDealCard**
+- Shadow: `0 20px 60px rgba(65,85,165,0.22) + var(--clay-inset-top)` (inflated look)
+- Hover: `0 32px 80px rgba(65,85,165,0.28)` lift + -5px translateY
+
+**`client/src/pages/Landing.tsx`**
+- Hero card: switched from inline `style` to `className="clay-panel"` (picks up new hero shadow)
+- CTA "Browse today's deals": switched to `clay-btn` class
+- Search inline button: switched to `clay-btn` with `borderRadius: 10px` override
+- "Browse All Deals": switched to `clay-btn` class
