@@ -26,7 +26,7 @@ export function HeroBackground({ children, className }: { children?: React.React
   // Preload hero image
   useEffect(() => {
     const img = new Image();
-    img.src = "/clay/clouds-hero.webp";
+    img.src = "/clay/clouds-hero.png";
     img.onload = () => setImgLoaded(true);
     // If image fails to load, fallback gradient stays visible
     img.onerror = () => setImgLoaded(false);
@@ -67,7 +67,7 @@ export function HeroBackground({ children, className }: { children?: React.React
             background: SKY_FALLBACK,
             willChange: "transform",
             ...(imgLoaded ? {
-              backgroundImage: `url("/clay/clouds-hero.webp")`,
+              backgroundImage: `url("/clay/clouds-hero.png")`,
               backgroundSize: "cover",
               backgroundPosition: "center top",
               backgroundRepeat: "no-repeat",

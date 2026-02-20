@@ -27,7 +27,7 @@ export function CloudBankCurtain({ className }: { className?: string }) {
   // Preload cloud bank image
   useEffect(() => {
     const img = new Image();
-    img.src = "/clay/clouds-bank.webp";
+    img.src = "/clay/clouds-bank.png";
     img.onload = () => setImgLoaded(true);
     img.onerror = () => setImgLoaded(false);
   }, []);
@@ -83,7 +83,7 @@ export function CloudBankCurtain({ className }: { className?: string }) {
           inset: 0,
           willChange: "transform, opacity, filter",
           ...(imgLoaded ? {
-            backgroundImage: `url("/clay/clouds-bank.webp")`,
+            backgroundImage: `url("/clay/clouds-bank.png")`,
             backgroundSize: "100% 100%",
             backgroundPosition: "center bottom",
             backgroundRepeat: "no-repeat",
