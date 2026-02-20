@@ -45,34 +45,45 @@ export function Navigation() {
   const isActive = (path: string) => location === path;
 
   return (
-    <nav className="border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="sticky top-0 z-50 w-full"
+      style={{
+        background: "rgba(255,255,255,0.78)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(255,255,255,0.65)",
+        boxShadow: "0 2px 24px rgba(100,120,200,0.10)",
+      }}>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="group-hover:scale-110 transition-transform">
               <GapNightLogo size={32} />
             </div>
-            <span className="font-display font-bold text-xl tracking-tight">GapNight</span>
+            <span className="font-display font-bold text-xl tracking-tight" style={{ color: "var(--clay-text)" }}>GapNight</span>
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-4">
-            <Link href="/deals" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/deals") ? "text-primary" : "text-muted-foreground"}`}>
-              Browse Deals
+          <div className="hidden md:flex items-center gap-1">
+            <Link href="/deals">
+              <button className={`text-sm font-medium px-4 py-2 rounded-full transition-all ${isActive("/deals") ? "bg-primary/10 text-primary font-semibold" : "text-[var(--clay-text-muted)] hover:bg-white/60 hover:text-[var(--clay-text)]"}`}>
+                Browse Deals
+              </button>
             </Link>
-            <Link href="/host/dashboard" className={`text-sm font-medium transition-colors hover:text-primary ${isActive("/host/login") || location.startsWith("/host") ? "text-primary" : "text-muted-foreground"}`}>
-              Host Dashboard
+            <Link href="/host/dashboard">
+              <button className={`text-sm font-medium px-4 py-2 rounded-full transition-all ${location.startsWith("/host") ? "bg-primary/10 text-primary font-semibold" : "text-[var(--clay-text-muted)] hover:bg-white/60 hover:text-[var(--clay-text)]"}`}>
+                Host Dashboard
+              </button>
             </Link>
             {!isLoading && (
               user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="rounded-full gap-2">
+                    <button className="clay-btn-ghost text-sm px-4 py-2 inline-flex items-center gap-2 ml-1" style={{ borderRadius: "var(--clay-radius-pill)", fontSize: "0.875rem" }}>
                       <User className="w-4 h-4" />
                       <span className="max-w-24 truncate">{user.name || user.email.split('@')[0]}</span>
-                    </Button>
+                    </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuContent align="end" className="w-48 rounded-2xl border-white/70 shadow-clay">
                     <DropdownMenuItem asChild>
                       <Link href="/saved" className="cursor-pointer">
                         <Heart className="w-4 h-4 mr-2" /> Saved Listings
@@ -97,16 +108,16 @@ export function Navigation() {
                 </DropdownMenu>
               ) : (
                 <Link href="/login">
-                  <Button variant="outline" size="sm" className="rounded-full px-4">
+                  <button className="clay-btn-ghost text-sm px-4 py-2 ml-1" style={{ borderRadius: "var(--clay-radius-pill)" }}>
                     Sign in
-                  </Button>
+                  </button>
                 </Link>
               )
             )}
             <Link href="/waitlist">
-               <Button variant={isActive("/waitlist") ? "secondary" : "default"} size="sm" className="rounded-full px-5 font-bold shadow-md hover:shadow-lg transition-all">
+              <button className="clay-btn text-sm px-5 py-2 ml-1" style={{ borderRadius: "var(--clay-radius-pill)" }}>
                 Join Waitlist
-              </Button>
+              </button>
             </Link>
           </div>
 

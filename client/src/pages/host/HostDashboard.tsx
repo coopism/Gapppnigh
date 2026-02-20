@@ -98,26 +98,32 @@ export default function HostDashboard() {
   if (!host) return null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-card border-b border-border/50 sticky top-0 z-50">
+    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, var(--clay-sky-start) 0%, var(--clay-sky-mid) 45%, var(--clay-sky-end) 100%)" }}>
+      {/* cloud blobs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+        <div className="clay-cloud-blob animate-cloud-1 w-[500px] h-[300px] -top-16 -left-28 opacity-60" />
+        <div className="clay-cloud-blob animate-cloud-2 w-[420px] h-[260px] top-1/3 -right-20 opacity-50" />
+        <div className="clay-cloud-blob animate-cloud-3 w-[360px] h-[220px] bottom-20 left-1/4 opacity-45" />
+      </div>
+      <div className="relative" style={{ zIndex: 1 }}>
+      <header style={{ background: "rgba(255,255,255,0.78)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.60)", boxShadow: "0 2px 24px rgba(100,120,200,0.10)", position: "sticky", top: 0, zIndex: 50 }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <h1 className="text-xl font-bold font-display text-foreground">
-              Gap<span className="text-primary">Night</span>
+            <h1 className="text-xl font-bold font-display" style={{ color: "var(--clay-text)" }}>
+              Gap<span style={{ color: "var(--clay-primary)" }}>Night</span>
             </h1>
-            <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Host</span>
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ background: "rgba(74,143,231,0.12)", color: "var(--clay-primary)" }}>Host</span>
           </Link>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-foreground font-medium hidden sm:inline flex items-center gap-1.5">
+            <span className="text-sm font-medium hidden sm:inline" style={{ color: "var(--clay-text)" }}>
               {host.name}
               {host.idVerified && (
-                <span title="ID Verified"><ShieldCheck className="w-4 h-4 text-primary" /></span>
+                <span title="ID Verified" className="ml-1.5"><ShieldCheck className="w-4 h-4 inline" style={{ color: "var(--clay-primary)" }} /></span>
               )}
             </span>
-            
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
-              <LogOut className="w-4 h-4 mr-1" /> Sign Out
-            </Button>
+            <button onClick={handleLogout} className="clay-btn-ghost text-sm px-3 py-1.5 inline-flex items-center gap-1.5" style={{ borderRadius: "var(--clay-radius-pill)" }}>
+              <LogOut className="w-3.5 h-3.5" /> Sign Out
+            </button>
           </div>
         </div>
       </header>
@@ -142,19 +148,19 @@ export default function HostDashboard() {
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <Tabs defaultValue="overview">
-          <TabsList className="mb-6 bg-muted/50">
-            <TabsTrigger value="overview" className="gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> Overview</TabsTrigger>
-            <TabsTrigger value="properties" className="gap-1.5"><Home className="w-3.5 h-3.5" /> Properties</TabsTrigger>
-            <TabsTrigger value="bookings" className="gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Bookings</TabsTrigger>
-            <TabsTrigger value="earnings" className="gap-1.5"><DollarSign className="w-3.5 h-3.5" /> Earnings</TabsTrigger>
-            <TabsTrigger value="availability" className="gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Calendar</TabsTrigger>
-            <TabsTrigger value="messages" className="gap-1.5"><Mail className="w-3.5 h-3.5" /> Messages</TabsTrigger>
-            <TabsTrigger value="reviews" className="gap-1.5"><Star className="w-3.5 h-3.5" /> Reviews</TabsTrigger>
-            <TabsTrigger value="testimonials" className="gap-1.5"><MessageSquare className="w-3.5 h-3.5" /> Testimonials</TabsTrigger>
-            <TabsTrigger value="profile" className="gap-1.5"><UserCircle className="w-3.5 h-3.5" /> Profile</TabsTrigger>
+          <TabsList className="mb-6 flex flex-wrap gap-1 p-1.5 h-auto" style={{ background: "rgba(255,255,255,0.65)", borderRadius: "var(--clay-radius-pill)", border: "1px solid rgba(255,255,255,0.70)", boxShadow: "var(--clay-shadow-sm)" }}>
+            <TabsTrigger value="overview" className="gap-1.5 rounded-full text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"><TrendingUp className="w-3.5 h-3.5" /> Overview</TabsTrigger>
+            <TabsTrigger value="properties" className="gap-1.5 rounded-full text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"><Home className="w-3.5 h-3.5" /> Properties</TabsTrigger>
+            <TabsTrigger value="bookings" className="gap-1.5 rounded-full text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"><BookOpen className="w-3.5 h-3.5" /> Bookings</TabsTrigger>
+            <TabsTrigger value="earnings" className="gap-1.5 rounded-full text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"><DollarSign className="w-3.5 h-3.5" /> Earnings</TabsTrigger>
+            <TabsTrigger value="availability" className="gap-1.5 rounded-full text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"><CalendarDays className="w-3.5 h-3.5" /> Calendar</TabsTrigger>
+            <TabsTrigger value="messages" className="gap-1.5 rounded-full text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"><Mail className="w-3.5 h-3.5" /> Messages</TabsTrigger>
+            <TabsTrigger value="reviews" className="gap-1.5 rounded-full text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"><Star className="w-3.5 h-3.5" /> Reviews</TabsTrigger>
+            <TabsTrigger value="testimonials" className="gap-1.5 rounded-full text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"><MessageSquare className="w-3.5 h-3.5" /> Testimonials</TabsTrigger>
+            <TabsTrigger value="profile" className="gap-1.5 rounded-full text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"><UserCircle className="w-3.5 h-3.5" /> Profile</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview"><OverviewTab /></TabsContent>
+          <TabsContent value="overview" className="mt-4"><OverviewTab /></TabsContent>
           <TabsContent value="properties"><PropertiesTab /></TabsContent>
           <TabsContent value="bookings"><BookingsTab /></TabsContent>
           <TabsContent value="earnings"><EarningsTab /></TabsContent>
@@ -165,6 +171,7 @@ export default function HostDashboard() {
           <TabsContent value="profile"><ProfileTab host={host} onUpdate={checkAuth} /></TabsContent>
         </Tabs>
       </main>
+      </div>
     </div>
   );
 }
@@ -222,21 +229,21 @@ function OverviewTab() {
       {/* Stat cards row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {statCards.map((c) => (
-          <div key={c.label} className="bg-card rounded-xl border border-border/50 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <c.icon className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{c.label}</span>
+          <div key={c.label} className="clay-card-sm p-4 flex flex-col gap-1">
+            <div className="flex items-center gap-2 mb-1">
+              <c.icon className="w-4 h-4" style={{ color: "var(--clay-primary)" }} />
+              <span className="text-xs font-medium" style={{ color: "var(--clay-text-muted)" }}>{c.label}</span>
             </div>
-            <p className={`text-2xl font-bold ${c.accent || "text-foreground"}`}>{c.value}</p>
+            <p className={`text-2xl font-bold font-display ${c.accent || ""}`} style={{ color: c.accent ? undefined : "var(--clay-text)" }}>{c.value}</p>
           </div>
         ))}
       </div>
 
-      {/* Today section - Airbnb style */}
-      <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
-        <div className="px-5 py-4 border-b border-border/50">
-          <h2 className="text-lg font-bold text-foreground">Today</h2>
-          <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
+      {/* Today section */}
+      <div className="clay-card overflow-hidden" style={{ padding: 0 }}>
+        <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(107,122,154,0.12)" }}>
+          <h2 className="text-lg font-bold" style={{ color: "var(--clay-text)" }}>Today's Gap Night Requests</h2>
+          <p className="text-xs" style={{ color: "var(--clay-text-muted)" }}>{new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
         </div>
         <div className="divide-y divide-border/50">
           {/* Pending actions */}

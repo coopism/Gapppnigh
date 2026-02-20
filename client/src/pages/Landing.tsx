@@ -4,13 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useDeals } from "@/hooks/use-deals";
 import { Navigation } from "@/components/Navigation";
 import { PropertyDealCard } from "@/components/PropertyDealCard";
-import { Search, MapPin, ArrowRight, Star, X, Home } from "lucide-react";
+import { Search, MapPin, ArrowRight, Star, X, Home, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import { formatPrice } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import { FadeIn, BlurFade, StaggerContainer, StaggerItem, SlideIn } from "@/components/ui/motion";
+import { CloudBackground, ClayPanel, ClayChip, ClayDealCard } from "@/components/ui/clay";
 
 const LOCATION_SUGGESTIONS = [
   { city: "Melbourne", state: "VIC" },
@@ -104,100 +105,105 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      {/* Hero Section - Dictionary Definition Focus */}
-      <section className="relative overflow-visible min-h-[90vh] flex items-center bg-gradient-to-br from-background via-muted/30 to-background py-12 md:py-20">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,165,165,0.12),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(14,165,165,0.08),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(14,165,165,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(14,165,165,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
-        
-        <div className="container mx-auto px-4 relative">
-          <div className="max-w-3xl mx-auto">
-            {/* Dictionary Card */}
+    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, var(--clay-sky-start) 0%, var(--clay-sky-mid) 45%, var(--clay-sky-end) 100%)" }}>
+      {/* Cloud background blobs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+        <div className="clay-cloud-blob animate-cloud-1 w-[600px] h-[380px] -top-24 -left-40 opacity-70" />
+        <div className="clay-cloud-blob animate-cloud-2 w-[520px] h-[300px] top-[30%] -right-28 opacity-60" />
+        <div className="clay-cloud-blob animate-cloud-3 w-[440px] h-[260px] top-[55%] left-[20%] opacity-50" />
+        <div className="clay-cloud-blob animate-cloud-1 w-[360px] h-[220px] bottom-16 right-12 opacity-55" style={{ animationDelay: "5s" }} />
+        <div className="clay-cloud-blob animate-cloud-2 w-[300px] h-[190px] bottom-[40%] -left-20 opacity-45" style={{ animationDelay: "9s" }} />
+      </div>
+
+      <div className="relative" style={{ zIndex: 1 }}>
+        <Navigation />
+
+        {/* ── HERO ─────────────────────────────────────────────────────── */}
+        <section className="relative pt-16 pb-10 md:pt-24 md:pb-12 flex flex-col items-center">
+          <div className="w-full max-w-2xl mx-auto px-4">
             <BlurFade duration={0.7}>
-            <div className="bg-card/90 backdrop-blur-md rounded-3xl p-8 md:p-12 border border-border/50 shadow-2xl">
-              {/* Header with title and pronunciation */}
-              <FadeIn direction="none" duration={0.6} delay={0.2}>
-              <div className="mb-6 md:mb-8">
-                <h1 className="text-4xl md:text-6xl font-display font-bold text-foreground mb-2 md:mb-3">
-                  Gap Night
-                </h1>
-                <div className="flex items-center gap-2 md:gap-3 text-muted-foreground">
-                  <span className="text-lg md:text-xl italic">gap-night /ˈgæp nite/</span>
-                  <span className="text-xs md:text-sm bg-muted px-2 md:px-3 py-0.5 md:py-1 rounded-full font-medium">noun</span>
-                </div>
-              </div>
-              </FadeIn>
-              
-              {/* Definition */}
-              <div className="space-y-4 md:space-y-6">
-                <FadeIn delay={0.4} duration={0.6}>
-                <p className="text-lg md:text-2xl text-foreground leading-relaxed">
-                  An unsold night between hotel bookings — discounted so it doesn't go unused.
-                </p>
+              {/* Definition card */}
+              <div className="clay-panel p-8 md:p-10">
+                <FadeIn direction="none" duration={0.6} delay={0.1}>
+                  <h1 className="text-4xl md:text-5xl font-display font-bold mb-2" style={{ color: "var(--clay-text)" }}>
+                    Gap Night
+                  </h1>
+                  <div className="flex items-center gap-2 mb-5">
+                    <span className="text-base md:text-lg italic" style={{ color: "var(--clay-text-muted)" }}>
+                      /ˈgæp nīt/ &nbsp; gæp nāɪt
+                    </span>
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                      style={{ background: "rgba(74,143,231,0.12)", color: "var(--clay-primary)" }}>
+                      noun
+                    </span>
+                  </div>
                 </FadeIn>
-                <FadeIn delay={0.55} duration={0.6}>
-                <p className="hidden md:block text-lg text-muted-foreground">
-                  Hotels list these nights directly on GapNight, so you get real discounts on real rooms.
-                </p>
+
+                <FadeIn delay={0.3} duration={0.6}>
+                  <p className="text-lg md:text-xl leading-relaxed mb-2" style={{ color: "var(--clay-text)" }}>
+                    An unsold night between bookings —<br className="hidden md:block" />
+                    discounted so it doesn't go unused.
+                  </p>
+                  <p className="text-sm md:text-base mb-6" style={{ color: "var(--clay-text-muted)" }}>
+                    Hotels call them gap nights.{" "}
+                    <strong style={{ color: "var(--clay-text)" }}>We help you book them.</strong>
+                  </p>
                 </FadeIn>
-                
-                {/* Search Bar - Mobile optimized */}
-                <div 
-                  className="bg-muted rounded-2xl md:rounded-full border border-border/50 p-2 md:p-1.5 mt-6 md:mt-8 focus-within:ring-2 focus-within:ring-primary transition-all"
-                  ref={searchRef}
-                >
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+
+                {/* Search bar */}
+                <FadeIn delay={0.5} duration={0.6}>
+                  <div
+                    ref={searchRef}
+                    className="flex flex-col sm:flex-row gap-2 p-1.5 rounded-full"
+                    style={{
+                      background: "rgba(255,255,255,0.70)",
+                      border: "1.5px solid rgba(255,255,255,0.80)",
+                      boxShadow: "var(--clay-shadow-inset), var(--clay-shadow-xs)",
+                    }}
+                  >
                     <div className="flex-1 relative">
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary pointer-events-none" />
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--clay-text-muted)" }} />
                       <input
                         type="text"
                         placeholder="Where do you want to stay?"
                         value={search}
-                        onChange={(e) => {
-                          setSearch(e.target.value);
-                          setShowSuggestions(true);
-                        }}
+                        onChange={(e) => { setSearch(e.target.value); setShowSuggestions(true); }}
                         onFocus={() => setShowSuggestions(true)}
                         onKeyDown={handleKeyDown}
-                        className="w-full pl-12 pr-10 py-3.5 md:py-4 text-base bg-transparent border-0 outline-none placeholder:text-muted-foreground rounded-xl md:rounded-full"
+                        className="w-full pl-10 pr-8 py-3 text-sm bg-transparent border-0 outline-none rounded-full"
+                        style={{ color: "var(--clay-text)" }}
                         data-testid="input-hero-search"
                       />
                       {search && (
                         <button
-                          onClick={() => {
-                            setSearch("");
-                            setShowSuggestions(false);
-                          }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                          onClick={() => { setSearch(""); setShowSuggestions(false); }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-black/5 transition-colors"
                           aria-label="Clear search"
                           data-testid="button-clear-search"
                         >
-                          <X className="w-4 h-4" />
+                          <X className="w-3.5 h-3.5" style={{ color: "var(--clay-text-muted)" }} />
                         </button>
                       )}
-                      
+
                       {showSuggestions && search && filteredSuggestions.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-3 bg-popover rounded-2xl shadow-2xl border border-border/50 overflow-visible z-50 max-h-[320px] overflow-y-auto">
-                          <div className="p-3">
-                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-3 py-2">
+                        <div className="absolute top-full left-0 right-0 mt-2 z-50 clay-card overflow-hidden">
+                          <div className="p-2">
+                            <div className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5" style={{ color: "var(--clay-text-muted)" }}>
                               Popular Destinations
                             </div>
-                            {filteredSuggestions.slice(0, 6).map((loc) => (
+                            {filteredSuggestions.slice(0, 5).map((loc) => (
                               <button
                                 key={loc.city}
                                 onClick={() => handleSelectSuggestion(loc)}
-                                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors text-left hover-elevate"
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-primary/5"
                                 data-testid={`suggestion-${loc.city.toLowerCase()}`}
                               >
-                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <MapPin className="w-5 h-5 text-primary" />
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(74,143,231,0.10)" }}>
+                                  <MapPin className="w-4 h-4" style={{ color: "var(--clay-primary)" }} />
                                 </div>
                                 <div>
-                                  <div className="font-semibold text-foreground">{loc.city}</div>
-                                  <div className="text-sm text-muted-foreground">{loc.state}, Australia</div>
+                                  <div className="font-semibold text-sm" style={{ color: "var(--clay-text)" }}>{loc.city}</div>
+                                  <div className="text-xs" style={{ color: "var(--clay-text-muted)" }}>{loc.state}, Australia</div>
                                 </div>
                               </button>
                             ))}
@@ -205,179 +211,165 @@ export default function Landing() {
                         </div>
                       )}
                     </div>
-                    <Button 
-                      size="lg" 
+                    <button
                       onClick={handleSearch}
-                      className="px-6 rounded-xl md:rounded-full h-12 w-full md:w-auto"
+                      className="clay-btn px-6 py-3 text-sm shrink-0"
+                      style={{ borderRadius: "var(--clay-radius-pill)" }}
                       data-testid="button-hero-search"
                     >
-                      <Search className="w-5 h-5 mr-2" />
+                      <Search className="w-4 h-4 mr-1.5" />
                       Search
-                    </Button>
+                    </button>
                   </div>
-                </div>
-                
+                </FadeIn>
               </div>
-            </div>
             </BlurFade>
-          </div>
-        </div>
-      </section>
 
-      {/* Deals Preview Section */}
-      <section ref={dealsRef} className="py-12 md:py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <FadeIn direction="up" duration={0.5}>
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                Explore today's gap night stays
-              </h2>
-              <p className="text-muted-foreground mt-1">Real discounts on real rooms — book before they're gone</p>
-            </div>
-            <Button 
-              variant="outline" 
-              onClick={() => setLocation("/deals")}
-              className="rounded-full w-fit"
-              data-testid="button-view-all-deals"
-            >
-              View All Deals
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-          </FadeIn>
-
-          <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {isLoading && (
-              <div className="col-span-full flex flex-col items-center justify-center py-16">
-                <GapNightLogoLoader size={64} className="mb-4" />
-                <p className="text-muted-foreground text-sm animate-pulse">Finding gap nights...</p>
-              </div>
-            )}
-            {!isLoading && !hasDeals && !hasProperties && (
-              <div className="col-span-full flex flex-col items-center justify-center py-16">
-                <div className="text-center max-w-md">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
-                    <Search className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground mb-2">No stays found</h3>
-                  <p className="text-muted-foreground mb-6">
-                    No gap night stays available right now. Check back soon or try searching for a different location.
-                  </p>
-                  <Button 
-                    onClick={() => setLocation("/deals")}
-                    className="rounded-full"
-                    data-testid="button-browse-empty-deals"
-                  >
-                    Browse All Locations
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            )}
-            {/* Show deal cards if any */}
-            {!isLoading && hasDeals && deals!.slice(0, 6).map((deal) => {
-              const discountPercent = Math.round(
-                ((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100
-              );
-              const checkIn = format(parseISO(deal.checkInDate), "EEE d MMM");
-              const checkOut = format(parseISO(deal.checkOutDate), "EEE d MMM");
-
-              return (
-                <StaggerItem key={deal.id}>
-                <div 
-                  onClick={() => setLocation(`/deal/${deal.id}`)}
-                  className="bg-card rounded-2xl border border-border/50 overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group hover-elevate"
-                  data-testid={`preview-deal-${deal.id}`}
+            {/* CTA button below card */}
+            <FadeIn delay={0.8} duration={0.5}>
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={() => setLocation("/deals")}
+                  className="clay-btn px-8 py-3.5 text-base font-semibold inline-flex items-center gap-2"
+                  style={{ borderRadius: "var(--clay-radius-pill)" }}
+                  data-testid="button-browse-deals"
                 >
-                  <div className="flex gap-4 p-4">
-                    <div className="w-28 h-28 rounded-xl overflow-hidden shrink-0">
-                      <img
-                        src={deal.imageUrl}
-                        alt={deal.hotelName}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          e.currentTarget.src = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop';
-                        }}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1 mb-1">
-                        <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                        <span className="font-semibold text-sm">{deal.rating}</span>
-                        <span className="text-xs text-muted-foreground">({deal.reviewCount})</span>
-                      </div>
-                      <h3 className="font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                        {deal.hotelName}
-                      </h3>
-                      <p className="text-sm text-muted-foreground truncate">{deal.location}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{checkIn} → {checkOut}</p>
-                      
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-sm text-muted-foreground line-through">
-                          {formatPrice(deal.normalPrice, deal.currency)}
-                        </span>
-                        <span className="text-lg font-bold text-foreground">
-                          {formatPrice(deal.dealPrice, deal.currency)}
-                        </span>
-                        <Badge className="bg-amber-500 text-white text-xs">
-                          {discountPercent}% off
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
+                  Browse today's deals
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* ── DEALS PREVIEW ───────────────────────────────────────────── */}
+        <section ref={dealsRef} className="py-12 md:py-16 px-4">
+          <div className="max-w-6xl mx-auto">
+            <FadeIn direction="up" duration={0.5}>
+              <div className="text-center mb-6">
+                <h2 className="text-2xl md:text-3xl font-display font-bold mb-1" style={{ color: "var(--clay-text)" }}>
+                  Explore today's gap night stays
+                </h2>
+                <p className="text-sm md:text-base" style={{ color: "var(--clay-text-muted)" }}>
+                  Limited-time clearance deals on unsold hotel nights.
+                </p>
+              </div>
+
+              {/* Time-window chips */}
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
+                {[
+                  { label: "Tonight", icon: <Clock className="w-3.5 h-3.5" /> },
+                  { label: "Next 3 Days" },
+                  { label: "Next 7 Days" },
+                  { label: "All Upcoming" },
+                ].map(({ label, icon }, i) => (
+                  <ClayChip key={label} active={i === 0} icon={icon}
+                    onClick={() => setLocation(`/deals?when=${label.toLowerCase().replace(/ /g, "-")}`)}>
+                    {label}
+                  </ClayChip>
+                ))}
+              </div>
+            </FadeIn>
+
+            {isLoading && (
+              <div className="flex flex-col items-center justify-center py-16">
+                <GapNightLogoLoader size={56} className="mb-3" />
+                <p className="text-sm animate-pulse" style={{ color: "var(--clay-text-muted)" }}>Finding gap nights...</p>
+              </div>
+            )}
+
+            {!isLoading && !hasDeals && !hasProperties && (
+              <div className="text-center py-16">
+                <div className="clay-card-sm inline-flex items-center justify-center w-16 h-16 mb-4">
+                  <Search className="w-7 h-7" style={{ color: "var(--clay-text-muted)" }} />
                 </div>
+                <h3 className="text-xl font-bold mb-2" style={{ color: "var(--clay-text)" }}>No stays right now</h3>
+                <p className="mb-6 text-sm" style={{ color: "var(--clay-text-muted)" }}>Check back soon or browse all locations.</p>
+                <button className="clay-btn px-6 py-3 text-sm" style={{ borderRadius: "var(--clay-radius-pill)" }}
+                  onClick={() => setLocation("/deals")} data-testid="button-browse-empty-deals">
+                  Browse All Locations
+                </button>
+              </div>
+            )}
+
+            <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {!isLoading && hasDeals && deals!.slice(0, 6).map((deal) => {
+                const discountPercent = Math.round(((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100);
+                return (
+                  <StaggerItem key={deal.id}>
+                    <ClayDealCard
+                      image={deal.imageUrl}
+                      imageAlt={deal.hotelName}
+                      discountPercent={discountPercent}
+                      rating={Number(deal.rating)}
+                      reviewCount={deal.reviewCount}
+                      title={deal.hotelName}
+                      location={deal.location}
+                      originalPrice={formatPrice(deal.normalPrice, deal.currency)}
+                      currentPrice={formatPrice(deal.dealPrice, deal.currency)}
+                      isGapNight={true}
+                      isApprovalRequired={true}
+                      nightCount={`${format(parseISO(deal.checkInDate), "d MMM")} → ${format(parseISO(deal.checkOutDate), "d MMM")}`}
+                      onClick={() => setLocation(`/deal/${deal.id}`)}
+                      data-testid={`preview-deal-${deal.id}`}
+                    />
+                  </StaggerItem>
+                );
+              })}
+              {!isLoading && hasProperties && properties.slice(0, hasDeals ? 3 : 6).map((prop: any) => (
+                <StaggerItem key={prop.id}>
+                  <PropertyDealCard property={prop} />
                 </StaggerItem>
-              );
-            })}
-            {/* Show property cards */}
-            {!isLoading && hasProperties && properties.slice(0, hasDeals ? 3 : 6).map((prop: any) => (
-              <StaggerItem key={prop.id}>
-                <PropertyDealCard property={prop} />
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-        </div>
-      </section>
+              ))}
+            </StaggerContainer>
 
-      {/* ── TICKER STRIP ─────────────────────────────────────────────────── */}
-      {/* A departures-board feel: deals scrolling past, ambient urgency    */}
-      <section className="py-0 bg-background border-y border-border/40 overflow-hidden">
+            {/* Browse all CTA */}
+            {(hasDeals || hasProperties) && !isLoading && (
+              <div className="flex justify-center mt-10">
+                <button
+                  onClick={() => setLocation("/deals")}
+                  className="clay-btn px-8 py-3.5 text-base font-semibold inline-flex items-center gap-2"
+                  style={{ borderRadius: "var(--clay-radius-pill)" }}
+                  data-testid="button-view-all-deals"
+                >
+                  Browse All Deals
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── TICKER STRIP ───────────────────────────────────────────── */}
+        <section className="py-0 overflow-hidden" style={{ borderTop: "1px solid rgba(255,255,255,0.40)", borderBottom: "1px solid rgba(255,255,255,0.40)" }}>
         <div className="relative flex">
-          {/* Fade edges */}
-          <div className="absolute left-0 top-0 bottom-0 w-16 z-10 bg-gradient-to-r from-background to-transparent pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-16 z-10 bg-gradient-to-l from-background to-transparent pointer-events-none" />
-
-          {/* Scrolling track — duplicated for seamless loop */}
-          <div className="flex animate-ticker whitespace-nowrap py-3.5 gap-0">
+          <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: "linear-gradient(to right, var(--clay-sky-start), transparent)" }} />
+          <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: "linear-gradient(to left, var(--clay-sky-end), transparent)" }} />
+          <div className="flex animate-ticker whitespace-nowrap py-3 gap-0">
             {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-2.5 px-6 text-sm text-muted-foreground shrink-0"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                <span className="font-medium text-foreground">{item.location}</span>
-                <span className="text-muted-foreground/60">·</span>
+              <span key={i} className="inline-flex items-center gap-2 px-5 text-sm shrink-0" style={{ color: "var(--clay-text-muted)" }}>
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--clay-primary)" }} />
+                <span className="font-medium" style={{ color: "var(--clay-text)" }}>{item.location}</span>
+                <span className="opacity-50">·</span>
                 <span>{item.label}</span>
-                <span className="text-muted-foreground/60">·</span>
-                <span className="font-semibold text-primary">{item.price}</span>
+                <span className="opacity-50">·</span>
+                <span className="font-semibold" style={{ color: "var(--clay-primary)" }}>{item.price}</span>
               </span>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── HOST PITCH ───────────────────────────────────────────────────── */}
-      {/* Editorial layout. Not a feature list. Not a bullet grid.          */}
-      <section className="py-16 md:py-24 bg-background">
+        {/* ── HOST PITCH ────────────────────────────────────────────── */}
+        <section className="py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
 
             {/* Eyebrow */}
             <FadeIn direction="up" duration={0.5}>
               <div className="flex items-center gap-3 mb-10 md:mb-14">
-                <div className="h-px flex-1 bg-border/60 max-w-[48px]" />
-                <span className="text-xs font-bold tracking-[0.18em] uppercase text-muted-foreground">For hosts</span>
+                <div className="h-px flex-1 max-w-[48px]" style={{ background: "rgba(107,122,154,0.3)" }} />
+                <span className="text-xs font-bold tracking-[0.18em] uppercase" style={{ color: "var(--clay-text-muted)" }}>For hosts</span>
               </div>
             </FadeIn>
 
@@ -386,25 +378,25 @@ export default function Landing() {
               {/* Left — the big statement */}
               <SlideIn from="left">
                 <div>
-                  <h2 className="text-4xl md:text-5xl font-display font-bold text-foreground leading-[1.1] mb-6">
+                  <h2 className="text-4xl md:text-5xl font-display font-bold leading-[1.1] mb-6" style={{ color: "var(--clay-text)" }}>
                     Your spare night is someone's{" "}
-                    <span className="text-primary italic">perfect</span>{" "}
+                    <span style={{ color: "var(--clay-primary)" }} className="italic">perfect</span>{" "}
                     night.
                   </h2>
-                  <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-                    You've got a gap between bookings. It's sitting there, earning nothing. 
+                  <p className="text-lg leading-relaxed mb-8" style={{ color: "var(--clay-text-muted)" }}>
+                    You've got a gap between bookings. It's sitting there, earning nothing.{" "}
                     List it on GapNight and it's gone by morning.
                   </p>
-                  <Button
-                    size="lg"
+                  <button
                     onClick={() => setLocation("/host/onboarding")}
-                    className="rounded-full px-7 group"
+                    className="clay-btn px-7 py-3.5 text-base inline-flex items-center gap-2 group"
+                    style={{ borderRadius: "var(--clay-radius-pill)" }}
                     data-testid="button-become-host"
                   >
-                    <Home className="w-4 h-4 mr-2" />
+                    <Home className="w-4 h-4" />
                     List your property
-                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
-                  </Button>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
                 </div>
               </SlideIn>
 
@@ -422,8 +414,8 @@ export default function Landing() {
                       <span className="absolute left-0 top-1/2 -translate-y-1/2 text-6xl font-bold text-border/40 leading-none select-none tabular-nums">
                         {n}
                       </span>
-                      <div className="font-semibold text-foreground mb-1">{title}</div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
+                      <div className="font-semibold mb-1" style={{ color: "var(--clay-text)" }}>{title}</div>
+                      <p className="text-sm leading-relaxed" style={{ color: "var(--clay-text-muted)" }}>{body}</p>
                     </div>
                   ))}
 
@@ -435,13 +427,13 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────────────────────── */}
-      <footer className="py-12 bg-neutral-900 dark:bg-neutral-950 text-white/60">
+        {/* ── FOOTER ────────────────────────────────────────────────── */}
+        <footer className="py-12 mt-8" style={{ background: "rgba(26,43,74,0.95)", color: "rgba(255,255,255,0.65)" }}>
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2">
-              <div className="text-2xl font-bold text-white mb-3">
-                Gap<span className="text-primary">Night</span>
+              <div className="text-2xl font-bold mb-3" style={{ color: "#fff" }}>
+                Gap<span style={{ color: "var(--clay-primary-light)" }}>Night</span>
               </div>
               <p className="text-sm max-w-sm leading-relaxed">
                 Australia's marketplace for gap nights. Real properties, real hosts, real discounts on unsold 1-night openings.
@@ -472,7 +464,8 @@ export default function Landing() {
             </div>
           </div>
         </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }

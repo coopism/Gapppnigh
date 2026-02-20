@@ -449,7 +449,14 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, var(--clay-sky-start) 0%, var(--clay-sky-mid) 45%, var(--clay-sky-end) 100%)" }}>
+      {/* fixed cloud blobs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+        <div className="clay-cloud-blob animate-cloud-1 w-[550px] h-[340px] -top-16 -left-32 opacity-65" />
+        <div className="clay-cloud-blob animate-cloud-2 w-[480px] h-[280px] top-[28%] -right-24 opacity-55" />
+        <div className="clay-cloud-blob animate-cloud-3 w-[400px] h-[240px] bottom-20 left-[18%] opacity-50" />
+      </div>
+      <div className="relative" style={{ zIndex: 1 }}>
       <Navigation />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12 w-full">
@@ -497,7 +504,7 @@ export default function Home() {
 
         {/* Desktop: Full Search Bar - 3 sections */}
         <div className="hidden lg:flex justify-center mb-10">
-          <div className="bg-card rounded-full shadow-lg border border-border/50 p-2 flex items-center gap-1 max-w-3xl w-full">
+          <div className="clay-card p-2 flex items-center gap-1 max-w-3xl w-full" style={{ borderRadius: "var(--clay-radius-pill)", padding: "6px" }}>
             {/* WHERE - with autocomplete */}
             <div className="flex-1 min-w-0 px-4 py-2 border-b sm:border-b-0 sm:border-r border-border/50 relative" ref={searchRef}>
               <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
@@ -1199,6 +1206,7 @@ export default function Home() {
       />
 
       <Footer />
+      </div>
     </div>
   );
 }

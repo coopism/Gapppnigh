@@ -9,6 +9,14 @@ export default {
         lg: ".5625rem", /* 9px */
         md: ".375rem", /* 6px */
         sm: ".1875rem", /* 3px */
+        /* clay scale */
+        "clay-xs":  "8px",
+        "clay-sm":  "12px",
+        "clay-md":  "16px",
+        "clay-lg":  "24px",
+        "clay-xl":  "32px",
+        "clay-2xl": "40px",
+        "clay-pill":"9999px",
       },
       colors: {
         // Flat / base colors (regular buttons)

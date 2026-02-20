@@ -120,13 +120,12 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
         data-testid={`property-card-${property.id}`}
         onClick={!hasAvailability ? (e: React.MouseEvent) => e.preventDefault() : undefined}
       >
-      <div className={`bg-card rounded-xl overflow-hidden border transition-all duration-300 flex flex-col h-full ${
-        hasAvailability 
-          ? "border-border/50 hover:shadow-xl hover:border-primary/30" 
-          : "border-border/30 opacity-55 grayscale-[40%] cursor-default"
-      }`}>
+      <div className={`clay-card clay-hover overflow-hidden flex flex-col h-full transition-all duration-300 ${
+        !hasAvailability ? "opacity-55 grayscale-[40%] cursor-default" : ""
+      }`} style={{ padding: 0 }}>
         {/* Image Section */}
-        <div className="relative w-full aspect-[4/3] overflow-hidden">
+        <div className="relative w-full aspect-[4/3] overflow-hidden"
+          style={{ borderRadius: "var(--clay-radius-lg) var(--clay-radius-lg) 0 0" }}>
           <img
             src={property.coverImage || "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop"}
             alt={property.title}
@@ -135,119 +134,100 @@ export function PropertyDealCard({ property }: PropertyDealCardProps) {
               e.currentTarget.src = 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop';
             }}
           />
-          
-          {/* Discount badge - ONLY badge on image, top-left */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+
+          {/* Discount badge top-left */}
           {maxDiscount > 0 && (
-            <div className="absolute top-2 left-2 md:top-3 md:left-3">
-              <Badge className="bg-rose-500 text-white font-bold shadow-sm px-1.5 py-0.5 md:px-2 md:py-1 text-[10px] md:text-xs">
-                {maxDiscount}% OFF
-              </Badge>
+            <div className="absolute top-3 left-3">
+              <span className="clay-badge-deal">{maxDiscount}% OFF</span>
             </div>
           )}
 
-          {/* Save heart - top-right of image */}
-          <button
-            onClick={handleSaveClick}
-            className="absolute top-2 right-2 md:top-3 md:right-3 p-1.5 md:p-2 rounded-full bg-black/30 hover:bg-black/50 text-white transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-            aria-label={isSaved ? "Remove from saved" : "Save this property"}
-            aria-pressed={isSaved}
-          >
-            <HeartPulse isSaved={isSaved}>
-              <Heart 
-                className={`w-4 h-4 md:w-5 md:h-5 transition-all duration-200 ${
-                  isSaved 
-                    ? "fill-rose-500 text-rose-500" 
-                    : "fill-transparent text-white hover:fill-white/30"
-                }`} 
-              />
-            </HeartPulse>
-          </button>
+          {/* Rating badge top-right */}
+          {Number(property.averageRating) > 0 && (
+            <div className="absolute top-3 right-3">
+              <span className="clay-badge-rating">
+                <svg className="w-3 h-3 fill-amber-400" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                {property.averageRating}
+                {property.reviewCount > 0 && <span style={{ fontWeight: 400, color: "var(--clay-text-muted)" }}>({property.reviewCount})</span>}
+              </span>
+            </div>
+          )}
+
+          {/* Bottom row: Gap Night badge + save button */}
+          <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
+            {hasAvailability && (
+              <span className="clay-badge-gn">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Gap Night
+              </span>
+            )}
+            <button
+              onClick={handleSaveClick}
+              className="ml-auto p-2 rounded-full transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              style={{ background: "rgba(255,255,255,0.85)", boxShadow: "var(--clay-shadow-xs)" }}
+              aria-label={isSaved ? "Remove from saved" : "Save this property"}
+              aria-pressed={isSaved}
+            >
+              <HeartPulse isSaved={isSaved}>
+                <Heart className={`w-4 h-4 transition-all duration-200 ${isSaved ? "fill-rose-500 text-rose-500" : "fill-transparent text-rose-400"}`} />
+              </HeartPulse>
+            </button>
+          </div>
         </div>
 
-        {/* Content Section - Tightened spacing */}
-        <div className="p-2.5 md:p-3 flex flex-col flex-1">
-          {/* Title */}
-          <h3 className="font-semibold text-foreground text-sm md:text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors mb-1">
+        {/* Content Section */}
+        <div className="p-4 flex flex-col flex-1">
+          <h3 className="font-bold text-sm md:text-base leading-tight line-clamp-1 mb-1 group-hover:opacity-80 transition-opacity"
+            style={{ color: "var(--clay-text)", fontFamily: "var(--font-display)" }}>
             {property.title}
           </h3>
 
-          {/* Rating with review count */}
-          <div className="flex items-center gap-1.5 mb-1">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span className="font-bold text-xs md:text-sm">{Number(property.averageRating) > 0 ? property.averageRating : "New"}</span>
-            {property.reviewCount > 0 && (
-              <span className="text-xs text-muted-foreground">({property.reviewCount})</span>
-            )}
+          <div className="flex items-center gap-1 mb-1.5" style={{ color: "var(--clay-text-muted)" }}>
+            <MapPin className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-xs line-clamp-1">{property.city}, {property.state}</span>
           </div>
 
-          {/* Location */}
-          <div className="flex items-center text-muted-foreground text-xs md:text-sm mb-1">
-            <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 shrink-0" />
-            <span className="line-clamp-1">{property.city}, {property.state}</span>
-          </div>
-
-          {/* Highlight line (1 max) */}
           {property.nearbyHighlight && (
-            <div className="flex items-center text-primary text-xs mb-1">
-              <Navigation className="w-3 h-3 md:w-3 md:h-3 mr-1 shrink-0" />
-              <span className="line-clamp-1">{property.nearbyHighlight}</span>
+            <div className="flex items-center gap-1 mb-1.5" style={{ color: "var(--clay-primary)" }}>
+              <Navigation className="w-3 h-3 shrink-0" />
+              <span className="text-xs line-clamp-1">{property.nearbyHighlight}</span>
             </div>
           )}
 
-          {/* Room type + guests */}
-          <div className="flex items-center text-muted-foreground text-xs mb-1.5">
-            <Bed className="w-3 h-3 md:w-3.5 md:h-3.5 mr-1 shrink-0" />
-            <span className="line-clamp-1">{property.bedrooms} bed{property.bedrooms !== 1 ? "s" : ""} · {property.bathrooms} bath · {property.maxGuests || 2} guests</span>
+          <div className="flex items-center gap-1 mb-2" style={{ color: "var(--clay-text-muted)" }}>
+            <Bed className="w-3 h-3 shrink-0" />
+            <span className="text-xs">{property.bedrooms} bed · {property.bathrooms} bath · {property.maxGuests || 2} guests</span>
           </div>
 
-          {/* Amenities - max 3 icons + +N */}
-          {property.amenities && property.amenities.length > 0 && (
-            <div className="flex items-center gap-2 mb-2">
-              {property.amenities.slice(0, 3).map((amenity: string) => {
-                const Icon = AMENITY_ICONS[amenity];
-                if (!Icon) return null;
-                return (
-                  <div key={amenity} className="text-muted-foreground hover:text-primary transition-colors" title={amenity}>
-                    <Icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                  </div>
-                );
-              })}
-              {property.amenities.length > 3 && (
-                <span className="text-[10px] md:text-xs text-muted-foreground">+{property.amenities.length - 3}</span>
-              )}
-            </div>
-          )}
-
-          {/* Availability line */}
-          <div className={`flex items-center gap-1.5 text-[10px] md:text-xs mb-2 ${
-            hasAvailability ? "text-muted-foreground" : "text-rose-500 font-medium"
-          }`}>
-            <CalendarDays className="w-3 h-3 md:w-3.5 md:h-3.5" />
+          <div className={`flex items-center gap-1.5 text-xs mb-1.5 ${hasAvailability ? "" : "text-rose-500 font-medium"}`}
+            style={hasAvailability ? { color: "var(--clay-text-muted)" } : {}}>
+            <CalendarDays className="w-3 h-3" />
             <span>{getGapNightRangeLabel(property)}</span>
           </div>
 
-          {/* 24hr free cancellation badge */}
-          <div className="flex items-center gap-1.5 text-[10px] md:text-xs text-emerald-600 mb-2">
-            <svg className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            <span>Free cancellation within 24hrs</span>
+          <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: "#059669" }}>
+            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Free cancellation within 24hrs
           </div>
 
-          {/* Price block - standardized bottom-right */}
-          <div className="mt-auto pt-2 border-t border-border/50">
-            <div className="flex items-end justify-end">
-              <div className="text-right">
-                <div className="flex items-baseline gap-1.5 md:gap-2 justify-end">
-                  {lowestGapRate && lowestGapRate < property.baseNightlyRate ? (
-                    <>
-                      <span className="text-xs line-through text-muted-foreground/80">{formatPrice(basePrice, "AUD")}</span>
-                      <span className="font-bold text-base md:text-lg text-primary">{formatPrice(dealPrice, "AUD")}</span>
-                    </>
-                  ) : (
-                    <span className="font-bold text-base md:text-lg text-primary">{formatPrice(basePrice, "AUD")}</span>
-                  )}
-                </div>
-                <span className="text-[10px] md:text-xs text-muted-foreground">/ night</span>
+          <div className="mt-auto pt-3 flex items-end justify-between" style={{ borderTop: "1px solid rgba(107,122,154,0.12)" }}>
+            <span className="clay-badge-approval text-xs">
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Host approval
+            </span>
+            <div className="text-right">
+              <div className="flex items-baseline gap-1.5 justify-end">
+                {lowestGapRate && lowestGapRate < property.baseNightlyRate ? (
+                  <>
+                    <span className="text-xs line-through" style={{ color: "var(--clay-text-light)" }}>{formatPrice(basePrice, "AUD")}</span>
+                    <span className="font-bold text-base md:text-lg" style={{ color: "var(--clay-primary)", fontFamily: "var(--font-display)" }}>{formatPrice(dealPrice, "AUD")}</span>
+                  </>
+                ) : (
+                  <span className="font-bold text-base md:text-lg" style={{ color: "var(--clay-primary)", fontFamily: "var(--font-display)" }}>{formatPrice(basePrice, "AUD")}</span>
+                )}
               </div>
+              <span className="text-[10px]" style={{ color: "var(--clay-text-light)" }}>/ night</span>
             </div>
           </div>
         </div>

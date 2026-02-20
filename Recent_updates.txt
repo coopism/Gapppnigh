@@ -3225,3 +3225,79 @@ STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxx
 STRIPE_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxx
 ```
 Then run: `npm run dev`
+
+---
+
+## Claymorphism UI Redesign — Session [Latest]
+
+### Goal
+Full UI reskin to match claymorphism mockups. Soft sky gradient background, frosted glass cards, pill buttons, cloud blobs, clay shadows. No backend changes.
+
+### Files Created
+- `client/src/components/ui/clay/index.tsx` — Full clay component library:
+  - `CloudBackground` — animated cloud blob blobs on sky gradient
+  - `ClayCard`, `ClayPanel` — frosted glass card variants
+  - `ClayButton` — gradient pill button with shadow glow
+  - `ClayChip` — filter pill (active/inactive states)
+  - `ClayInput` — rounded pill input with icon slots
+  - `ClayBadgeDeal`, `ClayBadgeGN`, `ClayBadgeRating`, `ClayBadgeApproval`, `ClayBadgeAmber`
+  - `ClayNav` — sticky glassmorphic nav
+  - `ClayDealCard` — full deal card with image, badges, hover lift
+  - `ClayKPICard`, `ClayRequestRow` — host dashboard tiles
+
+### Files Modified
+
+**`client/src/index.css`**
+- Complete design token system via CSS custom properties:
+  `--clay-sky-start/mid/end`, `--clay-primary`, `--clay-text`, `--clay-text-muted`, `--clay-text-light`
+  `--clay-shadow-xs/sm/md/lg/xl/btn/btn-hover/inset`, `--clay-radius-xs/sm/md/lg/xl/2xl/pill`
+  `--clay-badge-deal/gn/amber`, `--clay-success/warning/danger`
+- CSS utility classes: `.clay-card`, `.clay-card-sm`, `.clay-panel`, `.clay-btn`, `.clay-btn-ghost`,
+  `.clay-chip`, `.clay-input`, `.clay-sky`, `.clay-cloud-blob`, `.clay-hover`
+- Badge utilities: `.clay-badge-deal`, `.clay-badge-gn`, `.clay-badge-rating`, `.clay-badge-approval`
+- Cloud drift keyframe animations: `cloud-drift-1/2/3`, `float-y`
+- Updated shadcn/ui CSS vars to match clay sky palette
+
+**`tailwind.config.ts`**
+- Added clay border-radius scale: `clay-xs` through `clay-pill`
+
+**`client/src/components/Navigation.tsx`**
+- Sticky frosted glass nav: `rgba(255,255,255,0.78)` + `backdrop-filter: blur(20px)`
+- Pill tab buttons for Browse Deals / Host Dashboard
+- Clay ghost button for Sign In, clay primary button for Join Waitlist
+
+**`client/src/pages/Landing.tsx`**
+- Full clay sky gradient page background with animated cloud blobs (fixed position)
+- Hero: `clay-panel` dictionary card with pill search bar embedded
+- Deals preview: time-window `ClayChip` filter row (Tonight / Next 3 Days / Next 7 Days / All Upcoming)
+- Deal cards: `ClayDealCard` component with discount badge, rating badge, Gap Night badge
+- Ticker strip: updated to clay sky fade edges
+- Host pitch: clay text colors
+- Footer: dark navy (`rgba(26,43,74,0.95)`)
+
+**`client/src/pages/Login.tsx`**
+- Clay sky background with cloud blobs
+- Frosted glass slim header
+- Pill tab switcher: Sign In (active) / Create Account
+- `clay-panel` main form with `clay-input` fields, `clay-btn` submit
+- 2-column OAuth buttons (Google / Facebook) as `clay-btn-ghost`
+
+**`client/src/components/PropertyDealCard.tsx`**
+- Card: `.clay-card.clay-hover` with `padding:0`
+- Image top: rounded-lg top corners, gradient overlay
+- Badges: `clay-badge-deal` (% OFF), `clay-badge-rating` (⭐ score), `clay-badge-gn` (Gap Night)
+- Save heart: white clay circle button
+- Price section: clay primary color for deal price, strikethrough for original
+- Host approval badge at bottom
+
+**`client/src/pages/Home.tsx`**
+- Clay sky gradient page background with animated cloud blobs
+- Desktop search bar: `clay-card` pill container replacing previous card
+- All text updated to clay token colors
+
+**`client/src/pages/host/HostDashboard.tsx`**
+- Clay sky background with cloud blobs
+- Glassmorphic sticky header
+- Tab list: pill-shaped container, rounded-full tab triggers
+- OverviewTab stat cards: `.clay-card-sm` with clay primary icon tint
+- Today section: `.clay-card` container with clay divider colors
