@@ -499,7 +499,11 @@ export const propertyBookings = pgTable("property_bookings", {
   // Stripe payment
   stripePaymentIntentId: text("stripe_payment_intent_id"),
   stripeSetupIntentId: text("stripe_setup_intent_id"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripePaymentMethodId: text("stripe_payment_method_id"),
   paymentCapturedAt: timestamp("payment_captured_at"),
+  paymentFailedAt: timestamp("payment_failed_at"),
+  paymentFailureReason: text("payment_failure_reason"),
   // Guest info
   guestFirstName: text("guest_first_name").notNull(),
   guestLastName: text("guest_last_name").notNull(),
@@ -1014,6 +1018,22 @@ export type InsertDealHold = z.infer<typeof insertDealHoldSchema>;
 // USER AUTHENTICATION TABLES
 // ========================================
 
+export const hostTestimonials = pgTable("host_testimonials", {
+  id: text("id").primaryKey(),
+  hostId: text("host_id").notNull().references(() => airbnbHosts.id),
+  propertyId: text("property_id").references(() => properties.id),
+  authorName: text("author_name"),
+  source: text("source"),
+  testimonialDate: text("testimonial_date"),
+  text: text("text").notNull(),
+  hasRights: boolean("has_rights").notNull().default(false),
+  canProvideProof: boolean("can_provide_proof").notNull().default(false),
+  proofUrl: text("proof_url"),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // UUID
   email: text("email").notNull().unique(),
@@ -1022,6 +1042,7 @@ export const users = pgTable("users", {
   phone: text("phone"),
   googleId: text("google_id"), // OAuth Google ID
   appleId: text("apple_id"), // OAuth Apple ID
+  stripeCustomerId: text("stripe_customer_id"), // Stripe Customer ID for off-session payments
   emailVerifiedAt: timestamp("email_verified_at"),
   status: text("status").default("active"), // active, suspended, banned
   fraudRisk: text("fraud_risk").default("none"), // none, low, medium, high

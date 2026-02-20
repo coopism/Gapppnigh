@@ -833,10 +833,22 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
       checkInDate, checkOutDate, guests, guestMessage, specialRequests,
       guestFirstName, guestLastName, guestEmail, guestPhone,
       paymentIntentId: frontendPaymentIntentId,
+      setupIntentId, stripeCustomerId, stripePaymentMethodId,
+      policyAccepted,
     } = req.body;
 
     if (!checkInDate || !checkOutDate || !guestFirstName || !guestLastName || !guestEmail) {
       return res.status(400).json({ error: "Missing required booking fields" });
+    }
+
+    if (!policyAccepted) {
+      return res.status(400).json({ error: "You must agree to the Booking & Liability Policy" });
+    }
+
+    // Must have either a setup intent (new flow) or legacy payment intent
+    const hasPaymentMethod = setupIntentId || stripePaymentMethodId || frontendPaymentIntentId;
+    if (!hasPaymentMethod) {
+      return res.status(400).json({ error: "Payment method is required to submit a booking" });
     }
 
     // Name-match check: verified ID name must match booking guest name
@@ -947,14 +959,8 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
       const serviceFee = Math.round(totalNightlyRate * 0.08);
       const totalPrice = totalNightlyRate + cleaningFee + serviceFee;
 
-      // Use the PaymentIntent already confirmed by the frontend's StripePaymentForm
-      // The frontend calls stripe.confirmCardPayment() which charges the card
-      const paymentIntentId = frontendPaymentIntentId || null;
-      if (!paymentIntentId) {
-        throw new Error("Payment is required to complete booking");
-      }
-
-      // Create booking
+      // New flow: SetupIntent used at submission — no charge yet, charge happens at host approval
+      // Legacy flow: paymentIntentId passed (already charged) — kept for backward compat
       const bookingId = `PB-${uuidv4().substring(0, 8).toUpperCase()}`;
       const [booking] = await trx
         .insert(propertyBookings)
@@ -975,7 +981,10 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
           guestMessage: guestMessage || null,
           specialRequests: specialRequests || null,
           status: "PENDING_APPROVAL",
-          stripePaymentIntentId: paymentIntentId,
+          stripePaymentIntentId: frontendPaymentIntentId || null,
+          stripeSetupIntentId: setupIntentId || null,
+          stripeCustomerId: stripeCustomerId || null,
+          stripePaymentMethodId: stripePaymentMethodId || null,
           guestFirstName,
           guestLastName,
           guestEmail: encryptPIIOrNull(guestEmail) ?? guestEmail,
@@ -994,7 +1003,7 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
           ));
       }
 
-      return { booking, paymentIntentId, totalNightlyRate, cleaningFee, serviceFee, totalPrice };
+      return { booking, totalNightlyRate, cleaningFee, serviceFee, totalPrice };
     });
 
     // Get host info for response time and email notification
@@ -1016,7 +1025,6 @@ router.post("/api/properties/:propertyId/book", async (req: any, res: Response) 
 
     res.json({
       booking: bookingResult.booking,
-      paymentIntentId: bookingResult.paymentIntentId,
       message: "Booking request submitted! The host will review your request.",
       estimatedResponseTime: host?.averageResponseTime || 60,
       pricing: {

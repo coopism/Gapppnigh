@@ -150,6 +150,7 @@ export default function HostDashboard() {
             <TabsTrigger value="availability" className="gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Calendar</TabsTrigger>
             <TabsTrigger value="messages" className="gap-1.5"><Mail className="w-3.5 h-3.5" /> Messages</TabsTrigger>
             <TabsTrigger value="reviews" className="gap-1.5"><Star className="w-3.5 h-3.5" /> Reviews</TabsTrigger>
+            <TabsTrigger value="testimonials" className="gap-1.5"><MessageSquare className="w-3.5 h-3.5" /> Testimonials</TabsTrigger>
             <TabsTrigger value="profile" className="gap-1.5"><UserCircle className="w-3.5 h-3.5" /> Profile</TabsTrigger>
           </TabsList>
 
@@ -160,6 +161,7 @@ export default function HostDashboard() {
           <TabsContent value="availability"><AvailabilityTab /></TabsContent>
           <TabsContent value="messages"><HostMessagesTab /></TabsContent>
           <TabsContent value="reviews"><HostReviewsTab /></TabsContent>
+          <TabsContent value="testimonials"><HostTestimonialsTab /></TabsContent>
           <TabsContent value="profile"><ProfileTab host={host} onUpdate={checkAuth} /></TabsContent>
         </Tabs>
       </main>
@@ -1897,12 +1899,189 @@ function QATab() {
   );
 }
 
+function HostTestimonialsTab() {
+  const { toast } = useToast();
+  const [testimonials, setTestimonials] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    text: "",
+    authorName: "",
+    source: "",
+    testimonialDate: "",
+    hasRights: false,
+    canProvideProof: false,
+  });
+
+  useEffect(() => { fetchTestimonials(); }, []);
+
+  const fetchTestimonials = async () => {
+    try {
+      const res = await fetch("/api/host/testimonials", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setTestimonials(data.testimonials || []);
+      }
+    } catch {} finally { setLoading(false); }
+  };
+
+  const handleSubmit = async () => {
+    if (!form.text.trim()) {
+      toast({ title: "Required", description: "Testimonial text is required.", variant: "destructive" });
+      return;
+    }
+    if (!form.hasRights || !form.canProvideProof) {
+      toast({ title: "Confirmation required", description: "You must tick both confirmation checkboxes.", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/host/testimonials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Testimonial submitted", description: "It will appear on your profile once approved." });
+        setShowForm(false);
+        setForm({ text: "", authorName: "", source: "", testimonialDate: "", hasRights: false, canProvideProof: false });
+        fetchTestimonials();
+      } else {
+        toast({ title: "Error", description: data.error || "Failed to submit", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to submit testimonial", variant: "destructive" });
+    } finally { setSubmitting(false); }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/host/testimonials/${id}`, { method: "DELETE", credentials: "include" });
+      if (res.ok) {
+        toast({ title: "Deleted" });
+        setTestimonials(prev => prev.filter(t => t.id !== id));
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+    }
+  };
+
+  const statusBadge = (status: string) => {
+    if (status === "approved") return <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full font-medium">Approved</span>;
+    if (status === "rejected") return <span className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-full font-medium">Rejected</span>;
+    return <span className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded-full font-medium">Pending Review</span>;
+  };
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold">Host-Provided Testimonials</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Add testimonials from guests or other sources. All testimonials are reviewed before appearing publicly.</p>
+        </div>
+        <Button size="sm" onClick={() => setShowForm(v => !v)}>
+          {showForm ? "Cancel" : "+ Add Testimonial"}
+        </Button>
+      </div>
+
+      {/* Compliance notice */}
+      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
+        <strong>Compliance notice:</strong> Testimonials submitted here will be labelled &ldquo;Host-provided testimonial&rdquo; on your public profile and listings. You must have the right to republish the content and must be able to provide proof of authenticity if requested. Fabricated or impersonated testimonials will result in account suspension.
+      </div>
+
+      {showForm && (
+        <div className="bg-card border border-border/50 rounded-xl p-5 space-y-4">
+          <h3 className="text-sm font-semibold">New Testimonial</h3>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Testimonial Text *</label>
+            <Textarea
+              value={form.text}
+              onChange={e => setForm(f => ({ ...f, text: e.target.value }))}
+              rows={4}
+              placeholder="What did the guest say about their stay or about you as a host?"
+              className="text-sm"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Author Name</label>
+              <Input value={form.authorName} onChange={e => setForm(f => ({ ...f, authorName: e.target.value }))} placeholder="e.g. Sarah M." className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Source</label>
+              <Input value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} placeholder="e.g. Airbnb, Google, Direct" className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
+              <Input value={form.testimonialDate} onChange={e => setForm(f => ({ ...f, testimonialDate: e.target.value }))} placeholder="e.g. January 2025" className="h-9 text-sm" />
+            </div>
+          </div>
+          <div className="space-y-2 pt-1">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={form.hasRights} onChange={e => setForm(f => ({ ...f, hasRights: e.target.checked }))} className="mt-0.5 accent-primary" />
+              <span className="text-sm text-muted-foreground">I have the rights to republish this testimonial and it accurately represents what was said.</span>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={form.canProvideProof} onChange={e => setForm(f => ({ ...f, canProvideProof: e.target.checked }))} className="mt-0.5 accent-primary" />
+              <span className="text-sm text-muted-foreground">I can provide proof of this testimonial (screenshot, email, etc.) if requested by GapNight.</span>
+            </label>
+          </div>
+          <Button onClick={handleSubmit} disabled={submitting} className="w-full sm:w-auto">
+            {submitting ? "Submitting..." : "Submit for Review"}
+          </Button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-8"><GapNightLogoLoader size={32} /></div>
+      ) : testimonials.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No testimonials yet. Add your first one above.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {testimonials.map(t => (
+            <div key={t.id} className="bg-card border border-border/50 rounded-xl p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-foreground leading-relaxed">&ldquo;{t.text}&rdquo;</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    {t.authorName && <span className="text-xs font-medium text-muted-foreground">&mdash; {t.authorName}</span>}
+                    {t.source && <span className="text-xs text-muted-foreground">via {t.source}</span>}
+                    {t.testimonialDate && <span className="text-xs text-muted-foreground">{t.testimonialDate}</span>}
+                    {statusBadge(t.status)}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDelete(t.id)}
+                  className="text-muted-foreground hover:text-destructive transition-colors shrink-0 text-xs"
+                  title="Delete"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProfileTab({ host, onUpdate }: { host: any; onUpdate: () => void }) {
   const { toast } = useToast();
   const [name, setName] = useState(host.name || "");
   const [phone, setPhone] = useState(host.phone || "");
   const [bio, setBio] = useState(host.bio || "");
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(host.profilePhoto || null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -1926,6 +2105,45 @@ function ProfileTab({ host, onUpdate }: { host: any; onUpdate: () => void }) {
     }
   };
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Profile photo must be under 5MB.", variant: "destructive" });
+      return;
+    }
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  const handleAvatarUpload = async () => {
+    if (!avatarFile) return;
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", avatarFile);
+      const res = await fetch("/api/host/avatar", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAvatarPreview(data.avatarUrl + "?t=" + Date.now());
+        setAvatarFile(null);
+        toast({ title: "Profile photo updated!" });
+        onUpdate();
+      } else {
+        const err = await res.json();
+        toast({ title: "Upload failed", description: err.error || "Failed to upload photo", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to upload photo", variant: "destructive" });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const responseTime = host.averageResponseTime || 60;
   const responseTimeLabel = responseTime < 60 ? `${responseTime} min` : `${Math.round(responseTime / 60)} hr${Math.round(responseTime / 60) !== 1 ? "s" : ""}`;
 
@@ -1933,15 +2151,45 @@ function ProfileTab({ host, onUpdate }: { host: any; onUpdate: () => void }) {
     <div className="max-w-2xl">
       {/* Profile header */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl shrink-0">
-          {(host.name || "H").charAt(0).toUpperCase()}
+        <div className="relative shrink-0">
+          {avatarPreview ? (
+            <img
+              src={avatarPreview}
+              alt={host.name}
+              className="w-16 h-16 rounded-full object-cover border-2 border-border"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl">
+              {(host.name || "H").charAt(0).toUpperCase()}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-primary/90 transition-colors"
+            title="Change photo"
+          >
+            <UserCircle className="w-3.5 h-3.5" />
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h2 className="text-2xl font-bold">{host.name}</h2>
           <p className="text-sm text-muted-foreground">{host.email}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             Host since {host.createdAt ? new Date(host.createdAt).toLocaleDateString("en-AU", { month: "long", year: "numeric" }) : "N/A"}
           </p>
+          {avatarFile && (
+            <Button size="sm" onClick={handleAvatarUpload} disabled={isUploadingAvatar} className="mt-2 h-7 text-xs">
+              {isUploadingAvatar ? "Uploading..." : "Save Photo"}
+            </Button>
+          )}
         </div>
       </div>
 

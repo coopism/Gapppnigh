@@ -84,6 +84,93 @@ export async function confirmPaymentSuccess(
 }
 
 /**
+ * Create a SetupIntent to tokenise a card without charging
+ * Used at booking submission — no charge, no hold
+ */
+export async function createSetupIntent(
+  customerId: string,
+  metadata: Record<string, string> = {}
+): Promise<Stripe.SetupIntent | null> {
+  if (!stripe) {
+    console.error("Stripe not configured");
+    return null;
+  }
+  try {
+    return await stripe.setupIntents.create({
+      customer: customerId,
+      payment_method_types: ["card"],
+      usage: "off_session",
+      metadata,
+    });
+  } catch (error) {
+    console.error("Failed to create setup intent:", error);
+    throw error;
+  }
+}
+
+/**
+ * Find or create a Stripe Customer for a user
+ */
+export async function findOrCreateStripeCustomer(
+  userId: string,
+  email: string,
+  name?: string
+): Promise<string | null> {
+  if (!stripe) return null;
+  try {
+    const existing = await stripe.customers.search({
+      query: `metadata['userId']:'${userId}'`,
+      limit: 1,
+    });
+    if (existing.data.length > 0) return existing.data[0].id;
+    const customer = await stripe.customers.create({
+      email,
+      name: name || undefined,
+      metadata: { userId },
+    });
+    return customer.id;
+  } catch (error) {
+    console.error("Failed to find/create Stripe customer:", error);
+    return null;
+  }
+}
+
+/**
+ * Charge a stored payment method off-session (used when host approves booking)
+ */
+export async function chargeStoredPaymentMethod(
+  customerId: string,
+  paymentMethodId: string,
+  amount: number,
+  currency: string = "aud",
+  metadata: Record<string, string> = {},
+  idempotencyKey?: string
+): Promise<Stripe.PaymentIntent | null> {
+  if (!stripe) {
+    console.error("Stripe not configured");
+    return null;
+  }
+  try {
+    const intent = await stripe.paymentIntents.create(
+      {
+        amount,
+        currency: currency.toLowerCase(),
+        customer: customerId,
+        payment_method: paymentMethodId,
+        off_session: true,
+        confirm: true,
+        metadata,
+      },
+      idempotencyKey ? { idempotencyKey } : undefined
+    );
+    return intent;
+  } catch (error) {
+    console.error("Failed to charge stored payment method:", error);
+    throw error;
+  }
+}
+
+/**
  * Create a refund for a payment intent
  */
 export async function createRefund(

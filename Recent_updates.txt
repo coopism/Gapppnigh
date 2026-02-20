@@ -1,4 +1,74 @@
 # Gap Night - Recent Updates Log
+# Last Updated: 2026-02-20 (Session 6)
+
+## Five Major Feature Implementations — Session 6 - Feb 20, 2026
+
+### Task 1: Booking & Liability Policy — Full Rewrite (`client/src/pages/BookingPolicy.tsx`)
+- Replaced placeholder policy with 13-section comprehensive legal document
+- Sections: Definitions, Platform Intermediary Status, Booking Approval & Payment Timing,
+  Authorisation to Charge Saved Payment Method, House Rules & Parties, Cancellations & Refunds,
+  Damage/Missing Goods/Excessive Cleaning & Smoking, Chargebacks, Limitation of Liability & Indemnity,
+  Dispute Resolution & Governing Law, Privacy & Data, Changes to Policy, Entire Agreement
+- Compliant with Australian Consumer Law (Competition and Consumer Act 2010 Cth)
+- Party prohibition section with explicit consequences
+- Chargeback clause with ACL carve-out
+- Damage evidence requirements and 48-hour host reporting window
+- Back link updated to /stays
+
+### Task 2: Payment Flow — SetupIntent at Submission, PaymentIntent at Host Approval
+- **`server/stripe.ts`**: Added `createSetupIntent()`, `findOrCreateStripeCustomer()`, `chargeStoredPaymentMethod()` functions
+- **`server/routes.ts`**: Added `POST /api/stripe/create-setup-intent` endpoint; updated imports
+- **`shared/schema.ts`**: Added `stripeCustomerId` + `stripePaymentMethodId` + `paymentFailedAt` + `paymentFailureReason` to `propertyBookings`; added `stripeCustomerId` to `users`
+- **`server/bootstrap.ts`**: DB migrations for all new columns (safe IF NOT EXISTS); also added `host_testimonials` table migration
+- **`server/property-routes.ts`**: `/book` endpoint now accepts `setupIntentId`, `stripeCustomerId`, `stripePaymentMethodId` instead of requiring a charged `paymentIntentId`; stores payment method for later charge; `policyAccepted` field now validated server-side
+- **`server/host-routes.ts`**: Approve booking route now charges stored payment method off-session at host approval time (new flow); legacy PaymentIntent flow retained for backward compat; payment failure sets `PAYMENT_FAILED` status and sends email
+- **`client/src/components/StripePaymentForm.tsx`**: Added `mode` prop (`"payment"` | `"setup"`); setup mode uses `stripe.confirmCardSetup()` instead of `confirmCardPayment()`; `onPaymentSuccess` now returns `{ paymentIntentId?, setupIntentId?, customerId?, paymentMethodId? }`; setup mode shows "Setting up secure card storage..." loader text
+
+### Task 3: Checkout Checkbox Microcopy Update (`client/src/pages/PropertyBooking.tsx`)
+- Checkbox label changed from verbose legal paragraph to: "I agree to the Booking & Liability Policy and authorise GapNight to charge my payment method for this booking if approved, and for verified damage/fees as described."
+- Added helper text below checkbox: "You won't be charged until the host approves. Damage charges require evidence and follow the policy."
+- Payment complete state text updated: "Your card has been saved securely. You won't be charged until the host approves your request."
+- `StripePaymentForm` now uses `mode="setup"` and passes `guestName`
+- State now tracks `setupIntentId`, `stripeCustomerId`, `stripePaymentMethodId` alongside `paymentIntentId`
+- `onSubmit` and `handlePaymentSuccess` both pass all four payment fields to the booking API
+
+### Task 4: Host Profile Picture Upload
+- **`server/host-routes.ts`**: New `POST /api/host/avatar` endpoint with dedicated `avatarUpload` multer config (5MB limit, JPEG/PNG/WebP only, stored in `uploads/host-avatars/`); updates `profilePhoto` column in DB
+- **`client/src/pages/host/HostDashboard.tsx`** (`ProfileTab`): Avatar preview with `<img>` or initial fallback; camera icon overlay button triggers hidden file input; file size validation (5MB); `handleAvatarChange` creates object URL preview; `handleAvatarUpload` POSTs FormData to `/api/host/avatar`; "Save Photo" button appears when file selected
+
+### Task 5: Host-Provided Testimonials
+- **`shared/schema.ts`**: New `hostTestimonials` pgTable with id, hostId, propertyId, authorName, source, testimonialDate, text, hasRights, canProvideProof, proofUrl, status (pending/approved/rejected), timestamps
+- **`server/bootstrap.ts`**: `CREATE TABLE IF NOT EXISTS host_testimonials` with indexes on host_id and status
+- **`server/host-routes.ts`**: Imported `hostTestimonials`; added 5 endpoints:
+  - `GET /api/host/testimonials` — authenticated host's own testimonials
+  - `POST /api/host/testimonials` — submit new testimonial (requires hasRights + canProvideProof both true)
+  - `DELETE /api/host/testimonials/:id` — delete own testimonial
+  - `GET /api/hosts/:hostId/testimonials` — public, approved only
+  - `GET /api/properties/:propertyId/testimonials` — public, approved only, property-scoped
+- **`client/src/pages/host/HostDashboard.tsx`**: New `HostTestimonialsTab` component with:
+  - Compliance notice banner (amber) explaining mandatory "Host-provided testimonial" labelling
+  - Add form with text, authorName, source, date fields + two mandatory confirmation checkboxes
+  - Status badges (Pending Review / Approved / Rejected) on each testimonial card
+  - Delete button per testimonial
+  - Testimonials tab added to dashboard tab list
+- **`client/src/pages/PropertyDetail.tsx`**: Fetches `/api/properties/:id/testimonials` on load; displays approved testimonials with mandatory amber "Host-provided testimonials" badge and disclaimer: "These testimonials were submitted by the host and have been reviewed by GapNight. They are not independently verified guest reviews."
+
+**Files Modified:**
+- `client/src/pages/BookingPolicy.tsx`
+- `client/src/components/StripePaymentForm.tsx`
+- `client/src/pages/PropertyBooking.tsx`
+- `client/src/pages/PropertyDetail.tsx`
+- `client/src/pages/host/HostDashboard.tsx`
+- `server/stripe.ts`
+- `server/routes.ts`
+- `server/property-routes.ts`
+- `server/host-routes.ts`
+- `server/bootstrap.ts`
+- `shared/schema.ts`
+
+---
+
+# Gap Night - Recent Updates Log
 # Last Updated: 2026-02-18 (Session 3)
 
 ## Calendar Sync UI + Platform-Agnostic iCal — Session 5d - Feb 18, 2026

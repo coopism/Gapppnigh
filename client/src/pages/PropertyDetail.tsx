@@ -266,6 +266,7 @@ export default function PropertyDetail() {
   const [photos, setPhotos] = useState<any[]>([]);
   const [qa, setQa] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [testimonials, setTestimonials] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRange, setSelectedRange] = useState<number | null>(null);
   const [nightFilter, setNightFilter] = useState<number>(1);
@@ -286,6 +287,13 @@ export default function PropertyDetail() {
           setPhotos(data.photos || []);
           setQa(data.qa || []);
           setReviews(data.reviews || []);
+          // Fetch testimonials for this property
+          if (data.property?.id) {
+            fetch(`/api/properties/${data.property.id}/testimonials`)
+              .then(r => r.ok ? r.json() : { testimonials: [] })
+              .then(td => setTestimonials(td.testimonials || []))
+              .catch(() => {});
+          }
           // Track recently viewed
           try {
             const key = "gn_recently_viewed";
@@ -852,6 +860,33 @@ export default function PropertyDetail() {
             )}
           </div>
         </div>
+
+        {/* Host-provided testimonials — mandatory compliance label */}
+        {testimonials.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-xl font-bold text-foreground">What guests have said</h2>
+            </div>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-700 px-2 py-0.5 rounded-full font-medium">
+                Host-provided testimonials
+              </span>
+              <span className="text-xs text-muted-foreground">These testimonials were submitted by the host and have been reviewed by GapNight. They are not independently verified guest reviews.</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {testimonials.map((t: any) => (
+                <div key={t.id} className="bg-card rounded-xl border border-border/50 p-4">
+                  <p className="text-sm text-foreground leading-relaxed mb-3">&ldquo;{t.text}&rdquo;</p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    {t.authorName && <span className="font-medium">&mdash; {t.authorName}</span>}
+                    {t.source && <span>via {t.source}</span>}
+                    {t.testimonialDate && <span>{t.testimonialDate}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
       <Footer />
     </div>

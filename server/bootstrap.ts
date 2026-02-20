@@ -1038,6 +1038,49 @@ async function createTables() {
     END $$;
   `);
 
+  // Migration: add Stripe customer/payment method columns for off-session payment flow
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='stripe_customer_id') THEN
+        ALTER TABLE "users" ADD COLUMN "stripe_customer_id" text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='property_bookings' AND column_name='stripe_customer_id') THEN
+        ALTER TABLE "property_bookings" ADD COLUMN "stripe_customer_id" text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='property_bookings' AND column_name='stripe_payment_method_id') THEN
+        ALTER TABLE "property_bookings" ADD COLUMN "stripe_payment_method_id" text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='property_bookings' AND column_name='payment_failed_at') THEN
+        ALTER TABLE "property_bookings" ADD COLUMN "payment_failed_at" timestamp;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='property_bookings' AND column_name='payment_failure_reason') THEN
+        ALTER TABLE "property_bookings" ADD COLUMN "payment_failure_reason" text;
+      END IF;
+    END $$;
+  `);
+
+  // Migration: add host_testimonials table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "host_testimonials" (
+      "id" text PRIMARY KEY NOT NULL,
+      "host_id" text NOT NULL REFERENCES "airbnb_hosts"("id") ON DELETE CASCADE,
+      "property_id" text REFERENCES "properties"("id") ON DELETE SET NULL,
+      "author_name" text,
+      "source" text,
+      "testimonial_date" text,
+      "text" text NOT NULL,
+      "has_rights" boolean DEFAULT false NOT NULL,
+      "can_provide_proof" boolean DEFAULT false NOT NULL,
+      "proof_url" text,
+      "status" text DEFAULT 'pending' NOT NULL,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL
+    )
+  `);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_host_testimonials_host_id ON "host_testimonials"("host_id")`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_host_testimonials_status ON "host_testimonials"("status")`);
+
   console.log("Indexes created!");
 }
 

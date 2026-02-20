@@ -65,6 +65,9 @@ export default function PropertyBooking() {
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingRef, setBookingRef] = useState("");
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [setupIntentId, setSetupIntentId] = useState<string | null>(null);
+  const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null);
+  const [stripePaymentMethodId, setStripePaymentMethodId] = useState<string | null>(null);
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [guestDetailsValid, setGuestDetailsValid] = useState(false);
   const [policyAgreed, setPolicyAgreed] = useState(false);
@@ -241,15 +244,16 @@ export default function PropertyBooking() {
   const stripeFee = priceQuote?.stripeFee || (subtotal > 0 ? Math.round(subtotal * 1.75 / 100) + 30 : 0);
   const grandTotal = priceQuote?.grandTotal || (subtotal + stripeFee);
 
-  const handlePaymentSuccess = async (intentId: string) => {
-    setPaymentIntentId(intentId);
+  const handlePaymentSuccess = async (result: { paymentIntentId?: string; setupIntentId?: string; customerId?: string; paymentMethodId?: string }) => {
+    setPaymentIntentId(result.paymentIntentId || null);
+    setSetupIntentId(result.setupIntentId || null);
+    setStripeCustomerId(result.customerId || null);
+    setStripePaymentMethodId(result.paymentMethodId || null);
     setPaymentComplete(true);
 
-    // Fix #8: Enforce policy checkbox before submitting booking
     if (!policyAgreed) {
       setPolicyError(true);
       toast({ title: "Policy Required", description: "Please agree to the Booking & Liability Policy before submitting.", variant: "destructive" });
-      // Scroll to policy checkbox
       document.getElementById("policy-agree")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -272,26 +276,28 @@ export default function PropertyBooking() {
             guestPhone: formData.phone,
             guestMessage: formData.guestMessage,
             specialRequests: formData.specialRequests,
-            paymentIntentId: intentId,
+            paymentIntentId: result.paymentIntentId || null,
+            setupIntentId: result.setupIntentId || null,
+            stripeCustomerId: result.customerId || null,
+            stripePaymentMethodId: result.paymentMethodId || null,
             policyAccepted: true,
           }),
         });
 
-        const result = await response.json();
+        const bookingResult = await response.json();
         if (!response.ok) {
-          // Fix #9: Show modal instead of auto-redirecting to contact page
-          if (result.error === "Name mismatch") {
+          if (bookingResult.error === "Name mismatch") {
             setShowVerificationModal(true);
             return;
           }
-          throw new Error(result.message || result.error || "Failed to create booking");
+          throw new Error(bookingResult.message || bookingResult.error || "Failed to create booking");
         }
 
-        setBookingRef(result.booking.id);
+        setBookingRef(bookingResult.booking.id);
         setBookingComplete(true);
         toast({
           title: "Booking Request Submitted!",
-          description: `Your booking reference is ${result.booking.id}`,
+          description: `Your booking reference is ${bookingResult.booking.id}`,
         });
       } catch (error: any) {
         toast({
@@ -314,8 +320,8 @@ export default function PropertyBooking() {
       toast({ title: "Policy Required", description: "Please agree to the Booking & Liability Policy before submitting.", variant: "destructive" });
       return;
     }
-    if (!property || !paymentComplete || !paymentIntentId) {
-      toast({ title: "Payment Required", description: "Please complete payment first.", variant: "destructive" });
+    if (!property || !paymentComplete) {
+      toast({ title: "Payment Required", description: "Please save your card details first.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
@@ -334,7 +340,11 @@ export default function PropertyBooking() {
           guestPhone: data.phone,
           guestMessage: data.guestMessage,
           specialRequests: data.specialRequests,
-          paymentIntentId,
+          paymentIntentId: paymentIntentId || null,
+          setupIntentId: setupIntentId || null,
+          stripeCustomerId: stripeCustomerId || null,
+          stripePaymentMethodId: stripePaymentMethodId || null,
+          policyAccepted: true,
         }),
       });
       const result = await response.json();
@@ -809,16 +819,16 @@ export default function PropertyBooking() {
                         <span className="font-semibold">Payment Authorized</span>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Your card has been authorized. Click below to submit your booking request.
+                        Your card has been saved securely. You won&rsquo;t be charged until the host approves your request.
                       </p>
                     </div>
                   ) : (!user || idStatus === "verified") ? (
                     <StripePaymentForm
                       amount={grandTotal / 100}
                       currency="AUD"
-                      dealId={propertyId}
-                      hotelName={property.title}
+                      mode="setup"
                       guestEmail={form.watch("email") || ""}
+                      guestName={`${form.watch("firstName") || ""} ${form.watch("lastName") || ""}`.trim()}
                       onBeforePayment={() => {
                         localStorage.setItem(`booking_form_prop_${propertyId}`, JSON.stringify(form.getValues()));
                       }}
@@ -840,9 +850,12 @@ export default function PropertyBooking() {
                       className={`mt-1 h-4 w-4 rounded border-border accent-primary shrink-0 ${policyError && !policyAgreed ? "ring-2 ring-destructive" : ""}`}
                     />
                     <label htmlFor="policy-agree" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
-                      I have read and agree to the <Link href="/booking-policy" className="text-primary font-medium hover:underline">GapNight Booking & Liability Policy</Link>, including the guest responsibilities, damage liability, cancellation terms, and dispute resolution process. I understand that I am financially responsible for any damage caused to the property during my stay.
+                      I agree to the <Link href="/booking-policy" className="text-primary font-medium hover:underline">Booking &amp; Liability Policy</Link> and authorise GapNight to charge my payment method for this booking if approved, and for verified damage/fees as described.
                     </label>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2 ml-7">
+                    You won&rsquo;t be charged until the host approves. Damage charges require evidence and follow the policy.
+                  </p>
                   {policyError && !policyAgreed && (
                     <p className="text-xs text-destructive mt-2 ml-7 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" /> You must agree to the policy before booking

@@ -13,24 +13,27 @@ import { useToast } from "@/hooks/use-toast";
 interface StripePaymentFormProps {
   amount: number;
   currency: string;
-  dealId: string;
-  hotelName: string;
+  dealId?: string;
+  hotelName?: string;
   guestEmail: string;
+  guestName?: string;
+  mode?: "payment" | "setup"; // "setup" = tokenise card only, charge at host approval
   onBeforePayment?: () => void;
-  onPaymentSuccess: (paymentIntentId: string) => void;
+  onPaymentSuccess: (result: { paymentIntentId?: string; setupIntentId?: string; customerId?: string; paymentMethodId?: string }) => void;
   onPaymentError: (error: string) => void;
   disabled?: boolean;
 }
 
 interface PaymentFormInnerProps {
   clientSecret: string;
+  mode: "payment" | "setup";
   onBeforePayment?: () => void;
-  onPaymentSuccess: (paymentIntentId: string) => void;
+  onPaymentSuccess: (result: { paymentIntentId?: string; setupIntentId?: string; customerId?: string; paymentMethodId?: string }) => void;
   onPaymentError: (error: string) => void;
   disabled?: boolean;
 }
 
-function PaymentFormInner({ clientSecret, onBeforePayment, onPaymentSuccess, onPaymentError, disabled }: PaymentFormInnerProps) {
+function PaymentFormInner({ clientSecret, mode, onBeforePayment, onPaymentSuccess, onPaymentError, disabled }: PaymentFormInnerProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -38,47 +41,46 @@ function PaymentFormInner({ clientSecret, onBeforePayment, onPaymentSuccess, onP
   const { toast } = useToast();
 
   const handlePayment = async () => {
-    if (!stripe || !elements) {
-      return;
-    }
-
+    if (!stripe || !elements) return;
     const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      return;
-    }
+    if (!cardElement) return;
 
     onBeforePayment?.();
     setIsProcessing(true);
     setErrorMessage(null);
 
     try {
-      // Use confirmCardPayment which doesn't redirect
-      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardElement,
-        },
-      });
-
-      if (error) {
-        setErrorMessage(error.message || "Payment failed");
-        onPaymentError(error.message || "Payment failed");
-        toast({
-          title: "Payment Failed",
-          description: error.message,
-          variant: "destructive",
+      if (mode === "setup") {
+        // SetupIntent flow: tokenise card, no charge
+        const { error, setupIntent } = await stripe.confirmCardSetup(clientSecret, {
+          payment_method: { card: cardElement },
         });
-      } else if (paymentIntent && paymentIntent.status === "succeeded") {
-        onPaymentSuccess(paymentIntent.id);
-        toast({
-          title: "Payment Successful",
-          description: "Your payment has been processed.",
+        if (error) {
+          setErrorMessage(error.message || "Card setup failed");
+          onPaymentError(error.message || "Card setup failed");
+          toast({ title: "Card Setup Failed", description: error.message, variant: "destructive" });
+        } else if (setupIntent && (setupIntent.status === "succeeded" || setupIntent.status === "processing")) {
+          const pmId = typeof setupIntent.payment_method === "string"
+            ? setupIntent.payment_method
+            : setupIntent.payment_method?.id;
+          onPaymentSuccess({ setupIntentId: setupIntent.id, paymentMethodId: pmId });
+          toast({ title: "Card Saved", description: "Your card has been saved securely. You won't be charged until the host approves." });
+        }
+      } else {
+        // Legacy PaymentIntent flow: charge immediately
+        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: { card: cardElement },
         });
-      } else if (paymentIntent && paymentIntent.status === "requires_action") {
-        // Handle 3D Secure - Stripe will show modal automatically
-        toast({
-          title: "Additional Verification Required",
-          description: "Please complete the verification...",
-        });
+        if (error) {
+          setErrorMessage(error.message || "Payment failed");
+          onPaymentError(error.message || "Payment failed");
+          toast({ title: "Payment Failed", description: error.message, variant: "destructive" });
+        } else if (paymentIntent && paymentIntent.status === "succeeded") {
+          onPaymentSuccess({ paymentIntentId: paymentIntent.id });
+          toast({ title: "Payment Successful", description: "Your payment has been processed." });
+        } else if (paymentIntent && paymentIntent.status === "requires_action") {
+          toast({ title: "Additional Verification Required", description: "Please complete the verification..." });
+        }
       }
     } catch (err: any) {
       const message = err.message || "An unexpected error occurred";
@@ -168,37 +170,34 @@ export function StripePaymentForm({
   dealId,
   hotelName,
   guestEmail,
+  guestName,
+  mode = "payment",
   onBeforePayment,
   onPaymentSuccess,
   onPaymentError,
   disabled,
 }: StripePaymentFormProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [customerId, setCustomerId] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const initRef = useRef(false);
 
-  // Validate email format
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  // Only initialize once when not disabled and has valid email
   useEffect(() => {
-    // Don't initialize if disabled, no email, invalid email, or already initialized
     if (disabled || !guestEmail || !isValidEmail(guestEmail) || initRef.current) {
       return;
     }
 
     const initStripe = async () => {
-      // Prevent duplicate calls
       if (initRef.current) return;
       initRef.current = true;
-      
       setIsLoading(true);
-      
+
       try {
-        // Get Stripe config
         const configResponse = await fetch("/api/stripe/config");
         const config = await configResponse.json();
 
@@ -210,43 +209,60 @@ export function StripePaymentForm({
 
         setStripePromise(loadStripe(config.publishableKey));
 
-        // Create payment intent
-        const intentResponse = await fetch("/api/stripe/create-payment-intent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            amount: Math.round(amount * 100), // Convert to cents
-            currency: currency.toLowerCase() === "aud" || currency === "$" ? "aud" : currency.toLowerCase(),
-            dealId,
-            hotelName,
-            guestEmail,
-          }),
-        });
+        let secret: string;
 
-        if (!intentResponse.ok) {
-          const errorData = await intentResponse.json();
-          throw new Error(errorData.message || "Failed to initialize payment");
+        if (mode === "setup") {
+          // SetupIntent: tokenise card, no charge
+          const intentResponse = await fetch("/api/stripe/create-setup-intent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ guestEmail, guestName }),
+          });
+          if (!intentResponse.ok) {
+            const errorData = await intentResponse.json();
+            throw new Error(errorData.message || "Failed to initialize card setup");
+          }
+          const data = await intentResponse.json();
+          secret = data.clientSecret;
+          setCustomerId(data.customerId || null);
+        } else {
+          // PaymentIntent: charge immediately (legacy / deals flow)
+          const intentResponse = await fetch("/api/stripe/create-payment-intent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              amount: Math.round(amount * 100),
+              currency: currency.toLowerCase() === "aud" || currency === "$" ? "aud" : currency.toLowerCase(),
+              dealId,
+              hotelName,
+              guestEmail,
+            }),
+          });
+          if (!intentResponse.ok) {
+            const errorData = await intentResponse.json();
+            throw new Error(errorData.message || "Failed to initialize payment");
+          }
+          const data = await intentResponse.json();
+          secret = data.clientSecret;
         }
 
-        const { clientSecret: secret } = await intentResponse.json();
         setClientSecret(secret);
         setIsInitialized(true);
       } catch (err: any) {
         setError(err.message || "Failed to initialize payment");
         onPaymentError(err.message || "Failed to initialize payment");
-        // Allow retry on error
         initRef.current = false;
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (amount > 0 && guestEmail && !disabled) {
+    if (guestEmail && !disabled) {
       initStripe();
     }
-  }, [disabled, guestEmail]); // Only depend on disabled and guestEmail presence
+  }, [disabled, guestEmail]);
 
-  // Show waiting state if disabled (guest details not complete)
   if (disabled && !isInitialized) {
     return (
       <div className="bg-muted/50 border border-border rounded-lg p-6 text-center">
@@ -262,7 +278,9 @@ export function StripePaymentForm({
     return (
       <div className="flex items-center justify-center p-8">
         <Loader className="w-6 h-6 animate-spin text-primary" />
-        <span className="ml-2 text-muted-foreground">Initializing secure payment...</span>
+        <span className="ml-2 text-muted-foreground">
+          {mode === "setup" ? "Setting up secure card storage..." : "Initializing secure payment..."}
+        </span>
       </div>
     );
   }
@@ -284,6 +302,10 @@ export function StripePaymentForm({
     );
   }
 
+  const wrappedSuccess = (result: { paymentIntentId?: string; setupIntentId?: string; customerId?: string; paymentMethodId?: string }) => {
+    onPaymentSuccess({ ...result, customerId: result.customerId || customerId || undefined });
+  };
+
   return (
     <Elements
       stripe={stripePromise}
@@ -304,8 +326,9 @@ export function StripePaymentForm({
     >
       <PaymentFormInner
         clientSecret={clientSecret}
+        mode={mode}
         onBeforePayment={onBeforePayment}
-        onPaymentSuccess={onPaymentSuccess}
+        onPaymentSuccess={wrappedSuccess}
         onPaymentError={onPaymentError}
         disabled={disabled}
       />

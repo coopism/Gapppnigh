@@ -9,7 +9,7 @@ import { authMiddleware, SESSION_COOKIE_NAME } from "./auth";
 import { v4 as uuidv4 } from "uuid";
 import { sendBookingConfirmationEmail, sendHotelInquiryNotification, sendWaitlistNotification } from "./email";
 import { authRateLimit, bookingRateLimit, paymentRateLimit } from "./rate-limit";
-import { createPaymentIntent, confirmPaymentSuccess, isStripeConfigured } from "./stripe";
+import { createPaymentIntent, confirmPaymentSuccess, isStripeConfigured, createSetupIntent, findOrCreateStripeCustomer } from "./stripe";
 import { registerUserAuthRoutes } from "./user-routes";
 import { optionalUserAuthMiddleware } from "./user-auth";
 import ownerRoutes from "./owner-routes";
@@ -1432,6 +1432,37 @@ export async function registerRoutes(
       }
       logError("POST /api/stripe/create-payment-intent", err);
       sendError(res, 500, "Failed to create payment intent");
+    }
+  });
+
+  // Create a SetupIntent to tokenise card without charging (new payment flow)
+  app.post("/api/stripe/create-setup-intent", paymentRateLimit, optionalUserAuthMiddleware, async (req: any, res) => {
+    try {
+      if (!isStripeConfigured()) {
+        return sendError(res, 503, "Payment processing not configured");
+      }
+      const { guestEmail, guestName, bookingRef } = req.body;
+      if (!guestEmail) return sendError(res, 400, "guestEmail is required");
+
+      const userId = req.user?.id || `guest-${uuidv4()}`;
+      const customerId = await findOrCreateStripeCustomer(userId, guestEmail, guestName || undefined);
+      if (!customerId) return sendError(res, 500, "Failed to create payment customer");
+
+      const setupIntent = await createSetupIntent(customerId, {
+        userId,
+        guestEmail,
+        bookingRef: bookingRef || "",
+      });
+      if (!setupIntent) return sendError(res, 500, "Failed to create setup intent");
+
+      res.json({
+        clientSecret: setupIntent.client_secret,
+        setupIntentId: setupIntent.id,
+        customerId,
+      });
+    } catch (err) {
+      logError("POST /api/stripe/create-setup-intent", err);
+      sendError(res, 500, "Failed to create setup intent");
     }
   });
 

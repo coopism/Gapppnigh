@@ -9,7 +9,7 @@ import {
   airbnbHosts, hostSessions, properties, propertyPhotos, 
   propertyAvailability, propertyBookings, propertyQA, propertyReviews,
   users, userIdVerifications, gapNightRules, icalConnections,
-  conversations, messages
+  conversations, messages, hostTestimonials
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, count, sql, asc, or, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
@@ -423,6 +423,62 @@ router.put("/api/host/profile", requireHostAuth, async (req: HostRequest, res: R
   } catch (error) {
     console.error("Update host profile error:", error);
     res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+// Host avatar upload
+const avatarDir = path.join(process.cwd(), "uploads", "host-avatars");
+if (!fs.existsSync(avatarDir)) {
+  fs.mkdirSync(avatarDir, { recursive: true });
+}
+
+const avatarStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, avatarDir),
+  filename: (req: any, _file, cb) => {
+    cb(null, `${req.hostId || "unknown"}.webp`);
+  },
+});
+
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = [".jpg", ".jpeg", ".png", ".webp"];
+    const allowedMime = ["image/jpeg", "image/png", "image/webp"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext) || allowedMime.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPEG, PNG, or WebP images are allowed for profile photos"));
+    }
+  },
+});
+
+router.post("/api/host/avatar", requireHostAuth, uploadRateLimit, avatarUpload.single("avatar"), async (req: HostRequest, res: Response) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ error: "No image uploaded" });
+    }
+
+    const avatarUrl = `/uploads/host-avatars/${req.hostId}.webp`;
+
+    // Rename uploaded file to hostId.webp (multer already names it correctly)
+    const finalPath = path.join(avatarDir, `${req.hostId}.webp`);
+    if (file.path !== finalPath) {
+      fs.renameSync(file.path, finalPath);
+    }
+
+    const [updated] = await db
+      .update(airbnbHosts)
+      .set({ profilePhoto: avatarUrl, updatedAt: new Date() })
+      .where(eq(airbnbHosts.id, req.hostId!))
+      .returning();
+
+    res.json({ host: updated, avatarUrl });
+  } catch (error) {
+    console.error("Host avatar upload error:", error);
+    res.status(500).json({ error: "Failed to upload avatar" });
   }
 });
 
@@ -1525,43 +1581,74 @@ router.post("/api/host/bookings/:bookingId/approve", requireHostAuth, async (req
       return res.status(404).json({ error: "Booking not found or already processed" });
     }
 
-    // Payment was already confirmed by the frontend's StripePaymentForm at booking time.
-    // Verify the PaymentIntent status with Stripe if available
-    if (booking.stripePaymentIntentId) {
+    // NEW FLOW: SetupIntent was used at submission — charge the stored payment method now
+    if (booking.stripeCustomerId && booking.stripePaymentMethodId && !booking.stripePaymentIntentId) {
       try {
-        const { stripe } = await import("./stripe");
-        if (stripe) {
-          const pi = await stripe.paymentIntents.retrieve(booking.stripePaymentIntentId);
-          if (pi.status === "requires_capture") {
-            // Legacy manual capture flow - capture it now
-            await stripe.paymentIntents.capture(booking.stripePaymentIntentId);
-          } else if (pi.status !== "succeeded") {
-            await db
-              .update(propertyBookings)
-              .set({ status: "PAYMENT_FAILED", updatedAt: new Date() })
-              .where(eq(propertyBookings.id, bookingId));
-            // Send payment failed email to guest
-            try {
-              const [prop] = await db.select().from(properties).where(eq(properties.id, booking.propertyId)).limit(1);
-              const { sendPaymentFailedEmail } = await import("./email");
-              await sendPaymentFailedEmail(booking, prop);
-            } catch (e) { console.error("Failed to send payment failed email:", e); }
-            return res.status(500).json({ error: `Payment not completed. Status: ${pi.status}` });
-          }
+        const { chargeStoredPaymentMethod } = await import("./stripe");
+        const charged = await chargeStoredPaymentMethod(
+          booking.stripeCustomerId,
+          booking.stripePaymentMethodId,
+          booking.totalPrice,
+          "aud",
+          { bookingId: booking.id, propertyId: booking.propertyId },
+          `booking-${booking.id}-charge`
+        );
+        if (!charged || (charged.status !== "succeeded" && charged.status !== "processing")) {
+          await db.update(propertyBookings).set({
+            status: "PAYMENT_FAILED",
+            paymentFailedAt: new Date(),
+            paymentFailureReason: `Charge status: ${charged?.status || "unknown"}`,
+            updatedAt: new Date(),
+          }).where(eq(propertyBookings.id, bookingId));
+          try {
+            const [prop] = await db.select().from(properties).where(eq(properties.id, booking.propertyId)).limit(1);
+            const { sendPaymentFailedEmail } = await import("./email");
+            await sendPaymentFailedEmail(booking, prop);
+          } catch (e) { console.error("Failed to send payment failed email:", e); }
+          return res.status(402).json({ error: "Payment failed. The guest's card was declined.", paymentFailed: true });
         }
-      } catch (stripeError) {
-        console.error("Stripe verification error:", stripeError);
-        await db
-          .update(propertyBookings)
-          .set({ status: "PAYMENT_FAILED", updatedAt: new Date() })
-          .where(eq(propertyBookings.id, bookingId));
-        // Send payment failed email to guest
+        // Store the new PaymentIntent ID
+        await db.update(propertyBookings).set({
+          stripePaymentIntentId: charged.id,
+          updatedAt: new Date(),
+        }).where(eq(propertyBookings.id, bookingId));
+      } catch (stripeError: any) {
+        console.error("Stripe charge error at approval:", stripeError);
+        await db.update(propertyBookings).set({
+          status: "PAYMENT_FAILED",
+          paymentFailedAt: new Date(),
+          paymentFailureReason: stripeError?.message || "Charge failed",
+          updatedAt: new Date(),
+        }).where(eq(propertyBookings.id, bookingId));
         try {
           const [prop] = await db.select().from(properties).where(eq(properties.id, booking.propertyId)).limit(1);
           const { sendPaymentFailedEmail } = await import("./email");
           await sendPaymentFailedEmail(booking, prop);
         } catch (e) { console.error("Failed to send payment failed email:", e); }
-        return res.status(500).json({ error: "Payment verification failed. The guest's card may have been declined." });
+        return res.status(402).json({ error: "Payment failed. The guest's card was declined.", paymentFailed: true });
+      }
+    } else if (booking.stripePaymentIntentId) {
+      // LEGACY FLOW: PaymentIntent was already confirmed at booking submission — verify it
+      try {
+        const { stripe } = await import("./stripe");
+        if (stripe) {
+          const pi = await stripe.paymentIntents.retrieve(booking.stripePaymentIntentId);
+          if (pi.status === "requires_capture") {
+            await stripe.paymentIntents.capture(booking.stripePaymentIntentId);
+          } else if (pi.status !== "succeeded") {
+            await db.update(propertyBookings).set({ status: "PAYMENT_FAILED", updatedAt: new Date() }).where(eq(propertyBookings.id, bookingId));
+            try {
+              const [prop] = await db.select().from(properties).where(eq(properties.id, booking.propertyId)).limit(1);
+              const { sendPaymentFailedEmail } = await import("./email");
+              await sendPaymentFailedEmail(booking, prop);
+            } catch (e) { console.error("Failed to send payment failed email:", e); }
+            return res.status(402).json({ error: `Payment not completed. Status: ${pi.status}`, paymentFailed: true });
+          }
+        }
+      } catch (stripeError) {
+        console.error("Stripe verification error:", stripeError);
+        await db.update(propertyBookings).set({ status: "PAYMENT_FAILED", updatedAt: new Date() }).where(eq(propertyBookings.id, bookingId));
+        return res.status(402).json({ error: "Payment verification failed.", paymentFailed: true });
       }
     }
 
@@ -2427,6 +2514,122 @@ router.post("/api/host/properties/:id/ical-sync", requireHostAuth, async (req: H
   } catch (err) {
     console.error("iCal manual sync error:", err);
     res.status(500).json({ error: "Failed to sync calendars" });
+  }
+});
+
+// ========================================
+// HOST TESTIMONIALS
+// ========================================
+
+const testimonialSchema = z.object({
+  text: z.string().min(10, "Testimonial must be at least 10 characters").max(2000),
+  authorName: z.string().max(100).optional(),
+  source: z.string().max(200).optional(),
+  testimonialDate: z.string().max(20).optional(),
+  propertyId: z.string().uuid().optional(),
+  hasRights: z.boolean(),
+  canProvideProof: z.boolean(),
+});
+
+// Get all testimonials for the authenticated host
+router.get("/api/host/testimonials", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const testimonials = await db
+      .select()
+      .from(hostTestimonials)
+      .where(eq(hostTestimonials.hostId, req.hostId!))
+      .orderBy(desc(hostTestimonials.createdAt));
+    res.json({ testimonials });
+  } catch (error) {
+    console.error("Get testimonials error:", error);
+    res.status(500).json({ error: "Failed to fetch testimonials" });
+  }
+});
+
+// Add a new testimonial
+router.post("/api/host/testimonials", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const parsed = testimonialSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
+    }
+    const { text, authorName, source, testimonialDate, propertyId, hasRights, canProvideProof } = parsed.data;
+
+    if (!hasRights || !canProvideProof) {
+      return res.status(400).json({ error: "You must confirm you have rights to republish and can provide proof if requested" });
+    }
+
+    // Verify property belongs to this host if provided
+    if (propertyId) {
+      const [prop] = await db.select().from(properties).where(and(eq(properties.id, propertyId), eq(properties.hostId, req.hostId!))).limit(1);
+      if (!prop) return res.status(403).json({ error: "Property not found or not yours" });
+    }
+
+    const [testimonial] = await db.insert(hostTestimonials).values({
+      id: uuidv4(),
+      hostId: req.hostId!,
+      propertyId: propertyId || null,
+      text: sanitizeInput(text) || text,
+      authorName: sanitizeInput(authorName) || null,
+      source: sanitizeInput(source) || null,
+      testimonialDate: testimonialDate || null,
+      hasRights,
+      canProvideProof,
+      status: "pending",
+    }).returning();
+
+    res.json({ testimonial });
+  } catch (error) {
+    console.error("Add testimonial error:", error);
+    res.status(500).json({ error: "Failed to add testimonial" });
+  }
+});
+
+// Delete a testimonial
+router.delete("/api/host/testimonials/:id", requireHostAuth, async (req: HostRequest, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const [existing] = await db.select().from(hostTestimonials).where(and(eq(hostTestimonials.id, id), eq(hostTestimonials.hostId, req.hostId!))).limit(1);
+    if (!existing) return res.status(404).json({ error: "Testimonial not found" });
+    await db.delete(hostTestimonials).where(eq(hostTestimonials.id, id));
+    res.json({ message: "Testimonial deleted" });
+  } catch (error) {
+    console.error("Delete testimonial error:", error);
+    res.status(500).json({ error: "Failed to delete testimonial" });
+  }
+});
+
+// Public: get approved testimonials for a host (used on listing/profile pages)
+router.get("/api/hosts/:hostId/testimonials", async (req: any, res: Response) => {
+  try {
+    const hostId = req.params.hostId as string;
+    const testimonials = await db
+      .select()
+      .from(hostTestimonials)
+      .where(and(eq(hostTestimonials.hostId, hostId), eq(hostTestimonials.status, "approved")))
+      .orderBy(desc(hostTestimonials.createdAt))
+      .limit(20);
+    res.json({ testimonials });
+  } catch (error) {
+    console.error("Get public testimonials error:", error);
+    res.status(500).json({ error: "Failed to fetch testimonials" });
+  }
+});
+
+// Public: get approved testimonials for a property
+router.get("/api/properties/:propertyId/testimonials", async (req: any, res: Response) => {
+  try {
+    const propertyId = req.params.propertyId as string;
+    const testimonials = await db
+      .select()
+      .from(hostTestimonials)
+      .where(and(eq(hostTestimonials.propertyId, propertyId), eq(hostTestimonials.status, "approved")))
+      .orderBy(desc(hostTestimonials.createdAt))
+      .limit(10);
+    res.json({ testimonials });
+  } catch (error) {
+    console.error("Get property testimonials error:", error);
+    res.status(500).json({ error: "Failed to fetch testimonials" });
   }
 });
 
