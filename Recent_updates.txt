@@ -3301,3 +3301,51 @@ Full UI reskin to match claymorphism mockups. Soft sky gradient background, fros
 - Tab list: pill-shaped container, rounded-full tab triggers
 - OverviewTab stat cards: `.clay-card-sm` with clay primary icon tint
 - Today section: `.clay-card` container with clay divider colors
+
+---
+
+## Claymorphism UI Redesign v2 — Mockup Fidelity Pass
+
+### Problem
+Initial clay implementation used CSS blur blobs for clouds which looked flat and lacked depth compared to the reference mockup.
+
+### Changes
+
+**`client/src/components/ui/clay/index.tsx` — CloudBackground rebuilt**
+- Replaced CSS blob divs with a full-screen `<svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">` cloud system
+- 4 gradient definitions: `cg-a` (white→lavender), `cg-b` (white→pink-lavender), `cg-c` (white→blue-lavender), `cg-hl` (white highlight overlay)
+- `cf-glow` feGaussianBlur filter for depth on foreground clouds
+- 3 cloud depth layers:
+  - **Background** (opacity 0.40–0.55): distant small clouds top-left, top-right, center-top
+  - **Mid** (opacity 0.60–0.80): large flanking clouds left/right + gap-filler clouds upper-center
+  - **Foreground** (opacity 0.75–0.92): large puffy cloud masses bottom-left, bottom-right, bottom-center, bottom edge
+- Each cloud is 8–12 overlapping ellipses with radial gradients + white highlight ellipses on top bulges
+- 12 star sparkle cross-shapes in upper sky area
+- Background gradient: `#b8c6ee → #c8cef8 → #d4d0f8 → ... → #f8f5ff`
+
+**`client/src/components/ui/clay/index.tsx` — ClayDealCard rebuilt**
+- Red pill `35% OFF` badge top-left (borderRadius: 6px, red with shadow)
+- Dark circular `GPN X.X` badge top-right (44px circle, navy with blur backdrop)
+- Translucent guest count pill badge bottom-left of image
+- White `Gap Night ✓` leaf-icon pill badge bottom-right
+- Title + yellow-dot location + blue-checkmark highlight row
+- Checklist: green-check Free cancellation, Host approval rows
+- Price panel right-aligned: "Tonight" label + large price + strikethrough original/mid prices + chevron
+
+**`client/src/pages/Landing.tsx` — Hero card rebuilt**
+- Now wrapped in `<CloudBackground>` (SVG version)
+- Hero card uses direct inline `style` for `rgba(255,255,255,0.88)` + `blur(24px)` with 24px radius
+- **Inline single-row search bar**: flex row — search icon → input → optional clear X → blue pill Search button, all inside one 48px-tall container
+- Compact definition card (32px padding, maxWidth 520px)
+- "Browse today's deals" CTA uses gradient blue pill button with glow shadow
+- Deals section: 2-column grid wrapped in `rgba(255,255,255,0.35)` frosted panel
+- "Browse All Deals" button: matching gradient blue pill
+
+**`client/src/pages/Login.tsx`**
+- Replaced CSS blob divs with `<CloudBackground>` SVG wrapper
+
+**`client/src/pages/Home.tsx`**
+- Replaced CSS blob divs with `<CloudBackground>` SVG wrapper
+
+**`client/src/pages/host/HostDashboard.tsx`**
+- Replaced CSS blob divs with `<CloudBackground>` SVG wrapper
