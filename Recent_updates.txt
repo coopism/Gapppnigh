@@ -3516,3 +3516,89 @@ Initial clay implementation used CSS blur blobs for clouds which looked flat and
 | CURTAIN_OFFSET_END | 500 | Complete reveal 500px after curtain |
 | CURTAIN_MAX_TRANSLATE | 180px | Max upward movement |
 | CURTAIN_MAX_BLUR | 10px | Max blur at exit |
+
+---
+
+## Design Fidelity Pass v4 — Image-Texture Architecture (replacing SVG ellipses)
+
+### WHY: SVG ellipses fundamentally cannot match the mockup
+- Procedural ellipses produce giant smooth blobs → frosted glass, not "puffy clay cloud puffs"
+- Mockup has 100+ small dense puffs with warm highlights + cool shadows + density
+- No amount of ellipse tuning can replicate that texture
+- Solution: use pre-rendered image textures as background
+
+### ARCHITECTURE CHANGE
+- **REMOVED**: `CloudBackdrop`, `CloudCurtain`, `WavyCloudDivider` (SVG ellipse components)
+- **ADDED**: `HeroBackground.tsx` — image-texture bg with parallax + noise grain overlay
+- **ADDED**: `CloudBankCurtain.tsx` — image-texture overlay with scroll-linked reveal
+- Old `CloudBackdrop.tsx` file preserved but no longer imported in Landing
+
+### New files
+- `client/src/components/ui/clay/HeroBackground.tsx` — fixed bg layer with:
+  - `clouds-hero.webp` as background-image (cover, center top)
+  - Fallback sky gradient if image not yet available
+  - Subtle parallax: `translate3d(0, -sy*0.12, 0)` on scroll
+  - SVG fractal noise overlay at 3% opacity for grain texture
+  - Image preload with load state detection
+  - Debug HUD: "BG ty:-Xpx (12%) [IMG/FALLBACK]"
+
+- `client/src/components/ui/clay/CloudBankCurtain.tsx` — scroll-linked overlay:
+  - `clouds-bank.webp` as background (transparent cloud bank)
+  - Fallback gradient if image not available
+  - Scroll range: [offsetTop - 200, offsetTop + 500]
+  - Animation: translateY 0→-180px, opacity 1→0, blur 0→10px
+  - Debug label: "CURTAIN y:Xpx op:X.XX [IMG/FALLBACK]"
+
+- `client/public/clay/README.md` — placeholder for asset files
+
+### Landing.tsx changes
+- Import `HeroBackground` + `CloudBankCurtain` instead of old SVG components
+- Wrap page in `<HeroBackground>` instead of `<CloudBackdrop>`
+- `<CloudBankCurtain />` sits between hero section and deals section
+- All existing hero content (definition card, search, CTA) preserved exactly
+
+### ASSET FILES NEEDED (drop into client/public/clay/)
+- `clouds-hero.webp` — 2880×1800px puffy clay cloud hero background
+- `clouds-bank.webp` — 2880×600px transparent cloud bank overlay
+
+### ASSET PROMPTS (for Nano Banana Pro or similar)
+
+**Prompt 1: clouds-hero.webp (full hero background)**
+```
+A seamless dreamy sky background for a modern web app hero section.
+Soft puffy claymorphism-style clouds scattered across a pastel lavender-blue sky.
+Many small to medium cloud puffs (NOT large smooth blobs), densely layered.
+Colors: pastel periwinkle sky (#b8c6ec to #e4eafe gradient top to bottom),
+white and cream cloud puffs with subtle warm pink highlights on top edges
+and cool blue-lavender shadows underneath.
+Soft diffused lighting from upper left. Clay-like matte texture, not glossy.
+Very slight warm grain/noise for organic feel.
+No text, no objects, no horizon line — just clouds and sky filling the entire frame.
+Aspect ratio: 16:10 (2880×1800px). High quality, web-optimized.
+Style reference: claymorphism UI design, pastel 3D render aesthetic.
+```
+
+**Prompt 2: clouds-bank.webp (transparent cloud bank overlay)**
+```
+A horizontal cloud bank strip on a TRANSPARENT background (PNG with alpha channel).
+Dense puffy claymorphism-style clouds clustered along the bottom 60% of the frame,
+fading to fully transparent at the top.
+Many small overlapping cloud puffs creating a thick bank/curtain effect.
+Colors: white and cream puffs with subtle warm pink top-highlights
+and cool lavender-blue shadows underneath.
+The top edge is organic and irregular (puffy cloud tops, not a straight line).
+The bottom edge fades to solid white/cream.
+Soft diffused lighting, clay-like matte texture.
+Size: 2880×600px. Transparent background (save as PNG or WebP with alpha).
+Style: claymorphism UI, same aesthetic as the hero background above.
+```
+
+### QA CHECKLIST (after dropping in images)
+1. At scrollY=0: hero shows puffy cloud texture background, grain visible on close inspection
+2. At scrollY=0: debug HUD shows "BG ty:-0px (12%) [IMG]"
+3. Scroll slowly: background drifts upward subtly (12% speed)
+4. At hero bottom (~scrollY 400): cloud bank curtain starts animating
+5. At scrollY=700: curtain should be mostly faded (op ~0.28)
+6. At scrollY=900+: curtain fully gone, deals section clean
+7. Cloud texture should have many small puffs, warm highlights — NOT smooth blobs
+8. Grain overlay prevents flat airbrush look
