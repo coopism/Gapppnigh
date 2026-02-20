@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export function CloudBackground({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn("relative min-h-screen overflow-x-hidden", className)}
-      style={{ background: "linear-gradient(180deg, #b8c6ee 0%, #c8cef8 10%, #d4d0f8 25%, #ddd8f8 40%, #e6e0fa 55%, #ede8ff 70%, #f2eeff 85%, #f8f5ff 100%)" }}>
+      style={{ background: "linear-gradient(180deg,#4a6abf 0%,#6282cc 8%,#849ed8 18%,#a8bee8 32%,#c2d2f4 48%,#d8e4ff 65%,#e8eeff 82%,#f4f0ff 100%)" }}>
       {/* Full-screen SVG cloud layer */}
       <svg
         className="fixed inset-0 w-full h-full pointer-events-none select-none"
@@ -21,156 +21,189 @@ export function CloudBackground({ children, className }: { children: React.React
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          {/* Cloud gradient — white top, lavender bottom */}
-          <radialGradient id="cg-a" cx="50%" cy="35%" r="65%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="1"/>
-            <stop offset="55%" stopColor="#ede8ff" stopOpacity="0.95"/>
-            <stop offset="100%" stopColor="#d4ccf8" stopOpacity="0"/>
+          {/* Cloud body — cool white */}
+          <radialGradient id="cg-a" cx="50%" cy="26%" r="60%">
+            <stop offset="0%"   stopColor="#ffffff" stopOpacity="1"/>
+            <stop offset="40%"  stopColor="#f0f5ff" stopOpacity="0.98"/>
+            <stop offset="70%"  stopColor="#d4e0f8" stopOpacity="0.80"/>
+            <stop offset="100%" stopColor="#b4c4ec" stopOpacity="0"/>
           </radialGradient>
-          {/* Cloud gradient — pinkish */}
-          <radialGradient id="cg-b" cx="50%" cy="30%" r="65%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="1"/>
-            <stop offset="50%" stopColor="#f8e8ff" stopOpacity="0.92"/>
-            <stop offset="100%" stopColor="#e0d0f8" stopOpacity="0"/>
+          {/* Cloud body — warm white */}
+          <radialGradient id="cg-b" cx="50%" cy="22%" r="60%">
+            <stop offset="0%"   stopColor="#ffffff" stopOpacity="1"/>
+            <stop offset="36%"  stopColor="#f6f0ff" stopOpacity="0.97"/>
+            <stop offset="68%"  stopColor="#ddd0f8" stopOpacity="0.80"/>
+            <stop offset="100%" stopColor="#beb0ec" stopOpacity="0"/>
           </radialGradient>
-          {/* Cloud gradient — cooler blue-lavender */}
-          <radialGradient id="cg-c" cx="50%" cy="40%" r="65%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="1"/>
-            <stop offset="60%" stopColor="#dce4ff" stopOpacity="0.9"/>
-            <stop offset="100%" stopColor="#c4ccf4" stopOpacity="0"/>
+          {/* Cloud body — bluish white */}
+          <radialGradient id="cg-c" cx="50%" cy="30%" r="60%">
+            <stop offset="0%"   stopColor="#ffffff" stopOpacity="1"/>
+            <stop offset="42%"  stopColor="#e8f0ff" stopOpacity="0.97"/>
+            <stop offset="72%"  stopColor="#c8d8f4" stopOpacity="0.80"/>
+            <stop offset="100%" stopColor="#a8b8e0" stopOpacity="0"/>
           </radialGradient>
-          {/* Highlight overlay */}
-          <radialGradient id="cg-hl" cx="50%" cy="30%" r="55%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.85"/>
+          {/* Cloud underside shadow */}
+          <radialGradient id="cg-shad" cx="50%" cy="72%" r="55%">
+            <stop offset="0%"   stopColor="#7890c8" stopOpacity="0.26"/>
+            <stop offset="55%"  stopColor="#90a8d4" stopOpacity="0.10"/>
+            <stop offset="100%" stopColor="#a8b8e0" stopOpacity="0"/>
+          </radialGradient>
+          {/* Pure white top highlight */}
+          <radialGradient id="cg-hl" cx="50%" cy="16%" r="50%">
+            <stop offset="0%"   stopColor="#ffffff" stopOpacity="1"/>
+            <stop offset="52%"  stopColor="#ffffff" stopOpacity="0.65"/>
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0"/>
           </radialGradient>
-          {/* Soft glow filter */}
+          {/* Glow + merge filter */}
           <filter id="cf-glow" x="-15%" y="-15%" width="130%" height="130%">
-            <feGaussianBlur stdDeviation="12" result="blur"/>
+            <feGaussianBlur stdDeviation="14" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
           <filter id="cf-soft" x="-5%" y="-5%" width="110%" height="110%">
-            <feGaussianBlur stdDeviation="6"/>
+            <feGaussianBlur stdDeviation="7"/>
           </filter>
         </defs>
 
         {/* ── BACKGROUND CLOUD LAYER (far, small, low opacity) ── */}
         {/* BG Cloud 1 — top-left distant */}
-        <g opacity="0.55" style={{ animation: "cloud-drift-1 28s ease-in-out infinite" }}>
+        <g opacity="0.70" style={{ animation: "cloud-drift-1 28s ease-in-out infinite" }}>
+          <ellipse cx="180" cy="128" rx="172" ry="68" fill="url(#cg-shad)"/>
           <ellipse cx="180" cy="110" rx="170" ry="90" fill="url(#cg-c)"/>
           <ellipse cx="100" cy="130" rx="130" ry="75" fill="url(#cg-c)"/>
           <ellipse cx="260" cy="125" rx="140" ry="70" fill="url(#cg-c)"/>
-          <ellipse cx="160" cy="70" rx="110" ry="70" fill="url(#cg-c)"/>
+          <ellipse cx="160" cy="70"  rx="110" ry="70" fill="url(#cg-a)"/>
           <ellipse cx="320" cy="145" rx="110" ry="60" fill="url(#cg-c)"/>
+          <ellipse cx="155" cy="65"  rx="76"  ry="52" fill="url(#cg-hl)"/>
         </g>
         {/* BG Cloud 2 — top-right distant */}
-        <g opacity="0.5" style={{ animation: "cloud-drift-2 32s ease-in-out infinite" }}>
-          <ellipse cx="1280" cy="90" rx="160" ry="85" fill="url(#cg-a)"/>
+        <g opacity="0.68" style={{ animation: "cloud-drift-2 32s ease-in-out infinite" }}>
+          <ellipse cx="1280" cy="108" rx="162" ry="65" fill="url(#cg-shad)"/>
+          <ellipse cx="1280" cy="90"  rx="160" ry="85" fill="url(#cg-a)"/>
           <ellipse cx="1180" cy="115" rx="140" ry="70" fill="url(#cg-a)"/>
-          <ellipse cx="1380" cy="115" rx="130" ry="65" fill="url(#cg-a)"/>
-          <ellipse cx="1240" cy="55" rx="120" ry="72" fill="url(#cg-a)"/>
+          <ellipse cx="1380" cy="115" rx="130" ry="65" fill="url(#cg-b)"/>
+          <ellipse cx="1240" cy="55"  rx="120" ry="72" fill="url(#cg-a)"/>
           <ellipse cx="1440" cy="130" rx="110" ry="55" fill="url(#cg-a)"/>
+          <ellipse cx="1238" cy="50"  rx="84"  ry="56" fill="url(#cg-hl)"/>
         </g>
         {/* BG Cloud 3 — center-top small */}
-        <g opacity="0.40" style={{ animation: "cloud-drift-3 36s ease-in-out infinite" }}>
-          <ellipse cx="720" cy="60" rx="120" ry="55" fill="url(#cg-b)"/>
-          <ellipse cx="640" cy="75" rx="100" ry="50" fill="url(#cg-b)"/>
-          <ellipse cx="810" cy="80" rx="110" ry="48" fill="url(#cg-b)"/>
-          <ellipse cx="700" cy="30" rx="90" ry="52" fill="url(#cg-b)"/>
+        <g opacity="0.55" style={{ animation: "cloud-drift-3 36s ease-in-out infinite" }}>
+          <ellipse cx="720" cy="75"  rx="122" ry="42" fill="url(#cg-shad)"/>
+          <ellipse cx="720" cy="60"  rx="120" ry="55" fill="url(#cg-b)"/>
+          <ellipse cx="640" cy="75"  rx="100" ry="50" fill="url(#cg-b)"/>
+          <ellipse cx="810" cy="80"  rx="110" ry="48" fill="url(#cg-c)"/>
+          <ellipse cx="700" cy="30"  rx="90"  ry="52" fill="url(#cg-a)"/>
+          <ellipse cx="698" cy="26"  rx="62"  ry="40" fill="url(#cg-hl)"/>
         </g>
 
         {/* ── MID CLOUD LAYER ── */}
         {/* Mid Cloud 1 — left side */}
-        <g opacity="0.80" filter="url(#cf-glow)" style={{ animation: "cloud-drift-2 22s ease-in-out infinite" }}>
-          <ellipse cx="60" cy="220" rx="210" ry="110" fill="url(#cg-a)"/>
-          <ellipse cx="-30" cy="260" rx="160" ry="95" fill="url(#cg-a)"/>
-          <ellipse cx="170" cy="245" rx="180" ry="100" fill="url(#cg-b)"/>
-          <ellipse cx="20" cy="165" rx="150" ry="95" fill="url(#cg-a)"/>
-          <ellipse cx="140" cy="155" rx="130" ry="90" fill="url(#cg-b)"/>
-          <ellipse cx="290" cy="270" rx="150" ry="80" fill="url(#cg-a)"/>
-          {/* Highlight puffs */}
-          <ellipse cx="60" cy="170" rx="80" ry="55" fill="url(#cg-hl)"/>
-          <ellipse cx="130" cy="145" rx="70" ry="50" fill="url(#cg-hl)"/>
+        <g opacity="0.92" filter="url(#cf-glow)" style={{ animation: "cloud-drift-2 22s ease-in-out infinite" }}>
+          <ellipse cx="60"  cy="248" rx="215" ry="88" fill="url(#cg-shad)"/>
+          <ellipse cx="175" cy="268" rx="185" ry="80" fill="url(#cg-shad)"/>
+          <ellipse cx="60"  cy="220" rx="210" ry="112" fill="url(#cg-a)"/>
+          <ellipse cx="-30" cy="260" rx="160" ry="95"  fill="url(#cg-a)"/>
+          <ellipse cx="170" cy="245" rx="180" ry="102" fill="url(#cg-b)"/>
+          <ellipse cx="20"  cy="165" rx="150" ry="96"  fill="url(#cg-a)"/>
+          <ellipse cx="140" cy="155" rx="132" ry="92"  fill="url(#cg-b)"/>
+          <ellipse cx="290" cy="270" rx="152" ry="82"  fill="url(#cg-a)"/>
+          <ellipse cx="55"  cy="165" rx="85"  ry="58" fill="url(#cg-hl)"/>
+          <ellipse cx="132" cy="148" rx="74"  ry="52" fill="url(#cg-hl)"/>
         </g>
         {/* Mid Cloud 2 — right side */}
-        <g opacity="0.78" filter="url(#cf-glow)" style={{ animation: "cloud-drift-1 26s ease-in-out infinite" }}>
-          <ellipse cx="1380" cy="200" rx="210" ry="110" fill="url(#cg-b)"/>
-          <ellipse cx="1460" cy="240" rx="165" ry="95" fill="url(#cg-b)"/>
-          <ellipse cx="1270" cy="230" rx="185" ry="100" fill="url(#cg-a)"/>
-          <ellipse cx="1400" cy="150" rx="150" ry="90" fill="url(#cg-b)"/>
-          <ellipse cx="1260" cy="160" rx="130" ry="82" fill="url(#cg-a)"/>
-          <ellipse cx="1150" cy="260" rx="150" ry="82" fill="url(#cg-c)"/>
-          {/* Highlights */}
-          <ellipse cx="1370" cy="150" rx="85" ry="58" fill="url(#cg-hl)"/>
-          <ellipse cx="1270" cy="145" rx="75" ry="52" fill="url(#cg-hl)"/>
+        <g opacity="0.90" filter="url(#cf-glow)" style={{ animation: "cloud-drift-1 26s ease-in-out infinite" }}>
+          <ellipse cx="1382" cy="228" rx="215" ry="88" fill="url(#cg-shad)"/>
+          <ellipse cx="1268" cy="254" rx="188" ry="80" fill="url(#cg-shad)"/>
+          <ellipse cx="1380" cy="200" rx="212" ry="112" fill="url(#cg-b)"/>
+          <ellipse cx="1460" cy="240" rx="166" ry="96"  fill="url(#cg-b)"/>
+          <ellipse cx="1270" cy="230" rx="186" ry="102" fill="url(#cg-a)"/>
+          <ellipse cx="1400" cy="150" rx="152" ry="92"  fill="url(#cg-b)"/>
+          <ellipse cx="1260" cy="160" rx="132" ry="84"  fill="url(#cg-a)"/>
+          <ellipse cx="1150" cy="260" rx="152" ry="84"  fill="url(#cg-c)"/>
+          <ellipse cx="1372" cy="145" rx="88"  ry="60" fill="url(#cg-hl)"/>
+          <ellipse cx="1265" cy="148" rx="76"  ry="54" fill="url(#cg-hl)"/>
         </g>
         {/* Mid Cloud 3 — upper center-left gap filler */}
-        <g opacity="0.60" style={{ animation: "cloud-drift-3 30s ease-in-out infinite", animationDelay: "-8s" }}>
-          <ellipse cx="400" cy="160" rx="140" ry="72" fill="url(#cg-c)"/>
-          <ellipse cx="320" cy="180" rx="120" ry="65" fill="url(#cg-c)"/>
-          <ellipse cx="490" cy="175" rx="125" ry="62" fill="url(#cg-a)"/>
-          <ellipse cx="380" cy="120" rx="100" ry="65" fill="url(#cg-a)"/>
-          <ellipse cx="560" cy="190" rx="110" ry="58" fill="url(#cg-c)"/>
+        <g opacity="0.75" style={{ animation: "cloud-drift-3 30s ease-in-out infinite", animationDelay: "-8s" }}>
+          <ellipse cx="400" cy="178" rx="142" ry="55" fill="url(#cg-shad)"/>
+          <ellipse cx="400" cy="160" rx="142" ry="74" fill="url(#cg-c)"/>
+          <ellipse cx="320" cy="180" rx="122" ry="66" fill="url(#cg-c)"/>
+          <ellipse cx="490" cy="175" rx="126" ry="64" fill="url(#cg-a)"/>
+          <ellipse cx="380" cy="120" rx="102" ry="66" fill="url(#cg-a)"/>
+          <ellipse cx="560" cy="190" rx="112" ry="60" fill="url(#cg-c)"/>
+          <ellipse cx="378" cy="114" rx="72"  ry="52" fill="url(#cg-hl)"/>
         </g>
         {/* Mid Cloud 4 — upper center-right gap filler */}
-        <g opacity="0.60" style={{ animation: "cloud-drift-2 34s ease-in-out infinite", animationDelay: "-12s" }}>
-          <ellipse cx="1040" cy="155" rx="140" ry="72" fill="url(#cg-b)"/>
-          <ellipse cx="960" cy="175" rx="120" ry="65" fill="url(#cg-b)"/>
-          <ellipse cx="1120" cy="170" rx="130" ry="62" fill="url(#cg-a)"/>
-          <ellipse cx="1010" cy="115" rx="105" ry="65" fill="url(#cg-b)"/>
-          <ellipse cx="1180" cy="188" rx="115" ry="58" fill="url(#cg-a)"/>
+        <g opacity="0.75" style={{ animation: "cloud-drift-2 34s ease-in-out infinite", animationDelay: "-12s" }}>
+          <ellipse cx="1040" cy="172" rx="142" ry="55" fill="url(#cg-shad)"/>
+          <ellipse cx="1040" cy="155" rx="142" ry="74" fill="url(#cg-b)"/>
+          <ellipse cx="960"  cy="175" rx="122" ry="66" fill="url(#cg-b)"/>
+          <ellipse cx="1120" cy="170" rx="132" ry="64" fill="url(#cg-a)"/>
+          <ellipse cx="1010" cy="115" rx="107" ry="66" fill="url(#cg-b)"/>
+          <ellipse cx="1180" cy="188" rx="117" ry="60" fill="url(#cg-a)"/>
+          <ellipse cx="1008" cy="110" rx="76"  ry="54" fill="url(#cg-hl)"/>
         </g>
 
         {/* ── FOREGROUND CLOUD LAYER (large, crisp, high opacity) ── */}
         {/* FG Cloud 1 — bottom-left large */}
-        <g opacity="0.92" filter="url(#cf-glow)" style={{ animation: "cloud-drift-1 20s ease-in-out infinite" }}>
-          <ellipse cx="0" cy="580" rx="280" ry="145" fill="url(#cg-a)"/>
-          <ellipse cx="-80" cy="640" rx="220" ry="130" fill="url(#cg-b)"/>
-          <ellipse cx="200" cy="610" rx="250" ry="135" fill="url(#cg-a)"/>
-          <ellipse cx="80" cy="495" rx="200" ry="130" fill="url(#cg-b)"/>
-          <ellipse cx="330" cy="640" rx="220" ry="120" fill="url(#cg-c)"/>
-          <ellipse cx="-50" cy="520" rx="180" ry="120" fill="url(#cg-a)"/>
-          <ellipse cx="420" cy="600" rx="195" ry="110" fill="url(#cg-a)"/>
-          <ellipse cx="190" cy="440" rx="170" ry="110" fill="url(#cg-b)"/>
-          {/* White highlights on top bulges */}
-          <ellipse cx="70" cy="490" rx="100" ry="72" fill="url(#cg-hl)"/>
-          <ellipse cx="185" cy="435" rx="90" ry="68" fill="url(#cg-hl)"/>
-          <ellipse cx="330" cy="540" rx="85" ry="62" fill="url(#cg-hl)"/>
+        <g opacity="0.97" filter="url(#cf-glow)" style={{ animation: "cloud-drift-1 20s ease-in-out infinite" }}>
+          <ellipse cx="0"   cy="618" rx="285" ry="110" fill="url(#cg-shad)"/>
+          <ellipse cx="205" cy="645" rx="255" ry="102" fill="url(#cg-shad)"/>
+          <ellipse cx="80"  cy="528" rx="202" ry="98"  fill="url(#cg-shad)"/>
+          <ellipse cx="0"   cy="580" rx="282" ry="148" fill="url(#cg-a)"/>
+          <ellipse cx="-80" cy="640" rx="222" ry="132" fill="url(#cg-b)"/>
+          <ellipse cx="200" cy="610" rx="252" ry="138" fill="url(#cg-a)"/>
+          <ellipse cx="80"  cy="495" rx="202" ry="132" fill="url(#cg-b)"/>
+          <ellipse cx="330" cy="640" rx="222" ry="122" fill="url(#cg-c)"/>
+          <ellipse cx="-50" cy="520" rx="182" ry="122" fill="url(#cg-a)"/>
+          <ellipse cx="420" cy="600" rx="198" ry="112" fill="url(#cg-a)"/>
+          <ellipse cx="190" cy="440" rx="172" ry="112" fill="url(#cg-b)"/>
+          <ellipse cx="72"  cy="488" rx="105" ry="75" fill="url(#cg-hl)"/>
+          <ellipse cx="185" cy="432" rx="92"  ry="70" fill="url(#cg-hl)"/>
+          <ellipse cx="332" cy="536" rx="88"  ry="64" fill="url(#cg-hl)"/>
         </g>
         {/* FG Cloud 2 — bottom-right large */}
-        <g opacity="0.90" filter="url(#cf-glow)" style={{ animation: "cloud-drift-2 24s ease-in-out infinite" }}>
-          <ellipse cx="1440" cy="560" rx="285" ry="148" fill="url(#cg-b)"/>
-          <ellipse cx="1520" cy="625" rx="225" ry="132" fill="url(#cg-a)"/>
-          <ellipse cx="1240" cy="590" rx="255" ry="138" fill="url(#cg-b)"/>
-          <ellipse cx="1360" cy="480" rx="205" ry="132" fill="url(#cg-a)"/>
-          <ellipse cx="1100" cy="625" rx="225" ry="122" fill="url(#cg-c)"/>
-          <ellipse cx="1490" cy="510" rx="185" ry="122" fill="url(#cg-b)"/>
-          <ellipse cx="1020" cy="590" rx="200" ry="112" fill="url(#cg-a)"/>
-          <ellipse cx="1250" cy="440" rx="175" ry="112" fill="url(#cg-b)"/>
-          {/* Highlights */}
-          <ellipse cx="1360" cy="476" rx="105" ry="74" fill="url(#cg-hl)"/>
-          <ellipse cx="1250" cy="436" rx="92" ry="70" fill="url(#cg-hl)"/>
-          <ellipse cx="1110" cy="570" rx="88" ry="64" fill="url(#cg-hl)"/>
+        <g opacity="0.96" filter="url(#cf-glow)" style={{ animation: "cloud-drift-2 24s ease-in-out infinite" }}>
+          <ellipse cx="1440" cy="598" rx="288" ry="112" fill="url(#cg-shad)"/>
+          <ellipse cx="1242" cy="625" rx="258" ry="106" fill="url(#cg-shad)"/>
+          <ellipse cx="1362" cy="512" rx="208" ry="100" fill="url(#cg-shad)"/>
+          <ellipse cx="1440" cy="560" rx="286" ry="150" fill="url(#cg-b)"/>
+          <ellipse cx="1520" cy="625" rx="226" ry="134" fill="url(#cg-a)"/>
+          <ellipse cx="1240" cy="590" rx="256" ry="140" fill="url(#cg-b)"/>
+          <ellipse cx="1360" cy="480" rx="206" ry="134" fill="url(#cg-a)"/>
+          <ellipse cx="1100" cy="625" rx="226" ry="124" fill="url(#cg-c)"/>
+          <ellipse cx="1490" cy="510" rx="186" ry="124" fill="url(#cg-b)"/>
+          <ellipse cx="1020" cy="590" rx="202" ry="114" fill="url(#cg-a)"/>
+          <ellipse cx="1250" cy="440" rx="176" ry="114" fill="url(#cg-b)"/>
+          <ellipse cx="1362" cy="472" rx="108" ry="76" fill="url(#cg-hl)"/>
+          <ellipse cx="1250" cy="432" rx="94"  ry="72" fill="url(#cg-hl)"/>
+          <ellipse cx="1112" cy="566" rx="90"  ry="66" fill="url(#cg-hl)"/>
         </g>
         {/* FG Cloud 3 — bottom center */}
-        <g opacity="0.75" style={{ animation: "cloud-drift-3 28s ease-in-out infinite", animationDelay: "-6s" }}>
-          <ellipse cx="720" cy="700" rx="240" ry="120" fill="url(#cg-a)"/>
-          <ellipse cx="580" cy="730" rx="200" ry="110" fill="url(#cg-b)"/>
-          <ellipse cx="860" cy="720" rx="210" ry="108" fill="url(#cg-a)"/>
-          <ellipse cx="700" cy="630" rx="180" ry="108" fill="url(#cg-b)"/>
-          <ellipse cx="960" cy="740" rx="185" ry="100" fill="url(#cg-c)"/>
-          <ellipse cx="490" cy="745" rx="175" ry="98" fill="url(#cg-a)"/>
-          <ellipse cx="720" cy="580" rx="155" ry="100" fill="url(#cg-b)"/>
-          <ellipse cx="840" cy="610" rx="150" ry="95" fill="url(#cg-a)"/>
+        <g opacity="0.88" style={{ animation: "cloud-drift-3 28s ease-in-out infinite", animationDelay: "-6s" }}>
+          <ellipse cx="720" cy="718" rx="242" ry="92" fill="url(#cg-shad)"/>
+          <ellipse cx="580" cy="748" rx="202" ry="84" fill="url(#cg-shad)"/>
+          <ellipse cx="700" cy="648" rx="182" ry="82" fill="url(#cg-shad)"/>
+          <ellipse cx="720" cy="700" rx="242" ry="122" fill="url(#cg-a)"/>
+          <ellipse cx="580" cy="730" rx="202" ry="112" fill="url(#cg-b)"/>
+          <ellipse cx="860" cy="720" rx="212" ry="110" fill="url(#cg-a)"/>
+          <ellipse cx="700" cy="630" rx="182" ry="110" fill="url(#cg-b)"/>
+          <ellipse cx="960" cy="740" rx="188" ry="102" fill="url(#cg-c)"/>
+          <ellipse cx="490" cy="745" rx="178" ry="100" fill="url(#cg-a)"/>
+          <ellipse cx="720" cy="580" rx="158" ry="102" fill="url(#cg-b)"/>
+          <ellipse cx="840" cy="610" rx="152" ry="97"  fill="url(#cg-a)"/>
+          <ellipse cx="718" cy="574" rx="108" ry="78" fill="url(#cg-hl)"/>
+          <ellipse cx="840" cy="602" rx="98"  ry="72" fill="url(#cg-hl)"/>
         </g>
-        {/* FG Cloud 4 — far bottom edge covering lower portion */}
-        <g opacity="0.85" style={{ animation: "cloud-drift-1 18s ease-in-out infinite", animationDelay: "-3s" }}>
-          <ellipse cx="360" cy="840" rx="280" ry="120" fill="url(#cg-a)"/>
-          <ellipse cx="200" cy="860" rx="230" ry="105" fill="url(#cg-b)"/>
-          <ellipse cx="550" cy="855" rx="250" ry="115" fill="url(#cg-a)"/>
-          <ellipse cx="1100" cy="840" rx="285" ry="122" fill="url(#cg-b)"/>
-          <ellipse cx="940" cy="862" rx="235" ry="108" fill="url(#cg-a)"/>
-          <ellipse cx="1280" cy="858" rx="255" ry="118" fill="url(#cg-c)"/>
+        {/* FG Cloud 4 — far bottom edge */}
+        <g opacity="0.93" style={{ animation: "cloud-drift-1 18s ease-in-out infinite", animationDelay: "-3s" }}>
+          <ellipse cx="360"  cy="858" rx="282" ry="92" fill="url(#cg-shad)"/>
+          <ellipse cx="1102" cy="858" rx="288" ry="94" fill="url(#cg-shad)"/>
+          <ellipse cx="360"  cy="840" rx="282" ry="122" fill="url(#cg-a)"/>
+          <ellipse cx="200"  cy="860" rx="232" ry="107" fill="url(#cg-b)"/>
+          <ellipse cx="552"  cy="855" rx="252" ry="117" fill="url(#cg-a)"/>
+          <ellipse cx="1100" cy="840" rx="288" ry="124" fill="url(#cg-b)"/>
+          <ellipse cx="942"  cy="862" rx="238" ry="110" fill="url(#cg-a)"/>
+          <ellipse cx="1282" cy="858" rx="258" ry="120" fill="url(#cg-c)"/>
         </g>
 
         {/* ── STAR SPARKLES ── */}
@@ -420,19 +453,19 @@ export function ClayDealCard({
     <div
       className={cn("overflow-hidden group cursor-pointer", className)}
       style={{
-        background: "rgba(255,255,255,0.95)",
-        borderRadius: "var(--clay-radius-lg)",
-        boxShadow: "0 8px 40px rgba(100,120,200,0.18), 0 2px 12px rgba(100,120,200,0.10)",
-        border: "1px solid rgba(255,255,255,0.80)",
+        background: "#ffffff",
+        borderRadius: "24px",
+        boxShadow: "0 20px 60px rgba(65,85,165,0.22), 0 4px 14px rgba(65,85,165,0.12), inset 0 2px 0 rgba(255,255,255,1), inset 0 1px 8px rgba(255,255,255,0.50)",
+        border: "1px solid rgba(255,255,255,0.92)",
         transition: "transform 0.22s ease, box-shadow 0.22s ease",
       }}
       onMouseEnter={e => {
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-4px)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 16px 56px rgba(100,120,200,0.24), 0 4px 16px rgba(100,120,200,0.14)";
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-5px)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 32px 80px rgba(65,85,165,0.28), 0 8px 24px rgba(65,85,165,0.16), inset 0 2px 0 rgba(255,255,255,1)";
       }}
       onMouseLeave={e => {
         (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 40px rgba(100,120,200,0.18), 0 2px 12px rgba(100,120,200,0.10)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 20px 60px rgba(65,85,165,0.22), 0 4px 14px rgba(65,85,165,0.12), inset 0 2px 0 rgba(255,255,255,1), inset 0 1px 8px rgba(255,255,255,0.50)";
       }}
       onClick={onClick}
     >

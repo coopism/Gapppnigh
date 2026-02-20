@@ -113,13 +113,7 @@ export default function Landing() {
         <section className="relative pt-14 pb-8 md:pt-20 md:pb-10 flex flex-col items-center px-4">
           <BlurFade duration={0.65}>
             {/* Floating definition card — compact, centered */}
-            <div style={{
-              background: "rgba(255,255,255,0.88)",
-              backdropFilter: "blur(24px)",
-              WebkitBackdropFilter: "blur(24px)",
-              borderRadius: "24px",
-              boxShadow: "0 20px 80px rgba(100,120,200,0.22), 0 4px 20px rgba(100,120,200,0.12)",
-              border: "1px solid rgba(255,255,255,0.90)",
+            <div className="clay-panel" style={{
               padding: "32px 36px 28px",
               maxWidth: "520px",
               width: "100%",
@@ -189,16 +183,8 @@ export default function Landing() {
                   )}
                   <button
                     onClick={handleSearch}
-                    className="shrink-0 mr-1.5 inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4"
-                    style={{
-                      background: "linear-gradient(135deg, #5b8dee 0%, #4A8FE7 60%, #3d7fdb 100%)",
-                      borderRadius: "10px",
-                      height: "36px",
-                      boxShadow: "0 2px 12px rgba(74,143,231,0.40)",
-                      border: "none",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}
+                    className="clay-btn shrink-0 mr-1.5 inline-flex items-center gap-1.5 text-sm px-4"
+                    style={{ height: "36px", borderRadius: "10px", whiteSpace: "nowrap" }}
                     data-testid="button-hero-search"
                   >
                     <Search className="w-3.5 h-3.5" />
@@ -245,15 +231,8 @@ export default function Landing() {
           <FadeIn delay={0.7} duration={0.5}>
             <button
               onClick={() => setLocation("/deals")}
-              className="mt-6 inline-flex items-center gap-2 font-semibold text-white text-sm px-8 py-3.5"
-              style={{
-                background: "linear-gradient(135deg, #6b97f0 0%, #4A8FE7 50%, #4280dc 100%)",
-                borderRadius: "40px",
-                boxShadow: "0 8px 30px rgba(74,143,231,0.45), 0 2px 8px rgba(74,143,231,0.25)",
-                border: "none",
-                cursor: "pointer",
-                fontSize: "0.9375rem",
-              }}
+              className="clay-btn mt-6 inline-flex items-center gap-2 px-8 py-3.5"
+              style={{ fontSize: "0.9375rem" }}
               data-testid="button-browse-deals"
             >
               Browse today's deals
@@ -360,15 +339,8 @@ export default function Landing() {
               <div className="flex justify-center mt-8">
                 <button
                   onClick={() => setLocation("/deals")}
-                  className="inline-flex items-center gap-2 font-semibold text-white px-8 py-3.5"
-                  style={{
-                    background: "linear-gradient(135deg, #6b97f0 0%, #4A8FE7 50%, #4280dc 100%)",
-                    borderRadius: "40px",
-                    boxShadow: "0 8px 30px rgba(74,143,231,0.40), 0 2px 8px rgba(74,143,231,0.20)",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: "0.9375rem",
-                  }}
+                  className="clay-btn inline-flex items-center gap-2 px-8 py-3.5"
+                  style={{ fontSize: "0.9375rem" }}
                   data-testid="button-view-all-deals"
                 >
                   Browse All Deals
