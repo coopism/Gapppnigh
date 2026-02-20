@@ -1,6 +1,37 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-20 (Session 7)
 
+## Clay Morphism Landing Page Revamp — Session 8 - Feb 20, 2026
+
+### Changes Implemented
+
+1. **`client/src/components/ui/clay/index.tsx` — New `ClayHeroScene` component**
+   - Full SVG-based clay morphism cloud scene (1440×900 viewBox, `xMidYMax slice`)
+   - 4 radial-gradient sphere color variants: lavender, cream, pink, blue-lavender
+   - 3 floating cloud shape templates (FLOAT_A/B/C) of varying sizes
+   - 3-layer cloud bank at bottom: background (60% opacity), mid (80%), foreground (100%)
+   - 9 individually animated floating cloud groups using existing cloud-drift keyframes
+   - Periwinkle sky gradient: `#8DA0CC` → `#A8B6E2` → `#C0CCEE`
+
+2. **`client/src/pages/Landing.tsx` — Hero section restructured**
+   - Removed old fixed CSS blob clouds (blur-based)
+   - Hero zone wrapper: `position: relative; overflow: hidden; min-height: 100vh`
+   - `ClayHeroScene` renders as absolute fill behind all content
+   - Content div: `position: relative; z-index: 10` keeps nav + card above clouds
+   - Hero section: `paddingTop: 72px; paddingBottom: 34vh` centers card above cloud bank
+   - Lower page sections (deals, ticker, host pitch, footer) remain on sky gradient below hero
+
+3. **`client/src/index.css` — Sky palette updated + ticker animation added**
+   - Sky palette shifted to periwinkle: `#c4cef0` → `#d4dcf8` → `#dfe6ff`
+   - Added `@keyframes ticker` + `.animate-ticker` (was missing, ticker strip now animates)
+
+**Files Modified:**
+- `client/src/components/ui/clay/index.tsx`
+- `client/src/pages/Landing.tsx`
+- `client/src/index.css`
+
+---
+
 ## Recommit Reverted State — Session 7 - Feb 20, 2026
 
 - User reverted previous changes (deleted CloudBackdrop, CloudBankCurtain, HeroBackground clay components; reverted Landing.tsx, Login.tsx, Home.tsx, HostDashboard.tsx, index.css, clay/index.tsx)

@@ -11,7 +11,7 @@ import { format, parseISO } from "date-fns";
 import { formatPrice } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import { FadeIn, BlurFade, StaggerContainer, StaggerItem, SlideIn } from "@/components/ui/motion";
-import { CloudBackground, ClayPanel, ClayChip, ClayDealCard } from "@/components/ui/clay";
+import { CloudBackground, ClayPanel, ClayChip, ClayDealCard, ClayHeroScene } from "@/components/ui/clay";
 
 const LOCATION_SUGGESTIONS = [
   { city: "Melbourne", state: "VIC" },
@@ -105,22 +105,15 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, var(--clay-sky-start) 0%, var(--clay-sky-mid) 45%, var(--clay-sky-end) 100%)" }}>
-      {/* Cloud background blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
-        <div className="clay-cloud-blob animate-cloud-1 w-[600px] h-[380px] -top-24 -left-40 opacity-70" />
-        <div className="clay-cloud-blob animate-cloud-2 w-[520px] h-[300px] top-[30%] -right-28 opacity-60" />
-        <div className="clay-cloud-blob animate-cloud-3 w-[440px] h-[260px] top-[55%] left-[20%] opacity-50" />
-        <div className="clay-cloud-blob animate-cloud-1 w-[360px] h-[220px] bottom-16 right-12 opacity-55" style={{ animationDelay: "5s" }} />
-        <div className="clay-cloud-blob animate-cloud-2 w-[300px] h-[190px] bottom-[40%] -left-20 opacity-45" style={{ animationDelay: "9s" }} />
-      </div>
-
-      <div className="relative" style={{ zIndex: 1 }}>
-        <Navigation />
-
-        {/* ── HERO ─────────────────────────────────────────────────────── */}
-        <section className="relative pt-16 pb-10 md:pt-24 md:pb-12 flex flex-col items-center">
-          <div className="w-full max-w-2xl mx-auto px-4">
+    <div className="min-h-screen">
+      {/* ── HERO ZONE — clay cloud sky ── */}
+      <div className="relative overflow-hidden" style={{ minHeight: '100vh' }}>
+        <ClayHeroScene />
+        <div className="relative" style={{ zIndex: 10 }}>
+          <Navigation />
+          {/* ── HERO ──────────────────────────────────────────────── */}
+          <section className="relative flex flex-col items-center px-4" style={{ paddingTop: '72px', paddingBottom: '34vh' }}>
+            <div className="w-full max-w-2xl mx-auto">
             <BlurFade duration={0.7}>
               {/* Definition card */}
               <div className="clay-panel p-8 md:p-10">
@@ -239,9 +232,13 @@ export default function Landing() {
                 </button>
               </div>
             </FadeIn>
-          </div>
-        </section>
+            </div>
+          </section>
+        </div>
+      </div>
 
+      {/* ── LOWER PAGE ── */}
+      <div style={{ background: "linear-gradient(160deg, var(--clay-sky-start) 0%, var(--clay-sky-mid) 45%, var(--clay-sky-end) 100%)" }}>
         {/* ── DEALS PREVIEW ───────────────────────────────────────────── */}
         <section ref={dealsRef} className="py-12 md:py-16 px-4">
           <div className="max-w-6xl mx-auto">
