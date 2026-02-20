@@ -3421,3 +3421,36 @@ Initial clay implementation used CSS blur blobs for clouds which looked flat and
 
 ### `client/src/components/ui/clay/index.tsx`
 - `CloudBackground` sky gradient updated to match lighter palette (for Login/Home/HostDashboard consistency)
+
+---
+
+## Design Fidelity Pass v2 — Fix Parallax Visibility + Divider Contours
+
+### ROOT CAUSE DIAGNOSIS (why parallax was invisible)
+1. **`position: fixed` + `translateY` on SVG with `preserveAspectRatio="xMidYMid slice"`**: SVG fills viewport uniformly. Translating it just shifts identical content — motion exists but is invisible.
+2. **Speeds too low**: 0.04/0.10/0.22 are imperceptible at normal scroll distances.
+3. **Divider was flat fill areas**: 4 filled SVG paths with no stroke contours, no shadow, no overlap — looks like a band, not stacked cloud contours.
+
+### FIX: `CloudBackdrop.tsx` rewrite
+- **ViewBox now 1440×1400** (taller than viewport) so `translate3d` reveals different cloud positions as user scrolls
+- **Layers are `position: absolute` inside a `position: fixed` container** — fixed viewport pins them while translate3d shifts within
+- **`translate3d`** instead of `translateY` — GPU-composited, no layout thrash
+- **Stronger speeds**: FAR=0.07 (7%), MID=0.15 (15%), NEAR=0.26 (26%)
+- **Negative translateY** (`-sy * speed`) — clouds scroll UP faster than content, creating depth
+- **More clouds**: FAR=26, MID=20, NEAR=15 ellipses spread across full 1400px height
+- **3 gradient variants per layer** (cool white, warm pink-white, blue-white) with asymmetric top-lit radial gradients for clay lighting
+
+### DEBUG MODE (`DEBUG_PARALLAX = true`)
+- Green monospace labels in top-left corner: "FAR ty:Xpx (7%)" / "MID ty:Xpx (15%)" / "NEAR ty:Xpx (26%)"
+- Dashed colored outlines on each layer (red=FAR, green=MID, blue=NEAR)
+- Set `DEBUG_PARALLAX = false` to disable for production
+
+### WavyCloudDivider rewrite
+- **6 stacked SVG contour stroke paths** (not filled areas) — matches LINES-REF organic stacked lines
+- **SVG filter**: `feGaussianBlur` + `feColorMatrix` shadow behind strokes for depth
+- **Gradient backdrop div** behind contours (transparent → white) for cloud bank depth
+- **Bottom fill paths** (2 layers, 0.65 + 0.92 opacity) for smooth transition into white content section
+- **Overlaps content**: `marginBottom: -80px` pushes into deals section like a cloud bank
+
+### Landing.tsx
+- Deals section: `background: rgba(255,255,255,0.72)` + `backdropFilter: blur(14px)` — sits visually below the wave divider
