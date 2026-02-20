@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Navigation } from "@/components/Navigation";
+import { CloudBackground } from "@/components/ui/clay";
 import { Footer } from "@/components/Footer";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import {
@@ -98,13 +99,7 @@ export default function HostDashboard() {
   if (!host) return null;
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, var(--clay-sky-start) 0%, var(--clay-sky-mid) 45%, var(--clay-sky-end) 100%)" }}>
-      {/* cloud blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
-        <div className="clay-cloud-blob animate-cloud-1 w-[500px] h-[300px] -top-16 -left-28 opacity-60" />
-        <div className="clay-cloud-blob animate-cloud-2 w-[420px] h-[260px] top-1/3 -right-20 opacity-50" />
-        <div className="clay-cloud-blob animate-cloud-3 w-[360px] h-[220px] bottom-20 left-1/4 opacity-45" />
-      </div>
+    <CloudBackground>
       <div className="relative" style={{ zIndex: 1 }}>
       <header style={{ background: "rgba(255,255,255,0.78)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.60)", boxShadow: "0 2px 24px rgba(100,120,200,0.10)", position: "sticky", top: 0, zIndex: 50 }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
@@ -172,7 +167,7 @@ export default function HostDashboard() {
         </Tabs>
       </main>
       </div>
-    </div>
+    </CloudBackground>
   );
 }
 

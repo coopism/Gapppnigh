@@ -105,146 +105,166 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, var(--clay-sky-start) 0%, var(--clay-sky-mid) 45%, var(--clay-sky-end) 100%)" }}>
-      {/* Cloud background blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
-        <div className="clay-cloud-blob animate-cloud-1 w-[600px] h-[380px] -top-24 -left-40 opacity-70" />
-        <div className="clay-cloud-blob animate-cloud-2 w-[520px] h-[300px] top-[30%] -right-28 opacity-60" />
-        <div className="clay-cloud-blob animate-cloud-3 w-[440px] h-[260px] top-[55%] left-[20%] opacity-50" />
-        <div className="clay-cloud-blob animate-cloud-1 w-[360px] h-[220px] bottom-16 right-12 opacity-55" style={{ animationDelay: "5s" }} />
-        <div className="clay-cloud-blob animate-cloud-2 w-[300px] h-[190px] bottom-[40%] -left-20 opacity-45" style={{ animationDelay: "9s" }} />
-      </div>
-
+    <CloudBackground>
       <div className="relative" style={{ zIndex: 1 }}>
         <Navigation />
 
         {/* ── HERO ─────────────────────────────────────────────────────── */}
-        <section className="relative pt-16 pb-10 md:pt-24 md:pb-12 flex flex-col items-center">
-          <div className="w-full max-w-2xl mx-auto px-4">
-            <BlurFade duration={0.7}>
-              {/* Definition card */}
-              <div className="clay-panel p-8 md:p-10">
-                <FadeIn direction="none" duration={0.6} delay={0.1}>
-                  <h1 className="text-4xl md:text-5xl font-display font-bold mb-2" style={{ color: "var(--clay-text)" }}>
-                    Gap Night
-                  </h1>
-                  <div className="flex items-center gap-2 mb-5">
-                    <span className="text-base md:text-lg italic" style={{ color: "var(--clay-text-muted)" }}>
-                      /ˈgæp nīt/ &nbsp; gæp nāɪt
-                    </span>
-                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
-                      style={{ background: "rgba(74,143,231,0.12)", color: "var(--clay-primary)" }}>
-                      noun
-                    </span>
-                  </div>
-                </FadeIn>
+        <section className="relative pt-14 pb-8 md:pt-20 md:pb-10 flex flex-col items-center px-4">
+          <BlurFade duration={0.65}>
+            {/* Floating definition card — compact, centered */}
+            <div style={{
+              background: "rgba(255,255,255,0.88)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              borderRadius: "24px",
+              boxShadow: "0 20px 80px rgba(100,120,200,0.22), 0 4px 20px rgba(100,120,200,0.12)",
+              border: "1px solid rgba(255,255,255,0.90)",
+              padding: "32px 36px 28px",
+              maxWidth: "520px",
+              width: "100%",
+              margin: "0 auto",
+            }}>
+              {/* Title + pronunciation */}
+              <h1 className="font-display font-bold mb-1.5" style={{ fontSize: "2rem", lineHeight: 1.15, color: "var(--clay-text)" }}>
+                Gap Night
+              </h1>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-sm italic" style={{ color: "var(--clay-text-muted)" }}>
+                  /ˈgæp nāit/ &nbsp; gæp nāɪt
+                </span>
+                <span style={{
+                  background: "rgba(74,143,231,0.13)",
+                  color: "var(--clay-primary)",
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                  padding: "2px 10px",
+                  borderRadius: "20px",
+                  border: "1px solid rgba(74,143,231,0.20)",
+                }}>noun</span>
+              </div>
 
-                <FadeIn delay={0.3} duration={0.6}>
-                  <p className="text-lg md:text-xl leading-relaxed mb-2" style={{ color: "var(--clay-text)" }}>
-                    An unsold night between bookings —<br className="hidden md:block" />
-                    discounted so it doesn't go unused.
-                  </p>
-                  <p className="text-sm md:text-base mb-6" style={{ color: "var(--clay-text-muted)" }}>
-                    Hotels call them gap nights.{" "}
-                    <strong style={{ color: "var(--clay-text)" }}>We help you book them.</strong>
-                  </p>
-                </FadeIn>
+              {/* Definition */}
+              <p className="text-base leading-relaxed mb-1" style={{ color: "var(--clay-text)" }}>
+                An unsold night between bookings —<br />
+                discounted so it doesn't go unused.
+              </p>
+              <p className="text-sm mb-5" style={{ color: "var(--clay-text-muted)" }}>
+                Hotels call them gap nights.{" "}
+                <strong style={{ color: "var(--clay-text)" }}>We help you book them.</strong>
+              </p>
 
-                {/* Search bar */}
-                <FadeIn delay={0.5} duration={0.6}>
-                  <div
-                    ref={searchRef}
-                    className="flex flex-col sm:flex-row gap-2 p-1.5 rounded-full"
-                    style={{
-                      background: "rgba(255,255,255,0.70)",
-                      border: "1.5px solid rgba(255,255,255,0.80)",
-                      boxShadow: "var(--clay-shadow-inset), var(--clay-shadow-xs)",
-                    }}
-                  >
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--clay-text-muted)" }} />
-                      <input
-                        type="text"
-                        placeholder="Where do you want to stay?"
-                        value={search}
-                        onChange={(e) => { setSearch(e.target.value); setShowSuggestions(true); }}
-                        onFocus={() => setShowSuggestions(true)}
-                        onKeyDown={handleKeyDown}
-                        className="w-full pl-10 pr-8 py-3 text-sm bg-transparent border-0 outline-none rounded-full"
-                        style={{ color: "var(--clay-text)" }}
-                        data-testid="input-hero-search"
-                      />
-                      {search && (
-                        <button
-                          onClick={() => { setSearch(""); setShowSuggestions(false); }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-black/5 transition-colors"
-                          aria-label="Clear search"
-                          data-testid="button-clear-search"
-                        >
-                          <X className="w-3.5 h-3.5" style={{ color: "var(--clay-text-muted)" }} />
-                        </button>
-                      )}
-
-                      {showSuggestions && search && filteredSuggestions.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-2 z-50 clay-card overflow-hidden">
-                          <div className="p-2">
-                            <div className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5" style={{ color: "var(--clay-text-muted)" }}>
-                              Popular Destinations
-                            </div>
-                            {filteredSuggestions.slice(0, 5).map((loc) => (
-                              <button
-                                key={loc.city}
-                                onClick={() => handleSelectSuggestion(loc)}
-                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-primary/5"
-                                data-testid={`suggestion-${loc.city.toLowerCase()}`}
-                              >
-                                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(74,143,231,0.10)" }}>
-                                  <MapPin className="w-4 h-4" style={{ color: "var(--clay-primary)" }} />
-                                </div>
-                                <div>
-                                  <div className="font-semibold text-sm" style={{ color: "var(--clay-text)" }}>{loc.city}</div>
-                                  <div className="text-xs" style={{ color: "var(--clay-text-muted)" }}>{loc.state}, Australia</div>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+              {/* ── INLINE SEARCH BAR ── */}
+              <div ref={searchRef} className="relative">
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: "rgba(248,247,255,0.95)",
+                  border: "1.5px solid rgba(200,200,240,0.60)",
+                  borderRadius: "14px",
+                  boxShadow: "inset 0 2px 8px rgba(100,120,200,0.06)",
+                  overflow: "hidden",
+                  height: "48px",
+                }}>
+                  <Search className="shrink-0 ml-4 w-4 h-4" style={{ color: "var(--clay-text-muted)" }} />
+                  <input
+                    type="text"
+                    placeholder="Where do you want to stay?"
+                    value={search}
+                    onChange={(e) => { setSearch(e.target.value); setShowSuggestions(true); }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onKeyDown={handleKeyDown}
+                    className="flex-1 px-3 py-0 bg-transparent border-0 outline-none text-sm"
+                    style={{ color: "var(--clay-text)", height: "100%" }}
+                    data-testid="input-hero-search"
+                  />
+                  {search && (
                     <button
-                      onClick={handleSearch}
-                      className="clay-btn px-6 py-3 text-sm shrink-0"
-                      style={{ borderRadius: "var(--clay-radius-pill)" }}
-                      data-testid="button-hero-search"
+                      onClick={() => { setSearch(""); setShowSuggestions(false); }}
+                      className="p-1.5 mr-1 rounded-full hover:bg-black/5 transition-colors"
+                      aria-label="Clear"
                     >
-                      <Search className="w-4 h-4 mr-1.5" />
-                      Search
+                      <X className="w-3.5 h-3.5" style={{ color: "var(--clay-text-muted)" }} />
                     </button>
-                  </div>
-                </FadeIn>
-              </div>
-            </BlurFade>
+                  )}
+                  <button
+                    onClick={handleSearch}
+                    className="shrink-0 mr-1.5 inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4"
+                    style={{
+                      background: "linear-gradient(135deg, #5b8dee 0%, #4A8FE7 60%, #3d7fdb 100%)",
+                      borderRadius: "10px",
+                      height: "36px",
+                      boxShadow: "0 2px 12px rgba(74,143,231,0.40)",
+                      border: "none",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                    data-testid="button-hero-search"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    Search
+                  </button>
+                </div>
 
-            {/* CTA button below card */}
-            <FadeIn delay={0.8} duration={0.5}>
-              <div className="flex justify-center mt-6">
-                <button
-                  onClick={() => setLocation("/deals")}
-                  className="clay-btn px-8 py-3.5 text-base font-semibold inline-flex items-center gap-2"
-                  style={{ borderRadius: "var(--clay-radius-pill)" }}
-                  data-testid="button-browse-deals"
-                >
-                  Browse today's deals
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                {/* Autocomplete dropdown */}
+                {showSuggestions && filteredSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden" style={{
+                    background: "rgba(255,255,255,0.97)",
+                    borderRadius: "16px",
+                    boxShadow: "0 12px 40px rgba(100,120,200,0.20)",
+                    border: "1px solid rgba(200,200,240,0.50)",
+                  }}>
+                    <div className="p-2">
+                      <div className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5" style={{ color: "var(--clay-text-muted)" }}>
+                        Popular Destinations
+                      </div>
+                      {filteredSuggestions.slice(0, 5).map((loc) => (
+                        <button
+                          key={loc.city}
+                          onClick={() => handleSelectSuggestion(loc)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-blue-50/60"
+                          data-testid={`suggestion-${loc.city.toLowerCase()}`}
+                        >
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(74,143,231,0.10)" }}>
+                            <MapPin className="w-4 h-4" style={{ color: "var(--clay-primary)" }} />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-sm" style={{ color: "var(--clay-text)" }}>{loc.city}</div>
+                            <div className="text-xs" style={{ color: "var(--clay-text-muted)" }}>{loc.state}, Australia</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </FadeIn>
-          </div>
+            </div>
+          </BlurFade>
+
+          {/* CTA button below card */}
+          <FadeIn delay={0.7} duration={0.5}>
+            <button
+              onClick={() => setLocation("/deals")}
+              className="mt-6 inline-flex items-center gap-2 font-semibold text-white text-sm px-8 py-3.5"
+              style={{
+                background: "linear-gradient(135deg, #6b97f0 0%, #4A8FE7 50%, #4280dc 100%)",
+                borderRadius: "40px",
+                boxShadow: "0 8px 30px rgba(74,143,231,0.45), 0 2px 8px rgba(74,143,231,0.25)",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "0.9375rem",
+              }}
+              data-testid="button-browse-deals"
+            >
+              Browse today's deals
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </FadeIn>
         </section>
 
         {/* ── DEALS PREVIEW ───────────────────────────────────────────── */}
-        <section ref={dealsRef} className="py-12 md:py-16 px-4">
-          <div className="max-w-6xl mx-auto">
+        <section ref={dealsRef} className="py-10 md:py-14 px-4">
+          <div className="max-w-5xl mx-auto">
             <FadeIn direction="up" duration={0.5}>
               <div className="text-center mb-6">
                 <h2 className="text-2xl md:text-3xl font-display font-bold mb-1" style={{ color: "var(--clay-text)" }}>
@@ -254,6 +274,7 @@ export default function Landing() {
                   Limited-time clearance deals on unsold hotel nights.
                 </p>
               </div>
+
 
               {/* Time-window chips */}
               <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
@@ -292,44 +313,62 @@ export default function Landing() {
               </div>
             )}
 
-            <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {!isLoading && hasDeals && deals!.slice(0, 6).map((deal) => {
+            {/* Deals section with slight white wash */}
+            <div className="mt-6 rounded-3xl overflow-hidden" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(8px)", padding: "20px 0 0" }}>
+              <div className="px-4 pb-4">
+                <h3 className="text-lg md:text-xl font-display font-bold mb-4" style={{ color: "var(--clay-text)" }}>
+                  Explore today's gap night stays
+                </h3>
+              </div>
+            <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 pb-4">
+              {!isLoading && hasDeals && deals!.slice(0, 4).map((deal) => {
                 const discountPercent = Math.round(((deal.normalPrice - deal.dealPrice) / deal.normalPrice) * 100);
+                const midPrice = deal.normalPrice > deal.dealPrice
+                  ? formatPrice(Math.round((deal.normalPrice + deal.dealPrice) / 2), deal.currency)
+                  : undefined;
                 return (
                   <StaggerItem key={deal.id}>
                     <ClayDealCard
                       image={deal.imageUrl}
                       imageAlt={deal.hotelName}
                       discountPercent={discountPercent}
-                      rating={Number(deal.rating)}
-                      reviewCount={deal.reviewCount}
+                      rating={Number(deal.rating) || 8.5}
                       title={deal.hotelName}
                       location={deal.location}
+                      highlight={undefined}
                       originalPrice={formatPrice(deal.normalPrice, deal.currency)}
+                      slashedMidPrice={midPrice}
                       currentPrice={formatPrice(deal.dealPrice, deal.currency)}
                       isGapNight={true}
                       isApprovalRequired={true}
                       nightCount={`${format(parseISO(deal.checkInDate), "d MMM")} → ${format(parseISO(deal.checkOutDate), "d MMM")}`}
                       onClick={() => setLocation(`/deal/${deal.id}`)}
-                      data-testid={`preview-deal-${deal.id}`}
                     />
                   </StaggerItem>
                 );
               })}
-              {!isLoading && hasProperties && properties.slice(0, hasDeals ? 3 : 6).map((prop: any) => (
+              {!isLoading && hasProperties && properties.slice(0, hasDeals ? 2 : 4).map((prop: any) => (
                 <StaggerItem key={prop.id}>
                   <PropertyDealCard property={prop} />
                 </StaggerItem>
               ))}
             </StaggerContainer>
+            </div>
 
             {/* Browse all CTA */}
             {(hasDeals || hasProperties) && !isLoading && (
-              <div className="flex justify-center mt-10">
+              <div className="flex justify-center mt-8">
                 <button
                   onClick={() => setLocation("/deals")}
-                  className="clay-btn px-8 py-3.5 text-base font-semibold inline-flex items-center gap-2"
-                  style={{ borderRadius: "var(--clay-radius-pill)" }}
+                  className="inline-flex items-center gap-2 font-semibold text-white px-8 py-3.5"
+                  style={{
+                    background: "linear-gradient(135deg, #6b97f0 0%, #4A8FE7 50%, #4280dc 100%)",
+                    borderRadius: "40px",
+                    boxShadow: "0 8px 30px rgba(74,143,231,0.40), 0 2px 8px rgba(74,143,231,0.20)",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "0.9375rem",
+                  }}
                   data-testid="button-view-all-deals"
                 >
                   Browse All Deals
@@ -466,6 +505,6 @@ export default function Landing() {
         </div>
         </footer>
       </div>
-    </div>
+    </CloudBackground>
   );
 }

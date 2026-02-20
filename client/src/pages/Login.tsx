@@ -9,6 +9,7 @@ import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowLeft } from "lucide
 import { login } from "@/hooks/useAuth";
 import { GapNightLogo } from "@/components/GapNightLogo";
 import { Footer } from "@/components/Footer";
+import { CloudBackground } from "@/components/ui/clay";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -98,14 +99,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden" style={{ background: "linear-gradient(160deg, var(--clay-sky-start) 0%, var(--clay-sky-mid) 45%, var(--clay-sky-end) 100%)" }}>
-      {/* Cloud blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
-        <div className="clay-cloud-blob animate-cloud-1 w-[500px] h-[320px] -top-20 -left-32 opacity-65" />
-        <div className="clay-cloud-blob animate-cloud-2 w-[450px] h-[280px] top-1/3 -right-20 opacity-55" />
-        <div className="clay-cloud-blob animate-cloud-3 w-[380px] h-[240px] bottom-10 left-1/4 opacity-50" />
-      </div>
-
+    <CloudBackground>
       <div className="relative flex flex-col min-h-screen" style={{ zIndex: 1 }}>
         {/* Slim clay nav */}
         <header style={{ background: "rgba(255,255,255,0.72)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.60)", boxShadow: "0 2px 20px rgba(100,120,200,0.08)" }}>
@@ -261,6 +255,6 @@ export default function Login() {
           </div>
         </main>
       </div>
-    </div>
+    </CloudBackground>
   );
 }
