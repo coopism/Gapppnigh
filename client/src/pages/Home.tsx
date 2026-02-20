@@ -11,7 +11,6 @@ import { Search, MapPin, Calendar, Users, ChevronDown, Filter, Clock, Minus, Plu
 import { debounce } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
-import { CloudBackground } from "@/components/ui/clay";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -450,7 +449,13 @@ export default function Home() {
   };
 
   return (
-    <CloudBackground>
+    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, var(--clay-sky-start) 0%, var(--clay-sky-mid) 45%, var(--clay-sky-end) 100%)" }}>
+      {/* fixed cloud blobs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+        <div className="clay-cloud-blob animate-cloud-1 w-[550px] h-[340px] -top-16 -left-32 opacity-65" />
+        <div className="clay-cloud-blob animate-cloud-2 w-[480px] h-[280px] top-[28%] -right-24 opacity-55" />
+        <div className="clay-cloud-blob animate-cloud-3 w-[400px] h-[240px] bottom-20 left-[18%] opacity-50" />
+      </div>
       <div className="relative" style={{ zIndex: 1 }}>
       <Navigation />
 
@@ -1202,6 +1207,6 @@ export default function Home() {
 
       <Footer />
       </div>
-    </CloudBackground>
+    </div>
   );
 }
