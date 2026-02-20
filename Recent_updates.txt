@@ -3602,3 +3602,17 @@ Style: claymorphism UI, same aesthetic as the hero background above.
 6. At scrollY=900+: curtain fully gone, deals section clean
 7. Cloud texture should have many small puffs, warm highlights — NOT smooth blobs
 8. Grain overlay prevents flat airbrush look
+
+---
+
+## Image Asset Verification + Path Fix
+
+### Images verified visually before wiring up:
+- `clouds-hero.png` (was image.png, 581KB): ✅ Pastel lavender/blue sky, many small puffy 3D clay cloud puffs at varied sizes, warm pink highlights on top edges, cool lavender shadows underneath. Exactly matches mockup style.
+- `clouds-bank.png` (was image copy.png, 717KB): ✅ Real PNG transparency (checkerboard in editor), dense cloud bank at bottom fading up to scattered individual puffs. No mix-blend-mode hack needed — alpha channel genuine.
+
+### Changes:
+- Renamed files via PowerShell: `image.png` → `clouds-hero.png`, `image copy.png` → `clouds-bank.png`
+- Updated `HeroBackground.tsx`: `/clay/clouds-hero.webp` → `/clay/clouds-hero.png`
+- Updated `CloudBankCurtain.tsx`: `/clay/clouds-bank.webp` → `/clay/clouds-bank.png`
+- Committed as `4d2edff` and pushed
