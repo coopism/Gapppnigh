@@ -3454,3 +3454,65 @@ Initial clay implementation used CSS blur blobs for clouds which looked flat and
 
 ### Landing.tsx
 - Deals section: `background: rgba(255,255,255,0.72)` + `backdropFilter: blur(14px)` — sits visually below the wave divider
+
+---
+
+## Design Fidelity Pass v3 — Anchor Clouds, Subgroup Drift, Cloud Curtain
+
+### Problem: parallax was invisible despite numbers changing
+1. Cloud layers too uniform/blurred — no trackable landmarks for the eye
+2. Entire layers move as single sheets — no internal depth separation
+3. Missing "cloud curtain reveal" at section boundary
+
+### Fix 1: ANCHOR CLOUDS (perceptibility)
+- MID layer: 5 anchor clusters (rx 165–190, blur 3px, opacity 0.92)
+- NEAR layer: 6 anchor clusters (rx 130–155, blur 3px, opacity 0.92)
+- These are SHARPER than base haze (blur 3 vs 12/4) with tighter gradient falloff
+- Positioned to cross the viewport during normal scroll range
+- `AnchorSVG` component has separate gradient defs with higher contrast stops
+
+### Fix 2: SUBGROUP DRIFT (internal layer depth)
+- Each MID/NEAR layer now has 2 subgroups:
+  - Base haze: `translate3d(0, -sy * speed, 0)`
+  - Cluster group: `translate3d(0, -sy * speed * CLUSTER_DRIFT_MULT, 0)`
+- `CLUSTER_DRIFT_MULT = 1.35` — clusters drift 35% faster than their base
+- At scrollY=500: MID base=-75px, MID cluster=-101px (26px relative drift)
+- At scrollY=500: NEAR base=-130px, NEAR cluster=-175px (45px relative drift)
+- 5 refs total: farRef, midBaseRef, midCluRef, nearBaseRef, nearCluRef
+
+### Fix 3: CLOUD CURTAIN REVEAL (`<CloudCurtain />`)
+- New component sitting between hero and divider
+- Scroll-linked over range [curtainTop - 200px, curtainTop + 500px]:
+  - translateY: 0 → -180px (moves up/out of way)
+  - opacity: 1 → 0 (fades out)
+  - blur: 0px → 10px (softens as exits)
+- Uses 4 large overlapping cloud ellipses + 2 highlight ellipses
+- Has its own debug label: "CURTAIN y:Xpx op:0.xx"
+- `marginTop: -80px, marginBottom: -140px` overlaps hero bottom + deals top
+
+### Fix 4: DIVIDER CLOUD BANK
+- Added filled cloud bank shapes BEHIND contour strokes (5 blurred ellipses)
+- Top highlight rim (3 ellipses, opacity 0.40)
+- Height increased 220→280px, margins adjusted for deeper overlap
+- 3 bottom fill paths (0.45, 0.72, 0.95 opacity) for smooth transition
+
+### Debug HUD now shows 6 lines:
+- FAR, MID, M-CLU, NEAR, N-CLU (green monospace, top-left)
+- CURTAIN (yellow monospace, inside curtain element)
+
+### Landing.tsx
+- Added `<CloudCurtain />` between hero section and `<WavyCloudDivider />`
+
+### TUNING CONSTANTS reference:
+| Constant | Value | Effect |
+|---|---|---|
+| PARALLAX_FAR | 0.07 | 7% scroll speed |
+| PARALLAX_MID | 0.15 | 15% scroll speed |
+| PARALLAX_NEAR | 0.26 | 26% scroll speed |
+| CLUSTER_DRIFT_MULT | 1.35 | Clusters drift 35% faster than base |
+| ANCHOR_BLUR | 3px | Sharp anchor clouds |
+| ANCHOR_OPACITY | 0.92 | High contrast anchors |
+| CURTAIN_OFFSET_START | -200 | Start reveal 200px before curtain |
+| CURTAIN_OFFSET_END | 500 | Complete reveal 500px after curtain |
+| CURTAIN_MAX_TRANSLATE | 180px | Max upward movement |
+| CURTAIN_MAX_BLUR | 10px | Max blur at exit |

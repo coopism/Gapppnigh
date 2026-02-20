@@ -12,7 +12,7 @@ import { formatPrice } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import { FadeIn, BlurFade, StaggerContainer, StaggerItem, SlideIn } from "@/components/ui/motion";
 import { CloudBackground, ClayPanel, ClayChip, ClayDealCard } from "@/components/ui/clay";
-import { CloudBackdrop, WavyCloudDivider } from "@/components/ui/clay/CloudBackdrop";
+import { CloudBackdrop, CloudCurtain, WavyCloudDivider } from "@/components/ui/clay/CloudBackdrop";
 
 const LOCATION_SUGGESTIONS = [
   { city: "Melbourne", state: "VIC" },
@@ -241,6 +241,9 @@ export default function Landing() {
             </button>
           </FadeIn>
         </section>
+
+        {/* ── CLOUD CURTAIN (scroll-linked fog reveal) ────────────────── */}
+        <CloudCurtain />
 
         {/* ── WAVY CLOUD DIVIDER ──────────────────────────────────────── */}
         <WavyCloudDivider />
