@@ -12,6 +12,7 @@ import { formatPrice } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import { FadeIn, BlurFade, StaggerContainer, StaggerItem, SlideIn } from "@/components/ui/motion";
 import { CloudBackground, ClayPanel, ClayChip, ClayDealCard } from "@/components/ui/clay";
+import { CloudBackdrop, WavyCloudDivider } from "@/components/ui/clay/CloudBackdrop";
 
 const LOCATION_SUGGESTIONS = [
   { city: "Melbourne", state: "VIC" },
@@ -105,7 +106,7 @@ export default function Landing() {
   };
 
   return (
-    <CloudBackground>
+    <CloudBackdrop>
       <div className="relative" style={{ zIndex: 1 }}>
         <Navigation />
 
@@ -241,8 +242,11 @@ export default function Landing() {
           </FadeIn>
         </section>
 
+        {/* ── WAVY CLOUD DIVIDER ──────────────────────────────────────── */}
+        <WavyCloudDivider />
+
         {/* ── DEALS PREVIEW ───────────────────────────────────────────── */}
-        <section ref={dealsRef} className="py-10 md:py-14 px-4">
+        <section ref={dealsRef} className="py-10 md:py-14 px-4" style={{ background: "rgba(255,255,255,0.72)", backdropFilter: "blur(14px)" }}>
           <div className="max-w-5xl mx-auto">
             <FadeIn direction="up" duration={0.5}>
               <div className="text-center mb-6">
@@ -477,6 +481,6 @@ export default function Landing() {
         </div>
         </footer>
       </div>
-    </CloudBackground>
+    </CloudBackdrop>
   );
 }

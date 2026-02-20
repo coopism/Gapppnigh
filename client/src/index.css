@@ -12,11 +12,18 @@
   --font-display: 'Outfit', sans-serif;
 
   /* ── Claymorphism Sky Palette ── */
-  --clay-sky-start:   #4d6ec4;
-  --clay-sky-mid:     #7a9ad8;
-  --clay-sky-end:     #d8e4ff;
+  --clay-sky-start:   #a8b8e2;
+  --clay-sky-mid:     #c8d4f4;
+  --clay-sky-end:     #edf2ff;
   --clay-cloud:       rgba(255,255,255,0.90);
   --clay-cloud-solid: #ffffff;
+  /* Cloud layer tuning */
+  --cloud-blur-far:   40px;
+  --cloud-blur-mid:   16px;
+  --cloud-blur-near:  6px;
+  --cloud-opacity-far:  0.58;
+  --cloud-opacity-mid:  0.82;
+  --cloud-opacity-near: 0.88;
 
   /* ── Brand blues ── */
   --clay-primary:        #4A8FE7;

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export function CloudBackground({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn("relative min-h-screen overflow-x-hidden", className)}
-      style={{ background: "linear-gradient(180deg,#4a6abf 0%,#6282cc 8%,#849ed8 18%,#a8bee8 32%,#c2d2f4 48%,#d8e4ff 65%,#e8eeff 82%,#f4f0ff 100%)" }}>
+      style={{ background: "linear-gradient(180deg,#a8b8e2 0%,#b8c6ec 10%,#c8d4f4 25%,#d8e2f8 45%,#e4eafe 62%,#edf2ff 80%,#f4f7ff 100%)" }}>
       {/* Full-screen SVG cloud layer */}
       <svg
         className="fixed inset-0 w-full h-full pointer-events-none select-none"

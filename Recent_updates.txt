@@ -3391,3 +3391,33 @@ Initial clay implementation used CSS blur blobs for clouds which looked flat and
 - CTA "Browse today's deals": switched to `clay-btn` class
 - Search inline button: switched to `clay-btn` with `borderRadius: 10px` override
 - "Browse All Deals": switched to `clay-btn` class
+
+---
+
+## Design Fidelity Pass — Cloud Parallax + Wavy Divider
+
+### Diagnosis (3 root causes vs TARGET)
+1. **Clouds too big/wrong feel** — Previous: 6–8 massive ellipse groups (rx 170–285px) as blobs. TARGET: many small-medium puffs at multiple scales creating layered depth. Fixed: 3 explicit layers (20 FAR, 15 MID, 11 NEAR) with varied sizes.
+2. **Missing wavy section divider** — TARGET has a distinctive multi-wave "cloud bank" SVG shape between hero and deals sections. Not present in CURRENT. Fixed: `WavyCloudDivider` component with 4 stacked SVG wave paths.
+3. **Sky too dark/saturated** — Previous top: `#4a6abf` (deep saturated blue). TARGET: soft pastel periwinkle `~#a8b8e2`. Fixed: updated gradient globally.
+
+### New file: `client/src/components/ui/clay/CloudBackdrop.tsx`
+- **TUNING CONSTANTS** at top: `CLOUD_SCALE_FAR/MID/NEAR`, `BLUR_FAR/MID/NEAR`, `PARALLAX_SPEED_FAR/MID/NEAR` — tweak without touching component logic
+- **FAR layer** (20 ellipses, blur 40px, opacity 0.58, scale 1.35): distant haze, barely moves (scroll × 0.04)
+- **MID layer** (15 ellipses, blur 16px, opacity 0.82, scale 1.00): medium clouds (scroll × 0.10)
+- **NEAR layer** (11 ellipses, blur 6px, opacity 0.88, scale 0.62): edge/bottom clouds that drift away fastest (scroll × 0.22)
+- **Parallax**: `requestAnimationFrame` + passive scroll listener, `translateY` on refs — no state updates, 60fps safe
+- Each SVG layer has unique gradient ID prefix (`cf-`, `cm-`, `cn-`) to avoid DOM ID conflicts
+- **`WavyCloudDivider`**: 4 stacked SVG wave paths, opacity 0.38→0.62→0.80→0.95 bottom-to-top, height 200px, overlaps sections with negative margins
+
+### `client/src/pages/Landing.tsx`
+- Replaced `<CloudBackground>` with `<CloudBackdrop>` (new parallax version)
+- Added `<WavyCloudDivider />` between hero section and deals section
+- Deals section: `background: rgba(255,255,255,0.72)` + `backdropFilter: blur(14px)` — sits visually below the wave
+
+### `client/src/index.css`
+- Sky palette lightened: `--clay-sky-start: #a8b8e2`, `--clay-sky-mid: #c8d4f4`, `--clay-sky-end: #edf2ff`
+- Added `--cloud-blur-far/mid/near` and `--cloud-opacity-far/mid/near` CSS vars for runtime tuning
+
+### `client/src/components/ui/clay/index.tsx`
+- `CloudBackground` sky gradient updated to match lighter palette (for Login/Home/HostDashboard consistency)
