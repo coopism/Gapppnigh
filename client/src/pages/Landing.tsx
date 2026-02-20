@@ -112,7 +112,7 @@ export default function Landing() {
         <Navigation />
 
         {/* ── HERO ─────────────────────────────────────────────────────── */}
-        <section className="relative pt-14 pb-8 md:pt-20 md:pb-10 flex flex-col items-center px-4">
+        <section className="relative pt-14 pb-32 md:pt-20 md:pb-48 flex flex-col items-center px-4" style={{ minHeight: "85vh" }}>
           <BlurFade duration={0.65}>
             {/* Floating definition card — compact, centered */}
             <div className="clay-panel" style={{
