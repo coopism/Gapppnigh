@@ -434,8 +434,9 @@ if (!fs.existsSync(avatarDir)) {
 
 const avatarStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, avatarDir),
-  filename: (req: any, _file, cb) => {
-    cb(null, `${req.hostId || "unknown"}.webp`);
+  filename: (req: any, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    cb(null, `${req.hostId || "unknown"}${ext}`);
   },
 });
 
@@ -461,12 +462,14 @@ router.post("/api/host/avatar", requireHostAuth, uploadRateLimit, avatarUpload.s
       return res.status(400).json({ error: "No image uploaded" });
     }
 
-    const avatarUrl = `/uploads/host-avatars/${req.hostId}.webp`;
+    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    const avatarUrl = `/uploads/host-avatars/${req.hostId}${ext}`;
 
-    // Rename uploaded file to hostId.webp (multer already names it correctly)
-    const finalPath = path.join(avatarDir, `${req.hostId}.webp`);
-    if (file.path !== finalPath) {
-      fs.renameSync(file.path, finalPath);
+    // Remove any previous avatar files for this host (different extension)
+    for (const oldExt of [".jpg", ".jpeg", ".png", ".webp"]) {
+      if (oldExt === ext) continue;
+      const oldPath = path.join(avatarDir, `${req.hostId}${oldExt}`);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     }
 
     const [updated] = await db

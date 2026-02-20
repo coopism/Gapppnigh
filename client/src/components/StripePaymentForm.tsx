@@ -34,6 +34,7 @@ interface PaymentFormInnerProps {
 }
 
 function PaymentFormInner({ clientSecret, mode, onBeforePayment, onPaymentSuccess, onPaymentError, disabled }: PaymentFormInnerProps) {
+  const isSetup = mode === "setup";
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -139,12 +140,12 @@ function PaymentFormInner({ clientSecret, mode, onBeforePayment, onPaymentSucces
         {isProcessing ? (
           <>
             <Loader className="w-4 h-4 mr-2 animate-spin" />
-            Processing Payment...
+            {isSetup ? "Saving Card..." : "Processing Payment..."}
           </>
         ) : (
           <>
             <CreditCard className="w-4 h-4 mr-2" />
-            Pay Now
+            {isSetup ? "Save Card & Continue" : "Pay Now"}
           </>
         )}
       </Button>

@@ -791,7 +791,7 @@ export default function PropertyBooking() {
                     How would you like to pay?
                   </h2>
                   <p className="text-sm text-muted-foreground mb-6">
-                    A temporary hold is placed on your card. You are only charged when the host approves.
+                    Save your card details securely. You won&rsquo;t be charged until the host approves your request.
                   </p>
 
                   {user && idStatus !== "verified" && (
@@ -816,7 +816,7 @@ export default function PropertyBooking() {
                     <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
                       <div className="flex items-center gap-2 text-primary">
                         <Check className="w-5 h-5" />
-                        <span className="font-semibold">Payment Authorized</span>
+                        <span className="font-semibold">Card Saved</span>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         Your card has been saved securely. You won&rsquo;t be charged until the host approves your request.
@@ -1001,9 +1001,9 @@ export default function PropertyBooking() {
               <div className="p-4">
                 <h4 className="font-bold text-foreground mb-2">How it works</h4>
                 <div className="space-y-2 text-sm text-muted-foreground">
-                  <p className="flex items-center gap-2"><Shield className="w-4 h-4 text-primary shrink-0" /> Your card is authorized but not charged</p>
+                  <p className="flex items-center gap-2"><Shield className="w-4 h-4 text-primary shrink-0" /> Your card is saved securely — no charge yet</p>
                   <p className="flex items-center gap-2"><Clock className="w-4 h-4 text-primary shrink-0" /> Host reviews your request within 24h</p>
-                  <p className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" /> Payment captured only when approved</p>
+                  <p className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" /> Payment only taken when host approves</p>
                 </div>
               </div>
             </div>
