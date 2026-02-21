@@ -11,7 +11,7 @@ import { format, parseISO } from "date-fns";
 import { formatPrice } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
 import { FadeIn, BlurFade, StaggerContainer, StaggerItem, SlideIn } from "@/components/ui/motion";
-import { CloudBackground, ClayPanel, ClayChip, ClayDealCard, ClayHeroScene } from "@/components/ui/clay";
+import { CloudBackground, ClayPanel, ClayChip, ClayDealCard } from "@/components/ui/clay";
 
 const LOCATION_SUGGESTIONS = [
   { city: "Melbourne", state: "VIC" },
@@ -105,15 +105,14 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen">
-      {/* ── HERO ZONE — clay cloud sky ── */}
-      <div className="relative overflow-hidden" style={{ minHeight: '100vh' }}>
-        <ClayHeroScene />
-        <div className="relative" style={{ zIndex: 10 }}>
-          <Navigation />
-          {/* ── HERO ──────────────────────────────────────────────── */}
-          <section className="relative flex flex-col items-center px-4" style={{ paddingTop: '72px', paddingBottom: '34vh' }}>
-            <div className="w-full max-w-2xl mx-auto">
+    <div className="min-h-screen bg-white">
+      <Navigation />
+
+      {/* ── HERO ── */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, #eef2f9 0%, #f6f8fc 60%, #ffffff 100%)" }} />
+        <div className="relative pt-16 pb-20 md:pt-24 md:pb-28 flex flex-col items-center px-4">
+          <div className="w-full max-w-2xl mx-auto">
             <BlurFade duration={0.7}>
               {/* Definition card */}
               <div className="clay-panel p-8 md:p-10">
@@ -232,39 +231,31 @@ export default function Landing() {
                 </button>
               </div>
             </FadeIn>
-            </div>
-          </section>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── LOWER PAGE ── */}
-      <div style={{ background: "linear-gradient(160deg, var(--clay-sky-start) 0%, var(--clay-sky-mid) 45%, var(--clay-sky-end) 100%)" }}>
-        {/* ── DEALS PREVIEW ───────────────────────────────────────────── */}
-        <section ref={dealsRef} className="py-12 md:py-16 px-4">
+      {/* ── DEALS PREVIEW ── */}
+      <section ref={dealsRef} className="py-12 md:py-16 px-4 bg-white">
           <div className="max-w-6xl mx-auto">
             <FadeIn direction="up" duration={0.5}>
-              <div className="text-center mb-6">
-                <h2 className="text-2xl md:text-3xl font-display font-bold mb-1" style={{ color: "var(--clay-text)" }}>
-                  Explore today's gap night stays
-                </h2>
-                <p className="text-sm md:text-base" style={{ color: "var(--clay-text-muted)" }}>
-                  Limited-time clearance deals on unsold hotel nights.
-                </p>
-              </div>
-
-              {/* Time-window chips */}
-              <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
-                {[
-                  { label: "Tonight", icon: <Clock className="w-3.5 h-3.5" /> },
-                  { label: "Next 3 Days" },
-                  { label: "Next 7 Days" },
-                  { label: "All Upcoming" },
-                ].map(({ label, icon }, i) => (
-                  <ClayChip key={label} active={i === 0} icon={icon}
-                    onClick={() => setLocation(`/deals?when=${label.toLowerCase().replace(/ /g, "-")}`)}>
-                    {label}
-                  </ClayChip>
-                ))}
+              <div className="flex items-end justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-display font-bold mb-1" style={{ color: "var(--clay-text)" }}>
+                    Explore today's gap night stays
+                  </h2>
+                  <p className="text-sm md:text-base" style={{ color: "var(--clay-text-muted)" }}>
+                    Real discounts on real rooms — book before they're gone
+                  </p>
+                </div>
+                <button
+                  onClick={() => setLocation("/deals")}
+                  className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full border transition-colors hover:bg-gray-50"
+                  style={{ color: "var(--clay-text)", borderColor: "rgba(0,0,0,0.15)" }}
+                >
+                  View All Deals
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
             </FadeIn>
 
@@ -320,28 +311,53 @@ export default function Landing() {
               ))}
             </StaggerContainer>
 
-            {/* Browse all CTA */}
-            {(hasDeals || hasProperties) && !isLoading && (
-              <div className="flex justify-center mt-10">
-                <button
-                  onClick={() => setLocation("/deals")}
-                  className="clay-btn px-8 py-3.5 text-base font-semibold inline-flex items-center gap-2"
-                  style={{ borderRadius: "var(--clay-radius-pill)" }}
-                  data-testid="button-view-all-deals"
-                >
-                  Browse All Deals
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
+          {/* Browse all CTA (mobile) */}
+          {(hasDeals || hasProperties) && !isLoading && (
+            <div className="flex justify-center mt-10 md:hidden">
+              <button
+                onClick={() => setLocation("/deals")}
+                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium rounded-full border transition-colors hover:bg-gray-50"
+                style={{ color: "var(--clay-text)", borderColor: "rgba(0,0,0,0.15)" }}
+                data-testid="button-view-all-deals"
+              >
+                View All Deals
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
 
-        {/* ── TICKER STRIP ───────────────────────────────────────────── */}
-        <section className="py-0 overflow-hidden" style={{ borderTop: "1px solid rgba(255,255,255,0.40)", borderBottom: "1px solid rgba(255,255,255,0.40)" }}>
+      {/* ── HOW IT WORKS ── */}
+      <section className="py-14 md:py-20 bg-gray-50/60">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <FadeIn direction="up" duration={0.5}>
+            <h2 className="text-2xl md:text-3xl font-display font-bold mb-2" style={{ color: "var(--clay-text)" }}>How it works</h2>
+            <p className="text-sm md:text-base mb-10" style={{ color: "var(--clay-text-muted)" }}>Three simple steps to your next great stay</p>
+          </FadeIn>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { step: "1", title: "Browse gap nights", desc: "Hotels list their unsold nights at clearance prices. Browse by location, date, or deal score." },
+              { step: "2", title: "Book instantly", desc: "Found one you like? Book it in seconds. Some properties require host approval first." },
+              { step: "3", title: "Enjoy your stay", desc: "Check in and enjoy a real hotel room at a fraction of the normal price." },
+            ].map(({ step, title, desc }) => (
+              <FadeIn key={step} delay={Number(step) * 0.15} duration={0.5}>
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold mb-4" style={{ background: "rgba(74,143,231,0.10)", color: "var(--clay-primary)" }}>{step}</div>
+                  <h3 className="font-semibold text-base mb-2" style={{ color: "var(--clay-text)" }}>{title}</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--clay-text-muted)" }}>{desc}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── TICKER STRIP ── */}
+      <section className="py-0 overflow-hidden border-y" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
         <div className="relative flex">
-          <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: "linear-gradient(to right, var(--clay-sky-start), transparent)" }} />
-          <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: "linear-gradient(to left, var(--clay-sky-end), transparent)" }} />
+          <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: "linear-gradient(to right, #ffffff, transparent)" }} />
+          <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: "linear-gradient(to left, #ffffff, transparent)" }} />
           <div className="flex animate-ticker whitespace-nowrap py-3 gap-0">
             {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
               <span key={i} className="inline-flex items-center gap-2 px-5 text-sm shrink-0" style={{ color: "var(--clay-text-muted)" }}>
@@ -357,8 +373,8 @@ export default function Landing() {
         </div>
       </section>
 
-        {/* ── HOST PITCH ────────────────────────────────────────────── */}
-        <section className="py-16 md:py-24">
+      {/* ── HOST PITCH ── */}
+      <section className="py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
 
@@ -424,8 +440,8 @@ export default function Landing() {
         </div>
       </section>
 
-        {/* ── FOOTER ────────────────────────────────────────────────── */}
-        <footer className="py-12 mt-8" style={{ background: "rgba(26,43,74,0.95)", color: "rgba(255,255,255,0.65)" }}>
+      {/* ── FOOTER ── */}
+      <footer className="py-12" style={{ background: "rgba(26,43,74,0.95)", color: "rgba(255,255,255,0.65)" }}>
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2">
@@ -461,8 +477,7 @@ export default function Landing() {
             </div>
           </div>
         </div>
-        </footer>
-      </div>
+      </footer>
     </div>
   );
 }

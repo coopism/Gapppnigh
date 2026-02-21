@@ -1,6 +1,22 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-20 (Session 7)
 
+## Revert to Legacy Clean Look — Session 9 - Feb 21, 2026
+
+- Reverted Landing.tsx hero: removed ClayHeroScene SVG sphere clouds
+- Hero now uses subtle light sky gradient (#eef2f9 → #f6f8fc → #ffffff)
+- All content sections use white background (bg-white) matching legacy screenshots
+- Deals section: left-aligned heading with "View All Deals" pill button on right (desktop)
+- Added "How it works" section with 3-step numbered circles
+- Ticker strip uses white edge gradients instead of sky vars
+- Host pitch and footer sections on white background
+- Clean, minimal, professional look matching original GapNight design
+
+**Files Modified:**
+- `client/src/pages/Landing.tsx`
+
+---
+
 ## Clay Morphism Landing Page Revamp — Session 8 - Feb 20, 2026
 
 ### Changes Implemented
