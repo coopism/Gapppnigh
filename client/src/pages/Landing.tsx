@@ -133,8 +133,7 @@ export default function Landing() {
 
                 <FadeIn delay={0.3} duration={0.6}>
                   <p className="text-lg md:text-xl leading-relaxed mb-2" style={{ color: "var(--clay-text)" }}>
-                    An unsold night between bookings —<br className="hidden md:block" />
-                    offered at a discount so it doesn't go to waste.
+                    An unsold night between bookings — offered at a discount so it doesn't go to waste.
                   </p>
                   <p className="text-sm md:text-base mb-6" style={{ color: "var(--clay-text-muted)" }}>
                     Real rooms. Real discounts.{" "}
