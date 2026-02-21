@@ -134,11 +134,11 @@ export default function Landing() {
                 <FadeIn delay={0.3} duration={0.6}>
                   <p className="text-lg md:text-xl leading-relaxed mb-2" style={{ color: "var(--clay-text)" }}>
                     An unsold night between bookings —<br className="hidden md:block" />
-                    discounted so it doesn't go unused.
+                    offered at a discount so it doesn't go to waste.
                   </p>
                   <p className="text-sm md:text-base mb-6" style={{ color: "var(--clay-text-muted)" }}>
-                    Hotels call them gap nights.{" "}
-                    <strong style={{ color: "var(--clay-text)" }}>We help you book them.</strong>
+                    Real rooms. Real discounts.{" "}
+                    <strong style={{ color: "var(--clay-text)" }}>Book before they're gone.</strong>
                   </p>
                 </FadeIn>
 

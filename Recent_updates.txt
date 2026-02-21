@@ -1,6 +1,12 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-20 (Session 7)
 
+## Hero Copy Update — Session 11 - Feb 21, 2026
+- Definition: "offered at a discount so it doesn't go to waste." (was "discounted so it doesn't go unused.")
+- Sub-line: "Real rooms. Real discounts. **Book before they're gone.**" (replaced "Hotels call them gap nights. We help you book them.")
+
+---
+
 ## Login Fix + Auth Gate + Landing Hero Polish — Session 10 - Feb 21, 2026
 
 ### Changes Implemented
