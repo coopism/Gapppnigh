@@ -112,10 +112,10 @@ export default function Landing() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, #eef2f9 0%, #f6f8fc 60%, #ffffff 100%)" }} />
         <div className="relative pt-16 pb-20 md:pt-24 md:pb-28 flex flex-col items-center px-4">
-          <div className="w-full max-w-2xl mx-auto px-16">
+          <div className="w-full max-w-6xl mx-auto px-12 md:px-20">
             <BlurFade duration={0.7}>
               {/* Definition card */}
-              <div className="clay-panel p-16 md:p-24">
+              <div className="clay-panel p-8 md:p-10">
                 <FadeIn direction="none" duration={0.6} delay={0.1}>
                   <h1 className="text-4xl md:text-5xl font-display font-bold mb-2" style={{ color: "var(--clay-text)" }}>
                     Gap Night
