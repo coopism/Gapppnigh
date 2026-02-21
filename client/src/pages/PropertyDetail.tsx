@@ -366,6 +366,10 @@ export default function PropertyDetail() {
   const selectedGapRange = selectedRange !== null ? ranges[selectedRange] : null;
 
   const handleBooking = () => {
+    if (!user) {
+      setLocation(`/login?redirect=${encodeURIComponent(`/property/${params.id}`)}`);
+      return;
+    }
     if (selectedGapRange) {
       setLocation(`/booking/property/${params.id}?checkIn=${selectedGapRange.startDate}&checkOut=${selectedGapRange.endDate}&nights=${selectedGapRange.nights}`);
     }

@@ -1,6 +1,40 @@
 # Gap Night - Recent Updates Log
 # Last Updated: 2026-02-20 (Session 7)
 
+## Login Fix + Auth Gate + Landing Hero Polish — Session 10 - Feb 21, 2026
+
+### Changes Implemented
+
+1. **`client/src/pages/Login.tsx` — Rewrote to match Signup page style**
+   - Removed clay-morphism sky gradient, cloud blobs, pill tab switcher, clay-panel, clay-btn, clay-input
+   - Now uses same shadcn/ui components as Signup: `bg-background`, `bg-card`, `Button`, `Input`, `Label`, `Alert`
+   - OAuth buttons: full-width stacked "Continue with Google" + "Continue with Apple" (was side-by-side Google/Facebook)
+   - Same header, layout, card style, and footer as Signup page
+   - Google OAuth still uses `google.accounts.id.prompt()` — works when `VITE_GOOGLE_CLIENT_ID` is set
+
+2. **`client/src/pages/DealDetail.tsx` — Auth gate added**
+   - Added `useAuthStore` import and `user` state
+   - `handleBooking()` now checks `if (!user)` → redirects to `/login?redirect=/deal/{id}`
+   - Unauthenticated users can no longer reach checkout
+
+3. **`client/src/pages/PropertyDetail.tsx` — Auth gate added**
+   - `handleBooking()` now checks `if (!user)` → redirects to `/login?redirect=/property/{id}`
+   - Same pattern as DealDetail
+
+4. **`client/src/pages/Landing.tsx` — Hero search bar polished**
+   - Replaced clay-morphism search bar (inset shadows, thick pill button) with clean bordered input
+   - Search button: compact teal pill inside the input row, properly aligned right
+   - MapPin icon instead of Search icon in input (matches legacy screenshots)
+   - Suggestions dropdown: clean white card with border + shadow (not clay-card)
+
+**Files Modified:**
+- `client/src/pages/Login.tsx`
+- `client/src/pages/DealDetail.tsx`
+- `client/src/pages/PropertyDetail.tsx`
+- `client/src/pages/Landing.tsx`
+
+---
+
 ## Revert to Legacy Clean Look — Session 9 - Feb 21, 2026
 
 - Reverted Landing.tsx hero: removed ClayHeroScene SVG sphere clouds

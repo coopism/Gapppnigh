@@ -13,6 +13,7 @@ import { useState, useEffect, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { formatPrice } from "@/lib/utils";
 import { GapNightLogoLoader } from "@/components/GapNightLogo";
+import { useAuthStore } from "@/hooks/useAuth";
 
 
 const AMENITY_ICONS: Record<string, typeof Wifi> = {
@@ -82,6 +83,7 @@ export default function DealDetail() {
   const { data: deal, isLoading } = useDeal(id);
   const { data: hotelDeals } = useHotelAvailability(deal?.hotelName || "");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const { user } = useAuthStore();
 
   // Auto-select current deal when data loads
   useEffect(() => {
@@ -155,6 +157,10 @@ export default function DealDetail() {
   };
   
   const handleBooking = () => {
+    if (!user) {
+      setLocation(`/login?redirect=${encodeURIComponent(`/deal/${id}`)}`);
+      return;
+    }
     if (selectedOption) {
       setLocation(`/booking/${selectedOption}`);
     }

@@ -146,72 +146,66 @@ export default function Landing() {
                 <FadeIn delay={0.5} duration={0.6}>
                   <div
                     ref={searchRef}
-                    className="flex flex-col sm:flex-row gap-2 p-1.5 rounded-full"
-                    style={{
-                      background: "rgba(255,255,255,0.70)",
-                      border: "1.5px solid rgba(255,255,255,0.80)",
-                      boxShadow: "var(--clay-shadow-inset), var(--clay-shadow-xs)",
-                    }}
+                    className="relative flex items-center rounded-full border bg-white shadow-sm"
+                    style={{ borderColor: "rgba(0,0,0,0.10)" }}
                   >
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--clay-text-muted)" }} />
-                      <input
-                        type="text"
-                        placeholder="Where do you want to stay?"
-                        value={search}
-                        onChange={(e) => { setSearch(e.target.value); setShowSuggestions(true); }}
-                        onFocus={() => setShowSuggestions(true)}
-                        onKeyDown={handleKeyDown}
-                        className="w-full pl-10 pr-8 py-3 text-sm bg-transparent border-0 outline-none rounded-full"
-                        style={{ color: "var(--clay-text)" }}
-                        data-testid="input-hero-search"
-                      />
-                      {search && (
-                        <button
-                          onClick={() => { setSearch(""); setShowSuggestions(false); }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-black/5 transition-colors"
-                          aria-label="Clear search"
-                          data-testid="button-clear-search"
-                        >
-                          <X className="w-3.5 h-3.5" style={{ color: "var(--clay-text-muted)" }} />
-                        </button>
-                      )}
-
-                      {showSuggestions && search && filteredSuggestions.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-2 z-50 clay-card overflow-hidden">
-                          <div className="p-2">
-                            <div className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5" style={{ color: "var(--clay-text-muted)" }}>
-                              Popular Destinations
-                            </div>
-                            {filteredSuggestions.slice(0, 5).map((loc) => (
-                              <button
-                                key={loc.city}
-                                onClick={() => handleSelectSuggestion(loc)}
-                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-primary/5"
-                                data-testid={`suggestion-${loc.city.toLowerCase()}`}
-                              >
-                                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(74,143,231,0.10)" }}>
-                                  <MapPin className="w-4 h-4" style={{ color: "var(--clay-primary)" }} />
-                                </div>
-                                <div>
-                                  <div className="font-semibold text-sm" style={{ color: "var(--clay-text)" }}>{loc.city}</div>
-                                  <div className="text-xs" style={{ color: "var(--clay-text-muted)" }}>{loc.state}, Australia</div>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <MapPin className="absolute left-4 w-4 h-4 pointer-events-none text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Where do you want to stay?"
+                      value={search}
+                      onChange={(e) => { setSearch(e.target.value); setShowSuggestions(true); }}
+                      onFocus={() => setShowSuggestions(true)}
+                      onKeyDown={handleKeyDown}
+                      className="flex-1 pl-10 pr-4 py-3.5 text-sm bg-transparent border-0 outline-none rounded-full"
+                      style={{ color: "var(--clay-text)" }}
+                      data-testid="input-hero-search"
+                    />
+                    {search && (
+                      <button
+                        onClick={() => { setSearch(""); setShowSuggestions(false); }}
+                        className="absolute right-16 p-1 rounded-full hover:bg-black/5 transition-colors"
+                        aria-label="Clear search"
+                        data-testid="button-clear-search"
+                      >
+                        <X className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    )}
                     <button
                       onClick={handleSearch}
-                      className="clay-btn px-6 py-3 text-sm shrink-0"
-                      style={{ borderRadius: "var(--clay-radius-pill)" }}
+                      className="shrink-0 mr-1.5 px-5 py-2.5 text-sm font-semibold text-white rounded-full inline-flex items-center gap-1.5 transition-colors"
+                      style={{ background: "var(--clay-primary)" }}
                       data-testid="button-hero-search"
                     >
-                      <Search className="w-4 h-4 mr-1.5" />
+                      <Search className="w-4 h-4" />
                       Search
                     </button>
+
+                    {showSuggestions && search && filteredSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white rounded-xl border shadow-lg overflow-hidden">
+                        <div className="p-2">
+                          <div className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 text-muted-foreground">
+                            Popular Destinations
+                          </div>
+                          {filteredSuggestions.slice(0, 5).map((loc) => (
+                            <button
+                              key={loc.city}
+                              onClick={() => handleSelectSuggestion(loc)}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-gray-50"
+                              data-testid={`suggestion-${loc.city.toLowerCase()}`}
+                            >
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(74,143,231,0.10)" }}>
+                                <MapPin className="w-4 h-4" style={{ color: "var(--clay-primary)" }} />
+                              </div>
+                              <div>
+                                <div className="font-semibold text-sm" style={{ color: "var(--clay-text)" }}>{loc.city}</div>
+                                <div className="text-xs text-muted-foreground">{loc.state}, Australia</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </FadeIn>
               </div>
