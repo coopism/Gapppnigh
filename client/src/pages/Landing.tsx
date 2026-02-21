@@ -112,19 +112,19 @@ export default function Landing() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, #eef2f9 0%, #f6f8fc 60%, #ffffff 100%)" }} />
         <div className="relative pt-16 pb-20 md:pt-24 md:pb-28 flex flex-col items-center px-4">
-          <div className="w-full max-w-6xl mx-auto px-12 md:px-20">
+          <div className="w-full px-8 md:px-24 lg:px-32">
             <BlurFade duration={0.7}>
               {/* Definition card */}
-              <div className="clay-panel p-8 md:p-10">
+              <div className="clay-panel p-12 md:p-16 lg:p-20">
                 <FadeIn direction="none" duration={0.6} delay={0.1}>
-                  <h1 className="text-4xl md:text-5xl font-display font-bold mb-2" style={{ color: "var(--clay-text)" }}>
+                  <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-bold mb-4" style={{ color: "var(--clay-text)" }}>
                     Gap Night
                   </h1>
-                  <div className="flex items-center gap-2 mb-5">
-                    <span className="text-base md:text-lg italic" style={{ color: "var(--clay-text-muted)" }}>
+                  <div className="flex items-center gap-3 mb-8">
+                    <span className="text-lg md:text-xl lg:text-2xl italic" style={{ color: "var(--clay-text-muted)" }}>
                       /ˈgæp nīt/ &nbsp; gæp nāɪt
                     </span>
-                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                    <span className="text-sm font-semibold px-3 py-1 rounded-full"
                       style={{ background: "rgba(74,143,231,0.12)", color: "var(--clay-primary)" }}>
                       noun
                     </span>
@@ -132,10 +132,10 @@ export default function Landing() {
                 </FadeIn>
 
                 <FadeIn delay={0.3} duration={0.6}>
-                  <p className="text-lg md:text-xl leading-relaxed mb-2" style={{ color: "var(--clay-text)" }}>
+                  <p className="text-2xl md:text-3xl lg:text-4xl leading-relaxed mb-4" style={{ color: "var(--clay-text)" }}>
                     An unsold night between bookings — offered at a discount so it doesn't go to waste.
                   </p>
-                  <p className="text-sm md:text-base mb-6" style={{ color: "var(--clay-text-muted)" }}>
+                  <p className="text-lg md:text-xl lg:text-2xl mb-8" style={{ color: "var(--clay-text-muted)" }}>
                     Real rooms. Real discounts.{" "}
                     <strong style={{ color: "var(--clay-text)" }}>Book before they're gone.</strong>
                   </p>
